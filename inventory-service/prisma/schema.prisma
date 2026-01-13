@@ -23,7 +23,7 @@ model User {
 
 model Warehouse {
   id               String    @id @default(uuid())
-  name             String
+  name             String    @unique
   location         String
   isActive         Boolean   @default(true)
 

@@ -3,6 +3,8 @@ import { Request, Response } from "express";
 import prisma from "./lib/prisma";
 import dotenv from "dotenv";
 import productRoutes from "./routes/productRoutes";
+import inventoryRoutes from "./routes/inventoryRoutes";
+import warehouseRoutes from "./routes/warehouseRoutes";
 dotenv.config();
 
 const app = express();
@@ -10,7 +12,8 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use("/api/product", productRoutes);
-
+app.use("/api/inventory", inventoryRoutes);
+app.use("/api/warehouse", warehouseRoutes);
 app.get("/health", async (req: Request, res: Response) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
