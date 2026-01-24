@@ -1,18 +1,13 @@
 import { Request, Response } from "express";
-import { inventorySchema } from "../../schemas/inventorySchema";
+import { createInventorySchema } from "../../schemas/inventorySchema";
 import prisma from "../../lib/prisma";
 import { asyncHandler } from "../../utils/asyncHandler";
 
-export const createInventory = asyncHandler(async (req: Request, res: Response) => {
-    const data = inventorySchema.parse(req.body);
-    const {
-      productId,
-      warehouseId,
-      availableQty,
-      reservedQty,
-      reorderQty,
-      isReorderPending,
-    } = data;
+export const createInventory = asyncHandler(
+  async (req: Request, res: Response) => {
+    const data = createInventorySchema.parse(req.body);
+    const { productId, warehouseId, availableQty, reservedQty, reorderQty } =
+      data;
 
     const existingInventory = await prisma.inventory.findFirst({
       where: {
@@ -33,7 +28,6 @@ export const createInventory = asyncHandler(async (req: Request, res: Response) 
         availableQty,
         reservedQty,
         reorderQty,
-        isReorderPending,
       },
     });
     return res.status(201).json({
@@ -41,5 +35,5 @@ export const createInventory = asyncHandler(async (req: Request, res: Response) 
       message: "Inventory created successfully",
       data: inventory,
     });
-  }
+  },
 );
