@@ -24,7 +24,9 @@ model User {
 model Warehouse {
   id               String    @id @default(uuid())
   name             String    @unique
-  location         String
+  city             String
+  pincode          String
+  
   isActive         Boolean   @default(true)
 
   createdAt        DateTime  @default(now())
@@ -39,9 +41,9 @@ model Inventory {
   productId        String
   warehouseId      String
 
-  availableQty     Int
+  availableQty     Int       @default(0)
   reservedQty      Int       @default(0)
-  reorderQty       Int
+  reorderQty       Int       @default(0)
 
   isReorderPending Boolean   @default(false)
 
@@ -51,6 +53,7 @@ model Inventory {
   product          Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   warehouse        Warehouse @relation(fields:[warehouseId], references: [id], onDelete: Cascade)
 
+  @@unique([productId, warehouseId])
   @@index([productId])
   @@index([isReorderPending])
   stockReorders StockReorder[]
@@ -60,7 +63,6 @@ model StockReorder {
   id            String        @id @default(uuid())
 
   inventoryId   String
-  productId     String
   requestedQty  Int
 
   status        ReorderStatus @default(PENDING)
@@ -69,7 +71,6 @@ model StockReorder {
   updatedAt     DateTime      @updatedAt
 
   inventory     Inventory     @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
-  product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   @@index([status])
 }
 
@@ -88,5 +89,4 @@ model Product {
   updatedAt     DateTime  @updatedAt
 
   inventories   Inventory[]
-  stockReorder  StockReorder[]
 }
