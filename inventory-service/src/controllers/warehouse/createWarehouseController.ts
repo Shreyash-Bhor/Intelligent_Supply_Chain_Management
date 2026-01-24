@@ -1,12 +1,12 @@
 import { Request, Response } from "express";
-import { warehouseSchema } from "../../schemas/warehouseSchema";
+import { createWarehouseSchema } from "../../schemas/warehouseSchema";
 import prisma from "../../lib/prisma";
 import { asyncHandler } from "../../utils/asyncHandler";
 
 export const createWarehouse = asyncHandler(
   async (req: Request, res: Response) => {
-    const data = warehouseSchema.parse(req.body);
-    const { name, location } = data;
+    const data = createWarehouseSchema.parse(req.body);
+    const { name, city, pincode } = data;
     const existingWarehouse = await prisma.warehouse.findFirst({
       where: {
         name,
@@ -20,7 +20,8 @@ export const createWarehouse = asyncHandler(
     const warehouse = await prisma.warehouse.create({
       data: {
         name,
-        location,
+        city,
+        pincode,
       },
     });
     return res.status(201).json({
@@ -28,5 +29,5 @@ export const createWarehouse = asyncHandler(
       message: "Warehouse created successfully",
       data: warehouse,
     });
-  }
+  },
 );
