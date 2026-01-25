@@ -90,5 +90,24 @@ model Product {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  @@index([isActive])
+  
   inventories   Inventory[]
+}
+
+model ProductDeletion {
+  id            String @id @default(uuid())
+  
+  productId     String
+  reason        Reason @default(NO_LONGER_NEEDED)
+
+  createdAt     DateTime  @default(now())
+
+  @@index([productId])  
+}
+
+enum Reason {
+  OUT_OF_STOCK
+  DEPRECATED
+  NO_LONGER_NEEDED
 }
