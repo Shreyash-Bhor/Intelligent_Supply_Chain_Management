@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import productRoutes from "./routes/productRoutes";
 import inventoryRoutes from "./routes/inventoryRoutes";
 import warehouseRoutes from "./routes/warehouseRoutes";
+import reorderRoutes from "./routes/reorderRoutes";
 dotenv.config();
 
 const app = express();
@@ -14,6 +15,8 @@ app.use(express.json());
 app.use("/api/product", productRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/warehouse", warehouseRoutes);
+app.use("/api/reorder", reorderRoutes);
+
 app.get("/health", async (req: Request, res: Response) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
