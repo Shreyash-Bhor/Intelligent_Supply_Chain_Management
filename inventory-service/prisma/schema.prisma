@@ -62,7 +62,7 @@ model Inventory {
 model StockReorder {
   id            String        @id @default(uuid())
 
-  inventoryId   String
+  inventoryId   String        @unique
   requestedQty  Int
 
   status        ReorderStatus @default(PENDING)
