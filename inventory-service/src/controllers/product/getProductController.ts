@@ -1,13 +1,11 @@
-import { getProductSchema } from "../../schemas/productSchema";
 import prisma from "../../lib/prisma";
 import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
 
 export const getProduct = asyncHandler(async (req: Request, res: Response) => {
-  const data = getProductSchema.parse(req.body);
-  const { sku } = data;
+  const { productId } = req.params;
   const product = await prisma.product.findUnique({
-    where: { sku },
+    where: { id: productId },
   });
   if (!product) {
     return res
@@ -17,10 +15,19 @@ export const getProduct = asyncHandler(async (req: Request, res: Response) => {
   return res.status(200).json({
     status: "success",
     message: "Product found successfully",
-    productDetails: {
-      id: product.id,
-      name: product.name,
-      sku: product.sku,
-    },
+    data: product,
   });
 });
+
+export const getAllProducts = asyncHandler(
+  async (req: Request, res: Response) => {
+    const products = await prisma.product.findMany({
+      where: { isActive: true },
+    });
+    return res.status(200).json({
+      status: "success",
+      message: "Products fetched successfully",
+      data: products,
+    });
+  },
+);
