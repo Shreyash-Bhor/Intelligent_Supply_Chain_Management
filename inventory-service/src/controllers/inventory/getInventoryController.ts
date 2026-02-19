@@ -20,3 +20,31 @@ export const getInventoryDetails = asyncHandler(
     });
   },
 );
+
+export const getAllInventory = asyncHandler(
+  async (req: Request, res: Response) => {
+    const inventories = await prisma.inventory.findMany({
+      include: {
+        product: {
+          select: {
+            name: true,
+            sku: true,
+          },
+        },
+        warehouse: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    return res
+      .status(200)
+      .json({
+        status: "success",
+        message: "Inventories fetched successfully",
+        data: inventories,
+      });
+  },
+);

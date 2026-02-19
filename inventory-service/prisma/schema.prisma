@@ -62,7 +62,7 @@ model Inventory {
 model StockReorder {
   id            String        @id @default(uuid())
 
-  inventoryId   String        @unique
+  inventoryId   String
   requestedQty  Int
 
   status        ReorderStatus @default(PENDING)
@@ -71,8 +71,11 @@ model StockReorder {
   updatedAt     DateTime      @updatedAt
 
   inventory     Inventory     @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryId])
   @@index([status])
 }
+
 
 enum ReorderStatus {
   PENDING

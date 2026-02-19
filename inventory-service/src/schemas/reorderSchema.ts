@@ -1,13 +1,12 @@
 import { z } from "zod";
 
 export const createStockReorderSchema = z.object({
-  requestedQty: z.number().int().positive(),
+  requestedQty: z
+    .number()
+    .int("Requested quantity must be an integer")
+    .positive("Requested quantity must be greater than 0"),
 });
 
-export const updateStockReorderStatusSchema = z.object({
+export const updateReorderStatusSchema = z.object({
   status: z.enum(["COMPLETED", "CANCELLED"]),
-});
-
-export const getStockReorderDetailsSchema = z.object({
-  status: z.enum(["PENDING", "COMPLETED", "CANCELLED"]),
 });

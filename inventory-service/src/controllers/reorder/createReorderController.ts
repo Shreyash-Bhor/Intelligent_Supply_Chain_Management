@@ -6,23 +6,53 @@ import { asyncHandler } from "../../utils/asyncHandler";
 export const createReorder = asyncHandler(
   async (req: Request, res: Response) => {
     const { inventoryId } = req.params;
+
     if (!inventoryId) {
-      return res.status(400).json({ error: "Inventory Id is required" });
+      return res.status(400).json({ message: "Inventory Id is required" });
     }
-    const data = createStockReorderSchema.parse(req.body);
-    const { requestedQty } = data;
-    const reorder = await prisma.stockReorder.create({
-      data: {
+
+    const { requestedQty } = createStockReorderSchema.parse(req.body);
+
+    const inventory = await prisma.inventory.findUnique({
+      where: { id: inventoryId },
+    });
+
+    if (!inventory) {
+      return res.status(404).json({ message: "Inventory not found" });
+    }
+
+    const existingPending = await prisma.stockReorder.findFirst({
+      where: {
         inventoryId,
-        requestedQty,
+        status: "PENDING",
       },
     });
-    return res
-      .status(201)
-      .json({
-        status: "success",
-        message: "Order placed successfully",
-        data: reorder,
+
+    if (existingPending) {
+      return res.status(400).json({
+        message: "Pending reorder already exists",
       });
+    }
+
+    const reorder = await prisma.$transaction(async (tx) => {
+      const created = await tx.stockReorder.create({
+        data: {
+          inventoryId,
+          requestedQty,
+        },
+      });
+
+      await tx.inventory.update({
+        where: { id: inventoryId },
+        data: { isReorderPending: true },
+      });
+
+      return created;
+    });
+
+    return res.status(201).json({
+      status: "success",
+      data: reorder,
+    });
   },
 );

@@ -1,22 +1,57 @@
 import { Request, Response } from "express";
 import prisma from "../../lib/prisma";
-import { updateStockReorderStatusSchema } from "../../schemas/reorderSchema";
+import { updateReorderStatusSchema } from "../../schemas/reorderSchema";
 import { asyncHandler } from "../../utils/asyncHandler";
 
 export const updateReorderStatus = asyncHandler(
   async (req: Request, res: Response) => {
-    const { orderId } = req.params;
-    const data = updateStockReorderStatusSchema.parse(req.body);
-    const reorderStatus = await prisma.stockReorder.updateMany({
+    const { reorderId } = req.params;
+    if (!reorderId) {
+      return res.status(400).json({ message: "Reorder Id is required" });
+    }
+
+    const { status } = updateReorderStatusSchema.parse(req.body);
+    const reorder = await prisma.stockReorder.findUnique({
       where: {
-        id: orderId,
+        id: reorderId,
       },
-      data,
+      include: { inventory: true },
     });
+    if (!reorder) {
+      return res.status(404).json({ message: "Reorder not found" });
+    }
+    if (reorder.status !== "PENDING") {
+      return res.status(400).json({ message: "Reorder already processed" });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.stockReorder.update({
+        where: { id: reorderId },
+        data: { status },
+      });
+      if (status === "COMPLETED") {
+        await tx.inventory.update({
+          where: { id: reorder.inventoryId },
+          data: {
+            availableQty: reorder.inventory.availableQty + reorder.requestedQty,
+            isReorderPending: false,
+          },
+        });
+      }
+      if (status === "CANCELLED") {
+        await tx.inventory.update({
+          where: { id: reorder.inventoryId },
+          data: {
+            isReorderPending: false,
+          },
+        });
+      }
+    });
+
     return res.status(200).json({
       status: "success",
-      message: "Status updated successfully",
-      data: reorderStatus,
+      message: `Reorder ${status.toLowerCase()} successfully`,
+      data: result,
     });
   },
 );

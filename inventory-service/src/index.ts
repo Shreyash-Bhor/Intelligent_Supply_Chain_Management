@@ -2,20 +2,27 @@ import express from "express";
 import { Request, Response } from "express";
 import prisma from "./lib/prisma";
 import dotenv from "dotenv";
+import authRoutes from "./routes/authRoutes";
 import productRoutes from "./routes/productRoutes";
 import inventoryRoutes from "./routes/inventoryRoutes";
 import warehouseRoutes from "./routes/warehouseRoutes";
 import reorderRoutes from "./routes/reorderRoutes";
+import dashboardRoutes from "./routes/dashboardRoutes";
+
+import cors from "cors";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
+app.use(cors());
+app.use("/api", authRoutes);
 app.use("/api/product", productRoutes);
 app.use("/api/inventory", inventoryRoutes);
-app.use("/api/warehouse", warehouseRoutes);
+app.use("/warehouse", warehouseRoutes);
 app.use("/api/reorder", reorderRoutes);
+app.use("/dashboard", dashboardRoutes);
 
 app.get("/health", async (req: Request, res: Response) => {
   try {

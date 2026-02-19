@@ -1,12 +1,8 @@
 import { Router } from "express";
-import { createReorder } from "../controllers/reorder/createReorderController";
-import { getReorderDetails } from "../controllers/reorder/getReorderController";
 import { updateReorderStatus } from "../controllers/reorder/updateReorderController";
+import { getReorderDetails } from "../controllers/reorder/getReorderController";
 
 const router = Router();
-
-router.post("/", createReorder);
-router.get("/details", getReorderDetails);
-router.patch("/:orderId/status", updateReorderStatus);
-
+router.get("/", getReorderDetails);
+router.patch("/:reorderId/status", updateReorderStatus);
 export default router;
