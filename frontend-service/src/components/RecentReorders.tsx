@@ -1,5 +1,8 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+
 type Reorder = {
   id: string;
   requestedQty: number;
@@ -14,39 +17,54 @@ type Props = {
   data: Reorder[];
 };
 
+const statusStyles: Record<string, string> = {
+  PENDING: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  COMPLETED: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  FAILED: "bg-red-500/15 text-red-700 dark:text-red-300",
+};
+
 export function RecentReorders({ data }: Props) {
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Recent Reorders</h2>
+    <div className="space-y-3">
+      {data.length === 0 ? (
+        <p className="text-muted-foreground py-8 text-sm">
+          No recent reorders yet.
+        </p>
+      ) : (
+        data.map((item) => (
+          <div
+            key={item.id}
+            className="bg-muted/30 flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4"
+          >
+            <div>
+              <p className="font-medium">
+                {item.productName}{" "}
+                <span className="text-muted-foreground">({item.sku})</span>
+              </p>
+              <p className="text-muted-foreground text-sm">
+                {item.warehouseName}
+              </p>
+            </div>
 
-      {data.map((r) => (
-        <div
-          key={r.id}
-          className="flex justify-between items-center p-4 border rounded-lg"
-        >
-          <div>
-            <p className="font-medium">
-              {r.productName} ({r.sku})
-            </p>
-            <p className="text-sm text-gray-500">{r.warehouseName}</p>
+            <div className="ml-auto flex items-center gap-3">
+              <div className="text-right text-sm">
+                <p className="font-semibold">{item.requestedQty} units</p>
+                <p className="text-muted-foreground">
+                  {new Date(item.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+              <Badge
+                className={cn(
+                  "border-transparent",
+                  statusStyles[item.status] ?? "",
+                )}
+              >
+                {item.status}
+              </Badge>
+            </div>
           </div>
-
-          <div className="text-right">
-            <p className="font-semibold">{r.requestedQty} units</p>
-            <p
-              className={`text-sm font-medium ${
-                r.status === "PENDING"
-                  ? "text-yellow-600"
-                  : r.status === "COMPLETED"
-                    ? "text-green-600"
-                    : "text-red-600"
-              }`}
-            >
-              {r.status}
-            </p>
-          </div>
-        </div>
-      ))}
+        ))
+      )}
     </div>
   );
 }

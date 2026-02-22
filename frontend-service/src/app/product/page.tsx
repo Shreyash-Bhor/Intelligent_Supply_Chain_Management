@@ -1,34 +1,29 @@
 "use client";
-import {
-  Card,
-  CardAction,
-  CardDescription,
-  CardContent,
-  CardTitle,
-} from "@/components/ui/card";
+
+import { useEffect, useState } from "react";
 import { InventoryTable } from "@/components/InventoryTable";
-export default function Home() {
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { fetchInventory, type InventoryItem } from "@/lib/api";
+
+export default function ProductPage() {
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+
+  useEffect(() => {
+    fetchInventory()
+      .then(setInventory)
+      .catch(() => setInventory([]));
+  }, []);
+
   return (
-    <>
-      <div className="grid gap-2 grid-cols-4">
-        <div className="flex">
-          <Card>
-            <InventoryTable />
-          </Card>
-        </div>
-        {/* <div>
-          <Card></Card>
-        </div>
-        <div>
-          <Card></Card>
-        </div>
-        <div>
-          <Card></Card>
-        </div>
-        <div>
-          <Card></Card>
-        </div> */}
-      </div>
-    </>
+    <main className="mx-auto w-full max-w-7xl px-6 py-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Inventory Catalog</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <InventoryTable inventories={inventory} />
+        </CardContent>
+      </Card>
+    </main>
   );
 }
