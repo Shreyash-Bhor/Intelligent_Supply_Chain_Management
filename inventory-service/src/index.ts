@@ -8,7 +8,7 @@ import inventoryRoutes from "./routes/inventoryRoutes";
 import warehouseRoutes from "./routes/warehouseRoutes";
 import reorderRoutes from "./routes/reorderRoutes";
 import dashboardRoutes from "./routes/dashboardRoutes";
-
+import { requireWarehouseManagerAccess } from "./middleware/warehouseManagerAccess";
 import cors from "cors";
 dotenv.config();
 
@@ -19,10 +19,10 @@ app.use(express.json());
 app.use(cors());
 app.use("/api", authRoutes);
 app.use("/api/product", productRoutes);
-app.use("/api/inventory", inventoryRoutes);
+app.use("/api/inventory", requireWarehouseManagerAccess, inventoryRoutes);
 app.use("/warehouse", warehouseRoutes);
 app.use("/api/reorder", reorderRoutes);
-app.use("/dashboard", dashboardRoutes);
+app.use("/dashboard", requireWarehouseManagerAccess, dashboardRoutes);
 
 app.get("/health", async (req: Request, res: Response) => {
   try {
@@ -43,14 +43,13 @@ async function startServer() {
   try {
     await prisma.$connect();
     console.log("Database Connected");
-
-    app.listen(PORT, () => {
-      console.log(`Server running on port : ${PORT}`);
-    });
   } catch (error) {
-    console.error("Failed to connect to database", error);
-    process.exit(1);
+    console.warn("Database connection unavailable. Starting in fallback mode.");
   }
+
+  app.listen(PORT, () => {
+    console.log(`Server running on port : ${PORT}`);
+  });
 }
 
 startServer();
