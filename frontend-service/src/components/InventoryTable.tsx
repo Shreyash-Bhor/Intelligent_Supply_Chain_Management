@@ -13,9 +13,10 @@ import type { InventoryItem } from "@/lib/api";
 
 type Props = {
   inventories: InventoryItem[];
+  loading?: boolean;
 };
 
-export function InventoryTable({ inventories }: Props) {
+export function InventoryTable({ inventories, loading = false }: Props) {
   return (
     <Table className="w-full">
       <TableHeader>
@@ -31,13 +32,21 @@ export function InventoryTable({ inventories }: Props) {
       </TableHeader>
 
       <TableBody>
-        {inventories.length === 0 ? (
+        {loading ? (
+          Array.from({ length: 6 }).map((_, index) => (
+            <TableRow key={`skeleton-${index}`}>
+              <TableCell colSpan={7}>
+                <div className="bg-muted h-8 w-full animate-pulse rounded" />
+              </TableCell>
+            </TableRow>
+          ))
+        ) : inventories.length === 0 ? (
           <TableRow>
             <TableCell
               colSpan={7}
               className="text-muted-foreground py-10 text-center"
             >
-              No inventory records available.
+              No data available
             </TableCell>
           </TableRow>
         ) : (
@@ -64,12 +73,10 @@ export function InventoryTable({ inventories }: Props) {
                   {inventory.reorderQty}
                 </TableCell>
                 <TableCell className="text-right">
-                  {inventory.isReorderPending ? (
-                    <Badge variant="secondary">Reorder Pending</Badge>
-                  ) : isLowStock ? (
-                    <Badge variant="destructive">Low Stock</Badge>
+                  {isLowStock ? (
+                    <Badge variant="destructive">Low</Badge>
                   ) : (
-                    <Badge variant="outline">Healthy</Badge>
+                    <Badge variant="secondary">Healthy</Badge>
                   )}
                 </TableCell>
               </TableRow>

@@ -4,6 +4,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -11,14 +12,15 @@ import {
 } from "recharts";
 
 type Props = {
-  data: {
+  data: Array<{
     warehouseName?: string | null;
-    totalUnits: number;
-  }[];
+    availableUnits: number;
+    reservedUnits: number;
+  }>;
   loading?: boolean;
 };
 
-export function StockPerWarehouseChart({ data, loading = false }: Props) {
+export function WarehouseUtilizationChart({ data, loading = false }: Props) {
   if (loading) {
     return <div className="bg-muted h-80 w-full animate-pulse rounded-md" />;
   }
@@ -40,27 +42,26 @@ export function StockPerWarehouseChart({ data, loading = false }: Props) {
             vertical={false}
             className="stroke-border"
           />
-          <XAxis
-            dataKey="warehouseName"
-            tickLine={false}
-            axisLine={false}
-            tick={{ fill: "currentColor", fontSize: 12 }}
-          />
-          <YAxis
-            tickLine={false}
-            axisLine={false}
-            tick={{ fill: "currentColor", fontSize: 12 }}
-          />
+          <XAxis dataKey="warehouseName" tickLine={false} axisLine={false} />
+          <YAxis tickLine={false} axisLine={false} />
           <Tooltip
-            cursor={{ fill: "var(--muted)", opacity: 0.25 }}
             contentStyle={{
               borderRadius: 12,
               border: "1px solid var(--border)",
+              backgroundColor: "var(--card)",
             }}
           />
+          <Legend />
           <Bar
-            dataKey="totalUnits"
-            fill="var(--primary)"
+            dataKey="availableUnits"
+            stackId="inventory"
+            fill="#3b82f6"
+            radius={[6, 6, 0, 0]}
+          />
+          <Bar
+            dataKey="reservedUnits"
+            stackId="inventory"
+            fill="#f97316"
             radius={[6, 6, 0, 0]}
           />
         </BarChart>

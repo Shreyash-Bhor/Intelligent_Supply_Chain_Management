@@ -15,21 +15,34 @@ type Reorder = {
 
 type Props = {
   data: Reorder[];
+  loading?: boolean;
 };
 
 const statusStyles: Record<string, string> = {
   PENDING: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
   COMPLETED: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
   FAILED: "bg-red-500/15 text-red-700 dark:text-red-300",
+  CANCELLED: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
 };
 
-export function RecentReorders({ data }: Props) {
+export function RecentReorders({ data, loading = false }: Props) {
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={`reorder-skeleton-${index}`}
+            className="bg-muted h-20 animate-pulse rounded-lg"
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       {data.length === 0 ? (
-        <p className="text-muted-foreground py-8 text-sm">
-          No recent reorders yet.
-        </p>
+        <p className="text-muted-foreground py-8 text-sm">No data available</p>
       ) : (
         data.map((item) => (
           <div
@@ -54,12 +67,9 @@ export function RecentReorders({ data }: Props) {
                 </p>
               </div>
               <Badge
-                className={cn(
-                  "border-transparent",
-                  statusStyles[item.status] ?? "",
-                )}
+                className={cn("capitalize", statusStyles[item.status] ?? "")}
               >
-                {item.status}
+                {item.status.toLowerCase()}
               </Badge>
             </div>
           </div>
