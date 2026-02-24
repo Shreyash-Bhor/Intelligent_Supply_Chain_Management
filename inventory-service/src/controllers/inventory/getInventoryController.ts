@@ -5,46 +5,61 @@ import { asyncHandler } from "../../utils/asyncHandler";
 export const getInventoryDetails = asyncHandler(
   async (req: Request, res: Response) => {
     const { inventoryId } = req.params;
-    const inventory = await prisma.inventory.findUnique({
-      where: { id: inventoryId },
-    });
-    if (!inventory) {
-      return res
-        .status(404)
-        .json({ status: "error", message: "Inventory not found" });
+
+    try {
+      const inventory = await prisma.inventory.findUnique({
+        where: { id: inventoryId },
+      });
+
+      if (!inventory) {
+        return res
+          .status(404)
+          .json({ status: "error", message: "No data available" });
+      }
+
+      return res.status(200).json({
+        status: "success",
+        message: "Inventory found successfully",
+        data: inventory,
+      });
+    } catch (error) {
+      return res.status(503).json({
+        status: "error",
+        message: "No data available",
+      });
     }
-    return res.status(200).json({
-      status: "success",
-      message: "Inventory found successfully",
-      data: inventory,
-    });
   },
 );
 
 export const getAllInventory = asyncHandler(
   async (req: Request, res: Response) => {
-    const inventories = await prisma.inventory.findMany({
-      include: {
-        product: {
-          select: {
-            name: true,
-            sku: true,
+    try {
+      const inventories = await prisma.inventory.findMany({
+        include: {
+          product: {
+            select: {
+              name: true,
+              sku: true,
+            },
+          },
+          warehouse: {
+            select: {
+              name: true,
+            },
           },
         },
-        warehouse: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    });
+      });
 
-    return res
-      .status(200)
-      .json({
+      return res.status(200).json({
         status: "success",
         message: "Inventories fetched successfully",
         data: inventories,
       });
+    } catch (error) {
+      return res.status(503).json({
+        status: "error",
+        message: "No data available",
+      });
+    }
   },
 );
