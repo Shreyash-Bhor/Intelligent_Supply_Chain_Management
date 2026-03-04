@@ -4,14 +4,17 @@ import { asyncHandler } from "../../utils/asyncHandler";
 
 export const getProduct = asyncHandler(async (req: Request, res: Response) => {
   const { productId } = req.params;
+
   const product = await prisma.product.findUnique({
     where: { id: productId },
   });
+
   if (!product) {
     return res
       .status(404)
       .json({ status: "error", message: "Product not found" });
   }
+
   return res.status(200).json({
     status: "success",
     message: "Product found successfully",
@@ -21,9 +24,20 @@ export const getProduct = asyncHandler(async (req: Request, res: Response) => {
 
 export const getAllProducts = asyncHandler(
   async (req: Request, res: Response) => {
+    const statusFilter = req.query.status;
+
+    const whereClause =
+      statusFilter === "inactive"
+        ? { isActive: false }
+        : statusFilter === "all"
+          ? {}
+          : { isActive: true };
+
     const products = await prisma.product.findMany({
-      where: { isActive: true },
+      where: whereClause,
+      orderBy: { createdAt: "desc" },
     });
+
     return res.status(200).json({
       status: "success",
       message: "Products fetched successfully",
