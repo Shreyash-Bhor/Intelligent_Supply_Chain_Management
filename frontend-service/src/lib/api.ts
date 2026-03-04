@@ -1,5 +1,5 @@
 export type ApiResponse<T> = {
-  status: "success" | "error";
+  status: "success" | "error" | "conflict";
   message: string;
   data: T;
 };
@@ -26,32 +26,14 @@ export type DashboardSummary = {
   }>;
   warehouseUtilization: Array<{
     warehouseName?: string | null;
-    availableUnits: number;
+    totalUnits: number;
     reservedUnits: number;
-    utilization: number;
+    utilizationRate: number;
   }>;
-  inventoryHealthBreakdown: Array<{
-    name: string;
-    value: number;
-  }>;
-  reorderStatusBreakdown: Array<{
-    name: string;
-    value: number;
-  }>;
-  recentReorders: Array<{
-    id: string;
-    requestedQty: number;
-    status: string;
+  lowStockItems: Array<{
     productName: string;
     sku: string;
-    warehouseName: string;
-    createdAt: string;
-  }>;
-  topRiskItems: Array<{
-    id: string;
-    productName: string;
-    sku: string;
-    warehouseName: string;
+    warehouseName?: string | null;
     availableQty: number;
     reorderQty: number;
     deficit: number;
@@ -77,31 +59,60 @@ export type InventoryItem = {
   };
 };
 
+export type Product = {
+  id: string;
+  name: string;
+  sku: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StatusFilter = "active" | "inactive" | "all";
+
+export type Warehouse = {
+  id: string;
+  name: string;
+  city: string;
+  pincode: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
   "http://localhost:5000";
 
+type RequestOptions = {
+  managerSession?: ManagerSession;
+  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  body?: unknown;
+};
+
 async function fetchApi<T>(
   path: string,
-  managerSession: ManagerSession,
+  options: RequestOptions = {},
 ): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: options.method ?? "GET",
     headers: {
       "Content-Type": "application/json",
-      "x-manager-email": managerSession.email,
-      "x-manager-access-key": managerSession.accessKey,
+      ...(options.managerSession
+        ? {
+            "x-manager-email": options.managerSession.email,
+            "x-manager-access-key": options.managerSession.accessKey,
+          }
+        : {}),
     },
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     cache: "no-store",
   });
 
-  if (!response.ok) {
-    throw new Error("No data available");
-  }
-
   const payload = (await response.json()) as ApiResponse<T>;
 
-  if (payload.status !== "success") {
-    throw new Error(payload.message || "Unexpected API response");
+  if (!response.ok || payload.status !== "success") {
+    throw new Error(payload?.message || "Unexpected API response");
   }
 
   return payload.data;
@@ -110,14 +121,78 @@ async function fetchApi<T>(
 export function verifyManagerAccess(managerSession: ManagerSession) {
   return fetchApi<{ email: string; authenticatedAt: string }>(
     "/dashboard/access",
-    managerSession,
+    { managerSession },
   );
 }
 
 export function fetchDashboardSummary(managerSession: ManagerSession) {
-  return fetchApi<DashboardSummary>("/dashboard/summary", managerSession);
+  return fetchApi<DashboardSummary>("/dashboard/summary", { managerSession });
 }
 
 export function fetchInventory(managerSession: ManagerSession) {
-  return fetchApi<InventoryItem[]>("/api/inventory", managerSession);
+  return fetchApi<InventoryItem[]>("/api/inventory", { managerSession });
+}
+
+export function fetchProducts(status: StatusFilter = "active") {
+  return fetchApi<Product[]>(`/api/product/products?status=${status}`);
+}
+
+export function createProduct(body: { name: string; sku: string }) {
+  return fetchApi<Product>("/api/product", { method: "POST", body });
+}
+
+export function updateProduct(
+  productId: string,
+  body: { name?: string; sku?: string },
+) {
+  return fetchApi<Product>(`/api/product/${productId}`, {
+    method: "PATCH",
+    body,
+  });
+}
+
+export function updateProductStatus(productId: string, isActive: boolean) {
+  return fetchApi<Product>(`/api/product/${productId}/status`, {
+    method: "PATCH",
+    body: { isActive },
+  });
+}
+
+export function deleteProduct(
+  productId: string,
+  reason: "OUT_OF_STOCK" | "DEPRECATED" | "NO_LONGER_NEEDED",
+) {
+  return fetchApi<Product>(`/api/product/${productId}`, {
+    method: "DELETE",
+    body: { reason },
+  });
+}
+
+export function fetchWarehouses(status: StatusFilter = "active") {
+  return fetchApi<Warehouse[]>(`/warehouse/warehouses?status=${status}`);
+}
+
+export function createWarehouse(body: {
+  name: string;
+  city: string;
+  pincode: string;
+}) {
+  return fetchApi<Warehouse>("/warehouse", { method: "POST", body });
+}
+
+export function updateWarehouse(
+  warehouseId: string,
+  body: { name?: string; city?: string; pincode?: string },
+) {
+  return fetchApi<Warehouse>(`/warehouse/${warehouseId}`, {
+    method: "PATCH",
+    body,
+  });
+}
+
+export function updateWarehouseStatus(warehouseId: string, isActive: boolean) {
+  return fetchApi<Warehouse>(`/warehouse/${warehouseId}/status`, {
+    method: "PATCH",
+    body: { isActive },
+  });
 }
