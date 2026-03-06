@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, Boxes, ChevronDown, ShieldCheck, Truck } from "lucide-react";
+import { Bell, Boxes, ChevronDown, ShieldCheck, User } from "lucide-react";
 import { ModeToggle } from "./ModeToggle";
 import { Button } from "./ui/button";
 import {
@@ -50,12 +50,21 @@ export function Navbar() {
               <DropdownMenuItem asChild>
                 <Link href="/reorder">Reorder Queue</Link>
               </DropdownMenuItem>
+
+              <DropdownMenuItem asChild>
+                <Link href="/user">User Account</Link>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
             <ShieldCheck className="h-4 w-4" />
             Manager-Secured
+          </div>
+
+          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+            <User className="h-4 w-4" />
+            User Accounts Enabled
           </div>
 
           <div className="text-muted-foreground flex items-center gap-2 text-sm">

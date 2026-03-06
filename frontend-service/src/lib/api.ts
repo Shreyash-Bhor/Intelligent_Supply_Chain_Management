@@ -11,6 +11,15 @@ export type ManagerSession = {
   accessKey: string;
 };
 
+export type UserAccount = {
+  id: string;
+  email: string;
+  isEmailVerified: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type DashboardSummary = {
   totalProducts: number;
   openOrders: number;
@@ -159,10 +168,60 @@ async function fetchApi<T>(
   return payload.data;
 }
 
+async function fetchRawApi<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: options.method ?? "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.managerSession
+        ? {
+            "x-manager-email": options.managerSession.email,
+            "x-manager-access-key": options.managerSession.accessKey,
+          }
+        : {}),
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+
+  const payload = (await response.json()) as T & {
+    status?: string;
+    message?: string;
+  };
+
+  if (!response.ok || payload.status !== "success") {
+    throw new Error(payload?.message || "Unexpected API response");
+  }
+
+  return payload;
+}
+
 export function verifyManagerAccess(managerSession: ManagerSession) {
   return fetchApi<{ email: string; authenticatedAt: string }>(
     "/dashboard/access",
     { managerSession },
+  );
+}
+
+export function registerUser(body: { email: string; password: string }) {
+  return fetchRawApi<{ status: string; message: string; newUser: UserAccount }>(
+    "/api/signup",
+    {
+      method: "POST",
+      body,
+    },
+  );
+}
+
+export function loginUser(body: { email: string; password: string }) {
+  return fetchRawApi<{ status: string; message: string; user: UserAccount }>(
+    "/api/login",
+    {
+      method: "POST",
+      body,
+    },
   );
 }
 
@@ -257,9 +316,39 @@ export function updateProductStatus(productId: string, isActive: boolean) {
     body: { isActive },
   });
 }
+
 export function fetchWarehouses(status: StatusFilter = "active") {
-  return fetchApi<Warehouse[]>(`/api/warehouse/warehouses?status=${status}`);
+  return fetchApi<Warehouse[]>(`/warehouse/warehouses?status=${status}`);
 }
+
+export function createWarehouse(body: {
+  name: string;
+  city: string;
+  pincode: string;
+}) {
+  return fetchApi<Warehouse>("/warehouse", {
+    method: "POST",
+    body,
+  });
+}
+
+export function updateWarehouse(
+  warehouseId: string,
+  body: { name?: string; city?: string; pincode?: string },
+) {
+  return fetchApi<Warehouse>(`/warehouse/${warehouseId}`, {
+    method: "PATCH",
+    body,
+  });
+}
+
+export function updateWarehouseStatus(warehouseId: string, isActive: boolean) {
+  return fetchApi<Warehouse>(`/warehouse/${warehouseId}/status`, {
+    method: "PATCH",
+    body: { isActive },
+  });
+}
+
 export function deleteProduct(productId: string, reason: string) {
   return fetchApi<null>(`/api/product/${productId}`, {
     method: "DELETE",
