@@ -74,9 +74,13 @@ export function InventoryTable({ inventories, loading = false }: Props) {
                 </TableCell>
                 <TableCell className="text-right">
                   {isLowStock ? (
-                    <Badge variant="destructive">Low</Badge>
+                    <Badge className="border-0 bg-rose-500 text-white dark:bg-rose-400 dark:text-rose-950">
+                      Low
+                    </Badge>
                   ) : (
-                    <Badge variant="secondary">Healthy</Badge>
+                    <Badge className="border-0 bg-emerald-500 text-white dark:bg-emerald-400 dark:text-emerald-950">
+                      Healthy
+                    </Badge>
                   )}
                 </TableCell>
               </TableRow>

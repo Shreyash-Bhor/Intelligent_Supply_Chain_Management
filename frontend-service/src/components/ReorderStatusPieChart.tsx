@@ -28,6 +28,7 @@ export function ReorderStatusPieChart({ data, loading = false }: Props) {
         <PieChart>
           <Pie
             data={data}
+            activeShape={false}
             innerRadius={55}
             outerRadius={110}
             dataKey="value"
@@ -45,7 +46,8 @@ export function ReorderStatusPieChart({ data, loading = false }: Props) {
             contentStyle={{
               borderRadius: 12,
               border: "1px solid var(--border)",
-              backgroundColor: "var(--card)",
+              backgroundColor: "var(--popover)",
+              color: "var(--popover-foreground)",
             }}
           />
         </PieChart>

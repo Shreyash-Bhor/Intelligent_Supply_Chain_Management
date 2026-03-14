@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, Boxes, ChevronDown, ShieldCheck, User } from "lucide-react";
+import { BarChart3, Menu, PackageCheck } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { ModeToggle } from "./ModeToggle";
 import { Button } from "./ui/button";
 import {
@@ -10,75 +11,66 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
-// frontend-service/src/components/Navbar.tsx
+const NAV_LINKS = [
+  { href: "/", label: "Dashboard" },
+  { href: "/warehouse", label: "Warehouses" },
+  { href: "/product", label: "Products" },
+  { href: "/inventory", label: "Inventory" },
+  { href: "/reorder", label: "Reorders" },
+  { href: "/user", label: "Account" },
+];
 
 export function Navbar() {
-  return (
-    <header>
-      <div>
-        <div>
-          <p>Warehouse Operations Control Tower</p>
-        </div>
+  const pathname = usePathname();
 
-        <div className="hidden items-center gap-5 md:flex">
+  return (
+    <header className="bg-background/85 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-50 border-b backdrop-blur">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
+        <nav className="hidden items-center gap-1 md:flex">
+          {NAV_LINKS.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="flex items-center gap-2">
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                Pages
-                <ChevronDown className="h-4 w-4" />
+            <DropdownMenuTrigger asChild className="md:hidden">
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Open navigation menu"
+              >
+                <Menu className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href="/">Dashboard</Link>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem asChild>
-                <Link href="/warehouse">Warehouse Management</Link>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem asChild>
-                <Link href="/product">Product Management</Link>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem asChild>
-                <Link href="/inventory">Inventory Management</Link>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem asChild>
-                <Link href="/reorder">Reorder Queue</Link>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem asChild>
-                <Link href="/user">User Account</Link>
-              </DropdownMenuItem>
+            <DropdownMenuContent align="end" className="w-44">
+              {NAV_LINKS.map((link) => (
+                <DropdownMenuItem key={link.href} asChild>
+                  <Link href={link.href}>{link.label}</Link>
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            <ShieldCheck className="h-4 w-4" />
-            Manager-Secured
-          </div>
-
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            <User className="h-4 w-4" />
-            User Accounts Enabled
-          </div>
-
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            <Boxes className="h-4 w-4" />
-            Inventory Intelligence
-          </div>
-
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            <Bell className="h-4 w-4" />
-            Live Monitoring
-          </div>
+          <ModeToggle />
         </div>
-
-        <ModeToggle />
       </div>
     </header>
   );

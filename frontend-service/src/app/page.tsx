@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   AlertTriangle,
@@ -64,6 +64,11 @@ const WarehouseUtilizationChart = dynamic(
 
 const SESSION_KEY = "warehouse_manager_session";
 
+const getDashboardSnapshot = (
+  summaryData: DashboardSummary,
+  inventoryData: InventoryItem[],
+) => JSON.stringify({ summaryData, inventoryData });
+
 export default function Home() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [inventories, setInventories] = useState<InventoryItem[]>([]);
@@ -74,6 +79,7 @@ export default function Home() {
   );
   const [email, setEmail] = useState("");
   const [accessKey, setAccessKey] = useState("");
+  const latestSnapshotRef = useRef<string>("");
 
   useEffect(() => {
     const stored = window.localStorage.getItem(SESSION_KEY);
@@ -91,15 +97,19 @@ export default function Home() {
 
   useEffect(() => {
     if (!managerSession) {
+      latestSnapshotRef.current = "";
       setLoading(false);
       return;
     }
 
     let mounted = true;
 
-    const loadDashboard = async () => {
+    const loadDashboard = async (showLoading: boolean) => {
       try {
-        setLoading(true);
+        if (showLoading) {
+          setLoading(true);
+        }
+
         await verifyManagerAccess(managerSession);
         const [summaryData, inventoryData] = await Promise.all([
           fetchDashboardSummary(managerSession),
@@ -108,22 +118,30 @@ export default function Home() {
 
         if (!mounted) return;
 
-        setSummary(summaryData);
-        setInventories(inventoryData);
+        const nextSnapshot = getDashboardSnapshot(summaryData, inventoryData);
+
+        if (latestSnapshotRef.current !== nextSnapshot) {
+          latestSnapshotRef.current = nextSnapshot;
+          setSummary(summaryData);
+          setInventories(inventoryData);
+        }
+
         setError(null);
       } catch (err) {
         if (!mounted) return;
 
         setError(err instanceof Error ? err.message : "No data available");
       } finally {
-        if (mounted) {
+        if (mounted && showLoading) {
           setLoading(false);
         }
       }
     };
 
-    void loadDashboard();
-    const pollId = setInterval(loadDashboard, 15000);
+    void loadDashboard(true);
+    const pollId = setInterval(() => {
+      void loadDashboard(false);
+    }, 15000);
 
     return () => {
       mounted = false;
@@ -197,6 +215,7 @@ export default function Home() {
     setManagerSession(null);
     setSummary(null);
     setInventories([]);
+    latestSnapshotRef.current = "";
   };
 
   if (!managerSession) {
@@ -265,8 +284,8 @@ export default function Home() {
               Warehouse Manager SaaS Command Center
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              15-second live refresh for inventory, reorder, and warehouse
-              utilization intelligence.
+              15-second backend sync that only updates the dashboard when data
+              changes.
             </p>
           </div>
           <Button variant="outline" onClick={logout}>

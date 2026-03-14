@@ -52,14 +52,17 @@ export function StockPerWarehouseChart({ data, loading = false }: Props) {
             tick={{ fill: "currentColor", fontSize: 12 }}
           />
           <Tooltip
-            cursor={{ fill: "var(--muted)", opacity: 0.25 }}
+            cursor={false}
             contentStyle={{
               borderRadius: 12,
               border: "1px solid var(--border)",
+              backgroundColor: "var(--popover)",
+              color: "var(--popover-foreground)",
             }}
           />
           <Bar
             dataKey="totalUnits"
+            activeBar={false}
             fill="var(--primary)"
             radius={[6, 6, 0, 0]}
           />

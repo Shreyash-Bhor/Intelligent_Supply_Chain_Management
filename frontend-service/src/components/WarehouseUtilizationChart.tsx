@@ -45,21 +45,25 @@ export function WarehouseUtilizationChart({ data, loading = false }: Props) {
           <XAxis dataKey="warehouseName" tickLine={false} axisLine={false} />
           <YAxis tickLine={false} axisLine={false} />
           <Tooltip
+            cursor={false}
             contentStyle={{
               borderRadius: 12,
               border: "1px solid var(--border)",
-              backgroundColor: "var(--card)",
+              backgroundColor: "var(--popover)",
+              color: "var(--popover-foreground)",
             }}
           />
           <Legend />
           <Bar
             dataKey="availableUnits"
+            activeBar={false}
             stackId="inventory"
             fill="#3b82f6"
             radius={[6, 6, 0, 0]}
           />
           <Bar
             dataKey="reservedUnits"
+            activeBar={false}
             stackId="inventory"
             fill="#f97316"
             radius={[6, 6, 0, 0]}
