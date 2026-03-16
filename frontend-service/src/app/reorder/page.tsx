@@ -31,6 +31,10 @@ export default function ReorderPage() {
   const [reorders, setReorders] = useState<StockReorder[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warehouseFilter, setWarehouseFilter] = useState("all");
+  const [stockStatusFilter, setStockStatusFilter] = useState<
+    "all" | "healthy" | "low"
+  >("all");
 
   useEffect(() => {
     const stored = window.localStorage.getItem(SESSION_KEY);
@@ -102,6 +106,38 @@ export default function ReorderPage() {
     return { totalOrders: reorders.length, totalQty };
   }, [reorders]);
 
+  const warehouseOptions = useMemo(() => {
+    const warehouseMap = new Map<string, string>();
+
+    Object.values(inventoryLookup).forEach((inventory) => {
+      warehouseMap.set(inventory.warehouse.name, inventory.warehouse.name);
+    });
+
+    return Array.from(warehouseMap.entries()).sort((a, b) =>
+      a[1].localeCompare(b[1]),
+    );
+  }, [inventoryLookup]);
+
+  const filteredReorders = useMemo(
+    () =>
+      reorders.filter((reorder) => {
+        const inventory = inventoryLookup[reorder.inventoryId];
+        if (!inventory) return false;
+
+        const warehouseMatches =
+          warehouseFilter === "all"
+            ? true
+            : inventory.warehouse.name === warehouseFilter;
+        if (!warehouseMatches) return false;
+
+        if (stockStatusFilter === "all") return true;
+
+        const isLow = inventory.availableQty <= inventory.reorderQty;
+        return stockStatusFilter === "low" ? isLow : !isLow;
+      }),
+    [reorders, inventoryLookup, warehouseFilter, stockStatusFilter],
+  );
+
   if (!session) {
     return (
       <main className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-6 py-8">
@@ -140,83 +176,124 @@ export default function ReorderPage() {
       </section>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Pending Reorders Queue</CardTitle>
+
+          <div className="flex flex-wrap gap-2">
+            <select
+              className="border-input bg-background rounded-md border px-3 py-2 text-sm"
+              value={warehouseFilter}
+              onChange={(event) => setWarehouseFilter(event.target.value)}
+            >
+              <option value="all">All Warehouses</option>
+              {warehouseOptions.map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              className="border-input bg-background rounded-md border px-3 py-2 text-sm"
+              value={stockStatusFilter}
+              onChange={(event) =>
+                setStockStatusFilter(
+                  event.target.value as "all" | "healthy" | "low",
+                )
+              }
+            >
+              <option value="all">All Stock Status</option>
+              <option value="healthy">Healthy</option>
+              <option value="low">Low Stock</option>
+            </select>
+          </div>
         </CardHeader>
+
         <CardContent>
           {error ? (
             <p className="text-destructive mb-3 text-sm">{error}</p>
           ) : null}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead>Warehouse</TableHead>
-                <TableHead>Requested Qty</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {reorders.map((reorder) => {
-                const inventory = inventoryLookup[reorder.inventoryId];
-                return (
-                  <TableRow key={reorder.id}>
-                    <TableCell>
-                      {inventory ? (
-                        <>
-                          <p className="font-medium">
-                            {inventory.product.name}
-                          </p>
-                          <p className="text-muted-foreground text-xs">
-                            {inventory.product.sku}
-                          </p>
-                        </>
-                      ) : (
-                        "Unknown item"
-                      )}
-                    </TableCell>
-                    <TableCell>{inventory?.warehouse.name ?? "-"}</TableCell>
-                    <TableCell>{reorder.requestedQty}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{reorder.status}</Badge>
-                    </TableCell>
-                    <TableCell className="space-x-2 text-right">
-                      <Button
-                        size="sm"
-                        onClick={() =>
-                          void processReorder(reorder.id, "COMPLETED")
-                        }
-                        disabled={loading}
-                      >
-                        Complete
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          void processReorder(reorder.id, "CANCELLED")
-                        }
-                        disabled={loading}
-                      >
-                        Cancel
-                      </Button>
+
+          <div className="scrollbar-hidden max-h-[32rem] overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Warehouse</TableHead>
+                  <TableHead>Requested Qty</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {filteredReorders.slice(0, 10).map((reorder) => {
+                  const inventory = inventoryLookup[reorder.inventoryId];
+
+                  return (
+                    <TableRow key={reorder.id}>
+                      <TableCell>
+                        {inventory ? (
+                          <>
+                            <p className="font-medium">
+                              {inventory.product.name}
+                            </p>
+                            <p className="text-muted-foreground text-xs">
+                              {inventory.product.sku}
+                            </p>
+                          </>
+                        ) : (
+                          "Unknown item"
+                        )}
+                      </TableCell>
+
+                      <TableCell>{inventory?.warehouse.name ?? "-"}</TableCell>
+
+                      <TableCell>{reorder.requestedQty}</TableCell>
+
+                      <TableCell>
+                        <Badge variant="secondary">{reorder.status}</Badge>
+                      </TableCell>
+
+                      <TableCell className="space-x-2 text-right">
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            void processReorder(reorder.id, "COMPLETED")
+                          }
+                          disabled={loading}
+                        >
+                          Complete
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            void processReorder(reorder.id, "CANCELLED")
+                          }
+                          disabled={loading}
+                        >
+                          Cancel
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+
+                {!filteredReorders.length ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="text-muted-foreground text-center"
+                    >
+                      {loading ? "Loading reorders..." : "No pending reorders"}
                     </TableCell>
                   </TableRow>
-                );
-              })}
-              {!reorders.length ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="text-muted-foreground text-center"
-                  >
-                    {loading ? "Loading reorders..." : "No pending reorders"}
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
+                ) : null}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </main>

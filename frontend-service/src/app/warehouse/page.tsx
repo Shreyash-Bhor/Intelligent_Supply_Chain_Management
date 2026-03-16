@@ -1,6 +1,12 @@
 "use client";
 
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   createWarehouse,
   fetchWarehouses,
@@ -29,6 +35,7 @@ export default function WarehousePage() {
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [search, setSearch] = useState("");
 
   const loadWarehouses = useCallback(
     async (filter: StatusFilter = statusFilter) => {
@@ -102,6 +109,19 @@ export default function WarehousePage() {
     }
   };
 
+  const filteredWarehouses = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    if (!query) return warehouses;
+
+    return warehouses.filter(
+      (warehouse) =>
+        warehouse.name.toLowerCase().includes(query) ||
+        warehouse.city.toLowerCase().includes(query) ||
+        warehouse.pincode.toLowerCase().includes(query),
+    );
+  }, [warehouses, search]);
+
   const updateLocalWarehouse = (
     warehouseId: string,
     key: "name" | "city" | "pincode",
@@ -156,7 +176,13 @@ export default function WarehousePage() {
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Warehouses</CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              className="border-input bg-background rounded-md border px-3 py-2 text-sm"
+              placeholder="Search by name, city or pincode"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
             <Button
               size="sm"
               variant={statusFilter === "active" ? "default" : "outline"}
@@ -173,136 +199,147 @@ export default function WarehousePage() {
             </Button>
           </div>
         </CardHeader>
+
         <CardContent>
           {error ? (
             <p className="text-destructive mb-3 text-sm">{error}</p>
           ) : null}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>City</TableHead>
-                <TableHead>Pincode</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {warehouses.map((warehouse) => {
-                const editing = editingId === warehouse.id;
-                return (
-                  <TableRow key={warehouse.id}>
-                    <TableCell>
-                      {editing ? (
-                        <input
-                          className="border-input bg-background w-full rounded-md border px-2 py-1 text-sm"
-                          value={warehouse.name}
-                          onChange={(event) =>
-                            updateLocalWarehouse(
-                              warehouse.id,
-                              "name",
-                              event.target.value,
-                            )
-                          }
-                        />
-                      ) : (
-                        warehouse.name
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editing ? (
-                        <input
-                          className="border-input bg-background w-full rounded-md border px-2 py-1 text-sm"
-                          value={warehouse.city}
-                          onChange={(event) =>
-                            updateLocalWarehouse(
-                              warehouse.id,
-                              "city",
-                              event.target.value,
-                            )
-                          }
-                        />
-                      ) : (
-                        warehouse.city
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editing ? (
-                        <input
-                          className="border-input bg-background w-full rounded-md border px-2 py-1 text-sm"
-                          value={warehouse.pincode}
-                          maxLength={6}
-                          onChange={(event) =>
-                            updateLocalWarehouse(
-                              warehouse.id,
-                              "pincode",
-                              event.target.value,
-                            )
-                          }
-                        />
-                      ) : (
-                        warehouse.pincode
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {warehouse.isActive ? "Active" : "Inactive"}
-                    </TableCell>
-                    <TableCell className="space-x-2 text-right">
-                      {editing ? (
-                        <>
-                          <Button
-                            size="sm"
-                            onClick={() => void handleUpdate(warehouse)}
-                            disabled={loading}
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setEditingId(null)}
-                            disabled={loading}
-                          >
-                            Cancel
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setEditingId(warehouse.id)}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => void handleToggleStatus(warehouse)}
-                            disabled={loading}
-                          >
-                            {warehouse.isActive ? "Deactivate" : "Activate"}
-                          </Button>
-                        </>
-                      )}
+
+          <div className="scrollbar-hidden max-h-[32rem] overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>City</TableHead>
+                  <TableHead>Pincode</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {filteredWarehouses.slice(0, 10).map((warehouse) => {
+                  const editing = editingId === warehouse.id;
+
+                  return (
+                    <TableRow key={warehouse.id}>
+                      <TableCell>
+                        {editing ? (
+                          <input
+                            className="border-input bg-background w-full rounded-md border px-2 py-1 text-sm"
+                            value={warehouse.name}
+                            onChange={(event) =>
+                              updateLocalWarehouse(
+                                warehouse.id,
+                                "name",
+                                event.target.value,
+                              )
+                            }
+                          />
+                        ) : (
+                          warehouse.name
+                        )}
+                      </TableCell>
+
+                      <TableCell>
+                        {editing ? (
+                          <input
+                            className="border-input bg-background w-full rounded-md border px-2 py-1 text-sm"
+                            value={warehouse.city}
+                            onChange={(event) =>
+                              updateLocalWarehouse(
+                                warehouse.id,
+                                "city",
+                                event.target.value,
+                              )
+                            }
+                          />
+                        ) : (
+                          warehouse.city
+                        )}
+                      </TableCell>
+
+                      <TableCell>
+                        {editing ? (
+                          <input
+                            className="border-input bg-background w-full rounded-md border px-2 py-1 text-sm"
+                            value={warehouse.pincode}
+                            maxLength={6}
+                            onChange={(event) =>
+                              updateLocalWarehouse(
+                                warehouse.id,
+                                "pincode",
+                                event.target.value,
+                              )
+                            }
+                          />
+                        ) : (
+                          warehouse.pincode
+                        )}
+                      </TableCell>
+
+                      <TableCell>
+                        {warehouse.isActive ? "Active" : "Inactive"}
+                      </TableCell>
+
+                      <TableCell className="space-x-2 text-right">
+                        {editing ? (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => void handleUpdate(warehouse)}
+                              disabled={loading}
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEditingId(null)}
+                              disabled={loading}
+                            >
+                              Cancel
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEditingId(warehouse.id)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => void handleToggleStatus(warehouse)}
+                              disabled={loading}
+                            >
+                              {warehouse.isActive ? "Deactivate" : "Activate"}
+                            </Button>
+                          </>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+
+                {!filteredWarehouses.length ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="text-muted-foreground text-center"
+                    >
+                      {loading
+                        ? "Loading warehouses..."
+                        : "No warehouses found for selected filter"}
                     </TableCell>
                   </TableRow>
-                );
-              })}
-              {!warehouses.length ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="text-muted-foreground text-center"
-                  >
-                    {loading
-                      ? "Loading warehouses..."
-                      : "No warehouses found for selected filter"}
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
+                ) : null}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </main>

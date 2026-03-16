@@ -141,3 +141,11 @@
   --sidebar-border: oklch(0.32 0.018 252);
   --sidebar-ring: oklch(0.67 0.16 246);
 }
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
