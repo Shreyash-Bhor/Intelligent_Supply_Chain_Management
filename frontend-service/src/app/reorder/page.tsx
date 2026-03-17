@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  fetchPendingReorders,
+  fetchReorders,
   fetchInventory,
   updateReorderStatus,
   type InventoryItem,
@@ -32,8 +32,11 @@ export default function ReorderPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warehouseFilter, setWarehouseFilter] = useState("all");
-  const [stockStatusFilter, setStockStatusFilter] = useState<
-    "all" | "healthy" | "low"
+  const [reorderView, setReorderView] = useState<"current" | "history">(
+    "current",
+  );
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<
+    "all" | "COMPLETED" | "CANCELLED"
   >("all");
 
   useEffect(() => {
@@ -56,7 +59,7 @@ export default function ReorderPage() {
     try {
       setLoading(true);
       const [reorderData, inventoryData] = await Promise.all([
-        fetchPendingReorders(),
+        fetchReorders(reorderView),
         fetchInventory(session),
       ]);
 
@@ -76,7 +79,7 @@ export default function ReorderPage() {
     } finally {
       setLoading(false);
     }
-  }, [session]);
+  }, [session, reorderView]);
 
   useEffect(() => {
     void loadData();
@@ -130,12 +133,19 @@ export default function ReorderPage() {
             : inventory.warehouse.name === warehouseFilter;
         if (!warehouseMatches) return false;
 
-        if (stockStatusFilter === "all") return true;
+        if (reorderView === "history" && historyStatusFilter !== "all") {
+          return reorder.status === historyStatusFilter;
+        }
 
-        const isLow = inventory.availableQty <= inventory.reorderQty;
-        return stockStatusFilter === "low" ? isLow : !isLow;
+        return true;
       }),
-    [reorders, inventoryLookup, warehouseFilter, stockStatusFilter],
+    [
+      reorders,
+      inventoryLookup,
+      warehouseFilter,
+      reorderView,
+      historyStatusFilter,
+    ],
   );
 
   if (!session) {
@@ -162,7 +172,9 @@ export default function ReorderPage() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground text-sm">
-              Open Reorder Tickets
+              {reorderView === "current"
+                ? "Open Reorder Tickets"
+                : "History Rows"}
             </p>
             <p className="text-2xl font-semibold">{totals.totalOrders}</p>
           </CardContent>
@@ -177,7 +189,11 @@ export default function ReorderPage() {
 
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>Pending Reorders Queue</CardTitle>
+          <CardTitle>
+            {reorderView === "current"
+              ? "Current Reorders Queue"
+              : "Reorder History"}
+          </CardTitle>
 
           <div className="flex flex-wrap gap-2">
             <select
@@ -195,17 +211,30 @@ export default function ReorderPage() {
 
             <select
               className="border-input bg-background rounded-md border px-3 py-2 text-sm"
-              value={stockStatusFilter}
+              value={reorderView}
               onChange={(event) =>
-                setStockStatusFilter(
-                  event.target.value as "all" | "healthy" | "low",
-                )
+                setReorderView(event.target.value as "current" | "history")
               }
             >
-              <option value="all">All Stock Status</option>
-              <option value="healthy">Healthy</option>
-              <option value="low">Low Stock</option>
+              <option value="current">Current Reorders</option>
+              <option value="history">Reorder History</option>
             </select>
+
+            {reorderView === "history" ? (
+              <select
+                className="border-input bg-background rounded-md border px-3 py-2 text-sm"
+                value={historyStatusFilter}
+                onChange={(event) =>
+                  setHistoryStatusFilter(
+                    event.target.value as "all" | "COMPLETED" | "CANCELLED",
+                  )
+                }
+              >
+                <option value="all">All History Statuses</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            ) : null}
           </div>
         </CardHeader>
 
@@ -222,12 +251,14 @@ export default function ReorderPage() {
                   <TableHead>Warehouse</TableHead>
                   <TableHead>Requested Qty</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  {reorderView === "current" ? (
+                    <TableHead className="text-right">Actions</TableHead>
+                  ) : null}
                 </TableRow>
               </TableHeader>
 
               <TableBody>
-                {filteredReorders.slice(0, 10).map((reorder) => {
+                {filteredReorders.map((reorder) => {
                   const inventory = inventoryLookup[reorder.inventoryId];
 
                   return (
@@ -255,28 +286,30 @@ export default function ReorderPage() {
                         <Badge variant="secondary">{reorder.status}</Badge>
                       </TableCell>
 
-                      <TableCell className="space-x-2 text-right">
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            void processReorder(reorder.id, "COMPLETED")
-                          }
-                          disabled={loading}
-                        >
-                          Complete
-                        </Button>
+                      {reorderView === "current" ? (
+                        <TableCell className="space-x-2 text-right">
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              void processReorder(reorder.id, "COMPLETED")
+                            }
+                            disabled={loading}
+                          >
+                            Complete
+                          </Button>
 
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            void processReorder(reorder.id, "CANCELLED")
-                          }
-                          disabled={loading}
-                        >
-                          Cancel
-                        </Button>
-                      </TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              void processReorder(reorder.id, "CANCELLED")
+                            }
+                            disabled={loading}
+                          >
+                            Cancel
+                          </Button>
+                        </TableCell>
+                      ) : null}
                     </TableRow>
                   );
                 })}
@@ -284,10 +317,14 @@ export default function ReorderPage() {
                 {!filteredReorders.length ? (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={reorderView === "current" ? 5 : 4}
                       className="text-muted-foreground text-center"
                     >
-                      {loading ? "Loading reorders..." : "No pending reorders"}
+                      {loading
+                        ? "Loading reorders..."
+                        : reorderView === "current"
+                          ? "No current reorders"
+                          : "No reorder history"}
                     </TableCell>
                   </TableRow>
                 ) : null}

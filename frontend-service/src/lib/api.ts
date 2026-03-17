@@ -277,9 +277,8 @@ export function createInventoryReorder(
     body,
   });
 }
-
-export function fetchPendingReorders() {
-  return fetchApi<StockReorder[]>("/api/reorder");
+export function fetchReorders(mode: "current" | "history" = "current") {
+  return fetchApi<StockReorder[]>(`/api/reorder?mode=${mode}`);
 }
 
 export function updateReorderStatus(

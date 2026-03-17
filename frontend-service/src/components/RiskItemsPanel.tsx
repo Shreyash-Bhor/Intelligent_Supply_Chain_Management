@@ -19,9 +19,7 @@ export function RiskItemsPanel({
   items: RiskItem[];
   loading?: boolean;
 }) {
-  const latestRisks = [...items]
-    .sort((a, b) => b.deficit - a.deficit)
-    .slice(0, 10);
+  const latestRisks = [...items].sort((a, b) => b.deficit - a.deficit);
 
   if (loading) {
     return (
@@ -41,7 +39,7 @@ export function RiskItemsPanel({
   }
 
   return (
-    <div className="max-h-[26rem] space-y-2 overflow-y-auto pr-1">
+    <div className="scrollbar-hidden h-full space-y-2 overflow-y-auto pr-1">
       {latestRisks.map((item) => (
         <div
           key={item.id}

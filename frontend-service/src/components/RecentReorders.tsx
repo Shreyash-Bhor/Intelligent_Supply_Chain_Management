@@ -25,12 +25,9 @@ const statusStyles: Record<string, string> = {
 };
 
 export function RecentReorders({ data, loading = false }: Props) {
-  const latestReorders = [...data]
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )
-    .slice(0, 10);
+  const latestReorders = [...data].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
 
   if (loading) {
     return (
@@ -46,7 +43,7 @@ export function RecentReorders({ data, loading = false }: Props) {
   }
 
   return (
-    <div className="max-h-[26rem] space-y-2 overflow-y-auto pr-1">
+    <div className="scrollbar-hidden h-full space-y-2 overflow-y-auto pr-1">
       {latestReorders.length === 0 ? (
         <p className="text-muted-foreground py-8 text-sm">No data available</p>
       ) : (

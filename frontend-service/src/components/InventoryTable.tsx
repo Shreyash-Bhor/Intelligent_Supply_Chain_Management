@@ -37,11 +37,10 @@ export function InventoryTable({
 
       const isLowStock = inventory.availableQty <= inventory.reorderQty;
       return statusFilter === "low" ? isLowStock : !isLowStock;
-    })
-    .slice(0, 10);
+    });
 
   return (
-    <div className="scrollbar-hidden max-h-[27rem] overflow-y-auto">
+    <div className="scrollbar-hidden h-full overflow-y-auto">
       <Table className="w-full">
         <TableHeader>
           <TableRow>

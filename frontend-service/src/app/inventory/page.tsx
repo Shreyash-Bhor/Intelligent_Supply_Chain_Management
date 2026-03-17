@@ -43,6 +43,8 @@ export default function InventoryPage() {
 
   const [productId, setProductId] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
+  const [productQuery, setProductQuery] = useState("");
+  const [warehouseQuery, setWarehouseQuery] = useState("");
   const [availableQty, setAvailableQty] = useState("0");
   const [reservedQty, setReservedQty] = useState("0");
   const [reorderQty, setReorderQty] = useState("10");
@@ -125,11 +127,42 @@ export default function InventoryPage() {
         }),
     [inventories, warehouseFilter, stockStatusFilter],
   );
+  const productOptionMap = useMemo(() => {
+    return products.reduce<Record<string, string>>((acc, product) => {
+      acc[`${product.name} (${product.sku})`] = product.id;
+      return acc;
+    }, {});
+  }, [products]);
 
+  const warehouseOptionMap = useMemo(() => {
+    return warehouses.reduce<Record<string, string>>((acc, warehouse) => {
+      acc[`${warehouse.name} - ${warehouse.city}`] = warehouse.id;
+      return acc;
+    }, {});
+  }, [warehouses]);
+  const handleCreateReorder = async (inventoryId: string) => {
+    if (!session) return;
+
+    try {
+      setLoading(true);
+      await createInventoryReorder(session, inventoryId, {
+        requestedQty: Number(requestQtyByInventory[inventoryId] ?? "0"),
+      });
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create reorder");
+      setLoading(false);
+    }
+  };
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!session) return;
+
+    if (!productId || !warehouseId) {
+      setError("Please select a valid product and warehouse from suggestions.");
+      return;
+    }
 
     try {
       setLoading(true);
@@ -143,6 +176,8 @@ export default function InventoryPage() {
 
       setProductId("");
       setWarehouseId("");
+      setProductQuery("");
+      setWarehouseQuery("");
       setAvailableQty("0");
       setReservedQty("0");
       setReorderQty("10");
@@ -151,21 +186,6 @@ export default function InventoryPage() {
       setError(
         err instanceof Error ? err.message : "Failed to create inventory",
       );
-      setLoading(false);
-    }
-  };
-
-  const handleCreateReorder = async (inventoryId: string) => {
-    if (!session) return;
-
-    try {
-      setLoading(true);
-      await createInventoryReorder(session, inventoryId, {
-        requestedQty: Number(requestQtyByInventory[inventoryId] ?? "0"),
-      });
-      await loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create reorder");
       setLoading(false);
     }
   };
@@ -248,33 +268,47 @@ export default function InventoryPage() {
           <CardTitle>Create Inventory Record</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleCreate} className="grid gap-3 md:grid-cols-6">
-            <select
-              className="border-input bg-background rounded-md border px-3 py-2 text-sm"
-              value={productId}
-              onChange={(event) => setProductId(event.target.value)}
-              required
-            >
-              <option value="">Select product</option>
-              {products.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name} ({product.sku})
-                </option>
-              ))}
-            </select>
-            <select
-              className="border-input bg-background rounded-md border px-3 py-2 text-sm"
-              value={warehouseId}
-              onChange={(event) => setWarehouseId(event.target.value)}
-              required
-            >
-              <option value="">Select warehouse</option>
-              {warehouses.map((warehouse) => (
-                <option key={warehouse.id} value={warehouse.id}>
-                  {warehouse.name} - {warehouse.city}
-                </option>
-              ))}
-            </select>
+          <form onSubmit={handleCreate} className="grid gap-3 md:grid-cols-8">
+            <div className="md:col-span-2">
+              <input
+                className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
+                list="inventory-product-options"
+                value={productQuery}
+                onChange={(event) => {
+                  const nextLabel = event.target.value;
+                  setProductQuery(nextLabel);
+                  setProductId(productOptionMap[nextLabel] ?? "");
+                }}
+                placeholder="Search product by name or SKU"
+                required
+              />
+              <datalist id="inventory-product-options">
+                {products.map((product) => {
+                  const optionLabel = `${product.name} (${product.sku})`;
+                  return <option key={product.id} value={optionLabel} />;
+                })}
+              </datalist>
+            </div>
+            <div className="md:col-span-2">
+              <input
+                className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
+                list="inventory-warehouse-options"
+                value={warehouseQuery}
+                onChange={(event) => {
+                  const nextLabel = event.target.value;
+                  setWarehouseQuery(nextLabel);
+                  setWarehouseId(warehouseOptionMap[nextLabel] ?? "");
+                }}
+                placeholder="Search warehouse by name or city"
+                required
+              />
+              <datalist id="inventory-warehouse-options">
+                {warehouses.map((warehouse) => {
+                  const optionLabel = `${warehouse.name} - ${warehouse.city}`;
+                  return <option key={warehouse.id} value={optionLabel} />;
+                })}
+              </datalist>
+            </div>
             <input
               className="border-input bg-background rounded-md border px-3 py-2 text-sm"
               type="number"
