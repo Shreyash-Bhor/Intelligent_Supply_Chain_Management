@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart3, Menu, PackageCheck } from "lucide-react";
+import { Menu } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { ModeToggle } from "./ModeToggle";
 import { Button } from "./ui/button";
@@ -19,7 +19,7 @@ const NAV_LINKS = [
   { href: "/product", label: "Products" },
   { href: "/inventory", label: "Inventory" },
   { href: "/reorder", label: "Reorders" },
-  { href: "/user", label: "Account" },
+  { href: "/user", label: "User Shop" },
 ];
 
 export function Navbar() {

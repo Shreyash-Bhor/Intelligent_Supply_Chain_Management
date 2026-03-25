@@ -103,11 +103,22 @@ export type Product = {
   id: string;
   name: string;
   sku: string;
+  imageUrl?: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 };
-
+export type CatalogProduct = {
+  id: string;
+  name: string;
+  sku: string;
+  imageUrl?: string | null;
+  availableQty: number;
+  reservedQty: number;
+  warehouseCount: number;
+  warehouses: string[];
+  updatedAt: string;
+};
 export type StatusFilter = "active" | "inactive" | "all";
 
 export type Warehouse = {
@@ -295,13 +306,21 @@ export function fetchProducts(status: StatusFilter = "active") {
   return fetchApi<Product[]>(`/api/product/products?status=${status}`);
 }
 
-export function createProduct(body: { name: string; sku: string }) {
+export function fetchCatalogProducts() {
+  return fetchApi<CatalogProduct[]>("/api/product/catalog");
+}
+
+export function createProduct(body: {
+  name: string;
+  sku: string;
+  imageUrl?: string;
+}) {
   return fetchApi<Product>("/api/product", { method: "POST", body });
 }
 
 export function updateProduct(
   productId: string,
-  body: { name?: string; sku?: string },
+  body: { name?: string; sku?: string; imageUrl?: string },
 ) {
   return fetchApi<Product>(`/api/product/${productId}`, {
     method: "PATCH",
