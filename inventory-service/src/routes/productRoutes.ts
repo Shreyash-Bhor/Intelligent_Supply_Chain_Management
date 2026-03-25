@@ -3,6 +3,7 @@ import { createProduct } from "../controllers/product/createProductController";
 import { deleteProduct } from "../controllers/product/deleteProductController";
 import {
   getAllProducts,
+  getCatalogProducts,
   getProduct,
 } from "../controllers/product/getProductController";
 import {
@@ -14,6 +15,7 @@ const router = Router();
 router.post("/", createProduct);
 
 router.get("/products", getAllProducts);
+router.get("/catalog", getCatalogProducts);
 router.get("/:productId", getProduct);
 
 router.delete("/:productId", deleteProduct);

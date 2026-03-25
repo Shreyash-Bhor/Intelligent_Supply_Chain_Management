@@ -87,6 +87,7 @@ model Product {
   id            String    @id @default(uuid())
   name          String 
   sku           String    @unique
+  imageUrl      String?
   
   isActive      Boolean   @default(true)
 

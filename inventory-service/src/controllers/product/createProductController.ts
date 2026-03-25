@@ -6,7 +6,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 export const createProduct = asyncHandler(
   async (req: Request, res: Response) => {
     const data = createProductSchema.parse(req.body);
-    const { name, sku } = data;
+    const { name, sku, imageUrl } = data;
     const result = await prisma.$transaction(async (tx: any) => {
       const existingProduct = await tx.product.findUnique({
         where: { sku },
@@ -16,8 +16,9 @@ export const createProduct = asyncHandler(
       }
       const newProduct = await tx.product.create({
         data: {
-          name: name,
-          sku: sku,
+          name,
+          sku,
+          imageUrl,
         },
       });
       return newProduct;
@@ -35,6 +36,7 @@ export const createProduct = asyncHandler(
         id: result.id,
         name: result.name,
         sku: result.sku,
+        imageUrl: result.imageUrl,
       },
     });
   },
