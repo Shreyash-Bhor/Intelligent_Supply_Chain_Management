@@ -19,7 +19,7 @@ const NAV_LINKS = [
   { href: "/product", label: "Products" },
   { href: "/inventory", label: "Inventory" },
   { href: "/reorder", label: "Reorders" },
-  { href: "/user", label: "User Shop" },
+  { href: "/user", label: "User Dashboard" },
 ];
 
 export function Navbar() {

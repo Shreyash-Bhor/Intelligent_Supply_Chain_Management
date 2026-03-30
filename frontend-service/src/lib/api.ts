@@ -1,5 +1,3 @@
-// frontend-service/src/lib/api.ts
-
 export type ApiResponse<T> = {
   status: string;
   message?: string;
@@ -9,15 +7,6 @@ export type ApiResponse<T> = {
 export type ManagerSession = {
   email: string;
   accessKey: string;
-};
-
-export type UserAccount = {
-  id: string;
-  email: string;
-  isEmailVerified: boolean;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
 };
 
 export type DashboardSummary = {
@@ -108,6 +97,7 @@ export type Product = {
   createdAt: string;
   updatedAt: string;
 };
+
 export type CatalogProduct = {
   id: string;
   name: string;
@@ -119,6 +109,13 @@ export type CatalogProduct = {
   warehouses: string[];
   updatedAt: string;
 };
+
+export type UserInventoryProduct = {
+  id: string;
+  name: string;
+  imageUrl?: string | null;
+};
+
 export type StatusFilter = "active" | "inactive" | "all";
 
 export type Warehouse = {
@@ -179,60 +176,10 @@ async function fetchApi<T>(
   return payload.data;
 }
 
-async function fetchRawApi<T>(
-  path: string,
-  options: RequestOptions = {},
-): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: options.method ?? "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.managerSession
-        ? {
-            "x-manager-email": options.managerSession.email,
-            "x-manager-access-key": options.managerSession.accessKey,
-          }
-        : {}),
-    },
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
-
-  const payload = (await response.json()) as T & {
-    status?: string;
-    message?: string;
-  };
-
-  if (!response.ok || payload.status !== "success") {
-    throw new Error(payload?.message || "Unexpected API response");
-  }
-
-  return payload;
-}
-
 export function verifyManagerAccess(managerSession: ManagerSession) {
   return fetchApi<{ email: string; authenticatedAt: string }>(
     "/dashboard/access",
     { managerSession },
-  );
-}
-
-export function registerUser(body: { email: string; password: string }) {
-  return fetchRawApi<{ status: string; message: string; newUser: UserAccount }>(
-    "/api/signup",
-    {
-      method: "POST",
-      body,
-    },
-  );
-}
-
-export function loginUser(body: { email: string; password: string }) {
-  return fetchRawApi<{ status: string; message: string; user: UserAccount }>(
-    "/api/login",
-    {
-      method: "POST",
-      body,
-    },
   );
 }
 
@@ -288,6 +235,7 @@ export function createInventoryReorder(
     body,
   });
 }
+
 export function fetchReorders(mode: "current" | "history" = "current") {
   return fetchApi<StockReorder[]>(`/api/reorder?mode=${mode}`);
 }
@@ -308,6 +256,10 @@ export function fetchProducts(status: StatusFilter = "active") {
 
 export function fetchCatalogProducts() {
   return fetchApi<CatalogProduct[]>("/api/product/catalog");
+}
+
+export function fetchUserDashboardProducts() {
+  return fetchApi<UserInventoryProduct[]>("/api/product/user-dashboard");
 }
 
 export function createProduct(body: {

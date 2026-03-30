@@ -1,7 +1,11 @@
 import prisma from "../../lib/prisma";
 import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
-
+type UserDashboardProduct = {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+};
 type CatalogProduct = {
   id: string;
   name: string;
@@ -53,6 +57,49 @@ export const getAllProducts = asyncHandler(
     return res.status(200).json({
       status: "success",
       message: "Products fetched successfully",
+      data: products,
+    });
+  },
+);
+export const getUserDashboardProducts = asyncHandler(
+  async (_req: Request, res: Response) => {
+    const inventoryItems = await prisma.inventory.findMany({
+      where: {
+        availableQty: { gt: 0 },
+        product: { isActive: true },
+        warehouse: { isActive: true },
+      },
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+          },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+
+    const productsMap = new Map<string, UserDashboardProduct>();
+
+    for (const item of inventoryItems) {
+      if (!productsMap.has(item.product.id)) {
+        productsMap.set(item.product.id, {
+          id: item.product.id,
+          name: item.product.name,
+          imageUrl: item.product.imageUrl,
+        });
+      }
+    }
+
+    const products = Array.from(productsMap.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+
+    return res.status(200).json({
+      status: "success",
+      message: "User dashboard products fetched successfully",
       data: products,
     });
   },
