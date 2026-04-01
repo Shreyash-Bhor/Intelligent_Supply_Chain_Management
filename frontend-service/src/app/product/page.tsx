@@ -7,6 +7,8 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthSession } from "@/hooks/useAuthSession";
 import {
   createProduct,
   deleteProduct,
@@ -28,6 +30,8 @@ import {
 } from "@/components/ui/table";
 
 export default function ProductPage() {
+  const router = useRouter();
+  const { session: authSession, hydrated } = useAuthSession();
   const [products, setProducts] = useState<Product[]>([]);
   const [name, setName] = useState("");
   const [sku, setSku] = useState("");
@@ -138,7 +142,16 @@ export default function ProductPage() {
       ),
     );
   };
+  useEffect(() => {
+    if (!hydrated) return;
+    if (authSession?.role === "user") {
+      router.replace("/user");
+    }
+  }, [authSession, hydrated, router]);
 
+  if (!hydrated) {
+    return null;
+  }
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8">
       <Card>

@@ -7,6 +7,8 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthSession } from "@/hooks/useAuthSession";
 import {
   createInventory,
   createInventoryReorder,
@@ -34,6 +36,8 @@ import {
 const SESSION_KEY = "warehouse_manager_session";
 
 export default function InventoryPage() {
+  const router = useRouter();
+  const { session: authSession, hydrated } = useAuthSession();
   const [session, setSession] = useState<ManagerSession | null>(null);
   const [inventories, setInventories] = useState<InventoryItem[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -221,6 +225,16 @@ export default function InventoryPage() {
       ),
     );
   };
+  useEffect(() => {
+    if (!hydrated) return;
+    if (authSession?.role === "user") {
+      router.replace("/user");
+    }
+  }, [authSession, hydrated, router]);
+
+  if (!hydrated) {
+    return null;
+  }
 
   if (!session) {
     return (

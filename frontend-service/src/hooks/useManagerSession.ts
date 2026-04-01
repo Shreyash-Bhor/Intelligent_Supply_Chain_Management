@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { verifyManagerAccess, type ManagerSession } from "@/lib/api";
+import { clearAuthSession, getAuthSession, setAuthSession } from "@/lib/auth";
 
 const SESSION_KEY = "warehouse_manager_session";
 
@@ -22,6 +23,10 @@ export function useManagerSession() {
       const parsed = JSON.parse(stored) as ManagerSession;
       if (parsed.email && parsed.accessKey) {
         setManagerSession(parsed);
+        setAuthSession({
+          role: "warehouse_manager",
+          email: parsed.email,
+        });
       }
     } catch {
       window.localStorage.removeItem(SESSION_KEY);
@@ -39,6 +44,10 @@ export function useManagerSession() {
       await verifyManagerAccess(session);
       setManagerSession(session);
       window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      setAuthSession({
+        role: "warehouse_manager",
+        email: session.email,
+      });
       setAuthError(null);
     } catch (err) {
       setAuthError(
@@ -52,6 +61,10 @@ export function useManagerSession() {
 
   const logout = () => {
     window.localStorage.removeItem(SESSION_KEY);
+    const authSession = getAuthSession();
+    if (authSession?.role === "warehouse_manager") {
+      clearAuthSession();
+    }
     setManagerSession(null);
     setAuthError(null);
   };

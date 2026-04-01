@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   Card,
@@ -17,6 +17,8 @@ import { ManagerAccessCard } from "@/components/dashboard/ManagerAccessCard";
 import { StatsGrid } from "@/components/dashboard/StatsGrid";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useManagerSession } from "@/hooks/useManagerSession";
+import { useAuthSession } from "@/hooks/useAuthSession";
+import { useRouter } from "next/navigation";
 
 const StockPerWarehouseChart = dynamic(
   () =>
@@ -51,6 +53,8 @@ const WarehouseUtilizationChart = dynamic(
 );
 
 export default function Home() {
+  const router = useRouter();
+  const { session: authSession, hydrated } = useAuthSession();
   const {
     managerSession,
     email,
@@ -77,7 +81,12 @@ export default function Home() {
   const [stockStatusFilter, setStockStatusFilter] = useState<
     "all" | "healthy" | "low"
   >("all");
-
+  useEffect(() => {
+    if (!hydrated) return;
+    if (authSession?.role === "user") {
+      router.replace("/user");
+    }
+  }, [authSession, hydrated, router]);
   const handleManagerLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     await login();
@@ -87,7 +96,9 @@ export default function Home() {
     logout();
     setError(null);
   };
-
+  if (!hydrated) {
+    return null;
+  }
   if (!managerSession) {
     return (
       <ManagerAccessCard

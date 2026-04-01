@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthSession } from "@/hooks/useAuthSession";
 import {
   fetchReorders,
   fetchInventory,
@@ -24,6 +26,8 @@ import {
 const SESSION_KEY = "warehouse_manager_session";
 
 export default function ReorderPage() {
+  const router = useRouter();
+  const { session: authSession, hydrated } = useAuthSession();
   const [session, setSession] = useState<ManagerSession | null>(null);
   const [inventoryLookup, setInventoryLookup] = useState<
     Record<string, InventoryItem>
@@ -147,6 +151,16 @@ export default function ReorderPage() {
       historyStatusFilter,
     ],
   );
+  useEffect(() => {
+    if (!hydrated) return;
+    if (authSession?.role === "user") {
+      router.replace("/user");
+    }
+  }, [authSession, hydrated, router]);
+
+  if (!hydrated) {
+    return null;
+  }
 
   if (!session) {
     return (

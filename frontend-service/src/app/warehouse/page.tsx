@@ -7,6 +7,8 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthSession } from "@/hooks/useAuthSession";
 import {
   createWarehouse,
   fetchWarehouses,
@@ -27,6 +29,8 @@ import {
 } from "@/components/ui/table";
 
 export default function WarehousePage() {
+  const router = useRouter();
+  const { session: authSession, hydrated } = useAuthSession();
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
@@ -135,7 +139,16 @@ export default function WarehousePage() {
       ),
     );
   };
+  useEffect(() => {
+    if (!hydrated) return;
+    if (authSession?.role === "user") {
+      router.replace("/user");
+    }
+  }, [authSession, hydrated, router]);
 
+  if (!hydrated) {
+    return null;
+  }
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8">
       <Card>
