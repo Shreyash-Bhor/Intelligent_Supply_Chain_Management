@@ -28,6 +28,8 @@
     "zod": "^4.3.2"
   },
   "scripts": {
-    "dev": "nodemon src/index.ts"
+    "dev": "nodemon src/index.ts",
+    "prisma:generate": "prisma generate",
+    "typecheck": "tsc --noEmit"
   }
 }
