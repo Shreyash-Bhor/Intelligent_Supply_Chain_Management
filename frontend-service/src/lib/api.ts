@@ -325,3 +325,93 @@ export function deleteProduct(productId: string, reason: string) {
     body: { reason },
   });
 }
+export type ProductPrice = {
+  id: string;
+  productId: string;
+  price: number;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type HistoricalPrice = {
+  id: string;
+  productPriceId: string;
+  productId: string;
+  oldPrice: number | null;
+  newPrice: number;
+  currency: string;
+  changeType: "CREATED" | "UPDATED";
+  changedAt: string;
+};
+
+const PRICING_API_BASE_URL =
+  process.env.NEXT_PUBLIC_PRICING_API_BASE_URL?.replace(/\/$/, "") ??
+  "http://localhost:5555";
+
+async function fetchPricingApi<T>(
+  path: string,
+  options: Omit<RequestOptions, "managerSession"> = {},
+): Promise<T> {
+  const response = await fetch(`${PRICING_API_BASE_URL}${path}`, {
+    method: options.method ?? "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+
+  const payload = (await response.json()) as ApiResponse<T>;
+
+  if (!response.ok || payload.status !== "success") {
+    throw new Error(payload?.message || "Unexpected API response");
+  }
+
+  return payload.data;
+}
+
+export function fetchProductPrice(productId: string) {
+  return fetchPricingApi<ProductPrice>(`/api/prices/${productId}`);
+}
+
+export function createProductPrice(body: {
+  productId: string;
+  price: number;
+  currency?: string;
+}) {
+  return fetchPricingApi<ProductPrice>("/api/prices", {
+    method: "POST",
+    body,
+  });
+}
+
+export function updateProductPrice(
+  productId: string,
+  body: { price: number; currency?: string },
+) {
+  return fetchPricingApi<ProductPrice>(`/api/prices/${productId}`, {
+    method: "PATCH",
+    body,
+  });
+}
+
+export function fetchProductPriceHistory(
+  productId: string,
+  query: { take?: number; skip?: number } = {},
+) {
+  const params = new URLSearchParams();
+
+  if (query.take !== undefined) {
+    params.set("take", String(query.take));
+  }
+
+  if (query.skip !== undefined) {
+    params.set("skip", String(query.skip));
+  }
+
+  const queryString = params.toString();
+
+  return fetchPricingApi<HistoricalPrice[]>(
+    `/api/prices/${productId}/history${queryString ? `?${queryString}` : ""}`,
+  );
+}

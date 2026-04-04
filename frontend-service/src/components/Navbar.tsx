@@ -20,6 +20,7 @@ const MANAGER_LINKS = [
   { href: "/warehouse", label: "Warehouses" },
   { href: "/product", label: "Products" },
   { href: "/inventory", label: "Inventory" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/reorder", label: "Reorders" },
 ];
 
