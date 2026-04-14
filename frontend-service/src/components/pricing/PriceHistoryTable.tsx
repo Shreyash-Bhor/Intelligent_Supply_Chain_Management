@@ -1,3 +1,4 @@
+import { History, IndianRupee } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -15,9 +16,12 @@ type PriceHistoryTableProps = {
 
 export function PriceHistoryTable({ history }: PriceHistoryTableProps) {
   return (
-    <Card>
+    <Card className="mx-auto w-full max-w-3xl">
       <CardHeader>
-        <CardTitle>Price Update History</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <History className="text-primary size-4" aria-hidden="true" />
+          Price Update History
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="scrollbar-hidden max-h-80 overflow-y-auto">
@@ -27,7 +31,6 @@ export function PriceHistoryTable({ history }: PriceHistoryTableProps) {
                 <TableHead>Type</TableHead>
                 <TableHead>Old Price</TableHead>
                 <TableHead>New Price</TableHead>
-                <TableHead>Currency</TableHead>
                 <TableHead>Changed At</TableHead>
               </TableRow>
             </TableHeader>
@@ -37,12 +40,24 @@ export function PriceHistoryTable({ history }: PriceHistoryTableProps) {
                   <TableRow key={entry.id}>
                     <TableCell>{entry.changeType}</TableCell>
                     <TableCell>
-                      {entry.oldPrice === null
-                        ? "-"
-                        : entry.oldPrice.toFixed(2)}
+                      {entry.oldPrice === null ? (
+                        "-"
+                      ) : (
+                        <span className="inline-flex items-center gap-1">
+                          <IndianRupee
+                            className="size-3.5"
+                            aria-hidden="true"
+                          />
+                          {entry.oldPrice.toFixed(2)}
+                        </span>
+                      )}
                     </TableCell>
-                    <TableCell>{entry.newPrice.toFixed(2)}</TableCell>
-                    <TableCell>{entry.currency}</TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1 font-medium">
+                        <IndianRupee className="size-3.5" aria-hidden="true" />
+                        {entry.newPrice.toFixed(2)}
+                      </span>
+                    </TableCell>
                     <TableCell>
                       {new Date(entry.changedAt).toLocaleString()}
                     </TableCell>
@@ -51,7 +66,7 @@ export function PriceHistoryTable({ history }: PriceHistoryTableProps) {
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={4}
                     className="text-muted-foreground text-sm"
                   >
                     No price history available for this product.

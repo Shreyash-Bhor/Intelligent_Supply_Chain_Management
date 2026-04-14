@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+import { IndianRupee, LayoutGrid, Sparkles } from "lucide-react";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import {
   createProductPrice,
@@ -32,7 +33,6 @@ export default function PricingPage() {
   const [currentPrice, setCurrentPrice] = useState<ProductPrice | null>(null);
   const [priceHistory, setPriceHistory] = useState<HistoricalPrice[]>([]);
   const [priceInput, setPriceInput] = useState("");
-  const [currencyInput, setCurrencyInput] = useState("USD");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,7 +95,6 @@ export default function PricingPage() {
   const handleSelectProduct = async (product: Product) => {
     setSelectedProduct(product);
     setPriceInput("");
-    setCurrencyInput("USD");
     await loadPricingData(product.id);
   };
 
@@ -116,7 +115,7 @@ export default function PricingPage() {
       setLoading(true);
       const payload = {
         price: Number(priceValue.toFixed(2)),
-        currency: currencyInput.trim().toUpperCase(),
+        currency: "INR",
       };
 
       if (currentPrice) {
@@ -142,28 +141,52 @@ export default function PricingPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8">
+      <header className="from-primary/8 to-primary/3 border-primary/20 rounded-2xl border bg-gradient-to-r p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
+              Pricing Console
+            </p>
+            <h1 className="text-2xl font-semibold">
+              Product Pricing Management
+            </h1>
+            <p className="text-muted-foreground mt-2 text-sm">
+              All prices are managed in Indian Rupees (INR) only.
+            </p>
+          </div>
+          <div className="bg-primary/10 text-primary rounded-full p-3">
+            <IndianRupee className="size-5" aria-hidden="true" />
+          </div>
+        </div>
+      </header>
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
-
-      <ProductSearchTable
-        products={filteredProducts}
-        search={search}
-        onSearchChange={setSearch}
-        selectedProductId={selectedProduct?.id ?? null}
-        onSelectProduct={handleSelectProduct}
-      />
 
       <PriceEditorCard
         product={selectedProduct}
         currentPrice={currentPrice}
         priceInput={priceInput}
-        currencyInput={currencyInput}
         loading={loading}
         onPriceChange={setPriceInput}
-        onCurrencyChange={setCurrencyInput}
         onSubmit={handlePriceSubmit}
       />
 
-      <PriceHistoryTable history={priceHistory} />
+      <section className="grid gap-4 lg:grid-cols-2">
+        <ProductSearchTable
+          products={filteredProducts}
+          search={search}
+          onSearchChange={setSearch}
+          selectedProductId={selectedProduct?.id ?? null}
+          onSelectProduct={handleSelectProduct}
+        />
+
+        <PriceHistoryTable history={priceHistory} />
+      </section>
+
+      <footer className="text-muted-foreground flex items-center gap-2 text-xs">
+        <LayoutGrid className="size-4" aria-hidden="true" />
+        <Sparkles className="size-4" aria-hidden="true" />
+        Optimized grid layout with compact pricing tables.
+      </footer>
     </main>
   );
 }

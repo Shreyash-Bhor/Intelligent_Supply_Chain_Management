@@ -1,3 +1,4 @@
+import { Search, ShoppingBag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,15 +27,21 @@ export function ProductSearchTable({
   onSelectProduct,
 }: ProductSearchTableProps) {
   return (
-    <Card>
+    <Card className="mx-auto w-full max-w-3xl">
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle>Find Product</CardTitle>
-        <input
-          className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm sm:w-80"
-          placeholder="Search by SKU or product name"
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-        />
+        <CardTitle className="flex items-center gap-2 text-base">
+          <ShoppingBag className="text-primary size-4" aria-hidden="true" />
+          Find Product
+        </CardTitle>
+        <label className="relative w-full sm:w-72">
+          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <input
+            className="border-input bg-background h-9 w-full rounded-md border pr-3 pl-9 text-sm"
+            placeholder="Search SKU or product"
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+          />
+        </label>
       </CardHeader>
       <CardContent>
         <div className="scrollbar-hidden max-h-72 overflow-y-auto">
@@ -51,7 +58,9 @@ export function ProductSearchTable({
                 const isSelected = selectedProductId === product.id;
                 return (
                   <TableRow key={product.id}>
-                    <TableCell>{product.name}</TableCell>
+                    <TableCell className="max-w-[180px] truncate">
+                      {product.name}
+                    </TableCell>
                     <TableCell>{product.sku}</TableCell>
                     <TableCell className="text-right">
                       <Button
