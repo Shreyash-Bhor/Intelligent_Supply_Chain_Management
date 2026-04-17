@@ -114,6 +114,7 @@ export type UserInventoryProduct = {
   id: string;
   name: string;
   imageUrl?: string | null;
+  description?: string | null;
 };
 
 export type StatusFilter = "active" | "inactive" | "all";
