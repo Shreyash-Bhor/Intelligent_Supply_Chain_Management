@@ -1,8 +1,6 @@
 import { Router } from "express";
-import {
-  loginCustomer,
-  registerCustomer,
-} from "../controllers/auth/customerAuthController";
+import { loginCustomer } from "../controllers/auth/loginAuthController";
+import { registerCustomer } from "../controllers/auth/registerAuthController";
 const router = Router();
 router.post("/register", registerCustomer);
 router.post("/login", loginCustomer);
