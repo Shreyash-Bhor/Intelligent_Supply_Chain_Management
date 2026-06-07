@@ -35,7 +35,9 @@ export default function UserDashboardPage() {
     const loadProducts = async () => {
       try {
         setLoading(true);
-        const data = await fetchUserDashboardProducts();
+        if (!session.token)
+          throw new Error("Your session is invalid. Please login again.");
+        const data = await fetchUserDashboardProducts(session.token);
         setProducts(data);
         setError(null);
       } catch (err) {
@@ -134,6 +136,7 @@ export default function UserDashboardPage() {
               <ProductGrid
                 products={catalogProducts}
                 loadingPrices={loadingPrices}
+                customerToken={session.token ?? ""}
               />
             </div>
           )}

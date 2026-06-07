@@ -7,6 +7,9 @@ import inventoryRoutes from "./routes/inventoryRoutes";
 import warehouseRoutes from "./routes/warehouseRoutes";
 import reorderRoutes from "./routes/reorderRoutes";
 import dashboardRoutes from "./routes/dashboardRoutes";
+import authRoutes from "./routes/authRoutes";
+import orderRoutes from "./routes/orderRoutes";
+import { requireCustomerAccess } from "./middleware/customerAccess";
 import { requireWarehouseManagerAccess } from "./middleware/warehouseManagerAccess";
 import cors from "cors";
 dotenv.config();
@@ -16,6 +19,8 @@ const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
 app.use(cors());
+app.use("/api/auth", authRoutes);
+app.use("/api/orders", requireCustomerAccess, orderRoutes);
 app.use("/api/product", productRoutes);
 app.use("/api/inventory", requireWarehouseManagerAccess, inventoryRoutes);
 app.use("/warehouse", warehouseRoutes);

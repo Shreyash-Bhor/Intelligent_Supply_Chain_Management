@@ -115,6 +115,7 @@ export type UserInventoryProduct = {
   name: string;
   imageUrl?: string | null;
   description?: string | null;
+  availableQty: number;
 };
 
 export type StatusFilter = "active" | "inactive" | "all";
@@ -146,6 +147,7 @@ const API_BASE_URL =
 
 type RequestOptions = {
   managerSession?: ManagerSession;
+  customerToken?: string;
   method?: "GET" | "POST" | "PATCH" | "DELETE";
   body?: unknown;
 };
@@ -163,6 +165,9 @@ async function fetchApi<T>(
             "x-manager-email": options.managerSession.email,
             "x-manager-access-key": options.managerSession.accessKey,
           }
+        : {}),
+      ...(options.customerToken
+        ? { Authorization: `Bearer ${options.customerToken}` }
         : {}),
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
@@ -259,8 +264,43 @@ export function fetchCatalogProducts() {
   return fetchApi<CatalogProduct[]>("/api/product/catalog");
 }
 
-export function fetchUserDashboardProducts() {
-  return fetchApi<UserInventoryProduct[]>("/api/product/user-dashboard");
+export function fetchUserDashboardProducts(customerToken: string) {
+  return fetchApi<UserInventoryProduct[]>("/api/product/user-dashboard", {
+    customerToken,
+  });
+}
+
+export type CustomerOrder = {
+  id: string;
+  quantity: number;
+  allocatedQty: number;
+  shortageQty: number;
+  unitPrice: number;
+  totalPrice: number;
+  currency: string;
+  status: "CONFIRMED" | "BACKORDERED";
+  createdAt: string;
+  product: { id: string; name: string; sku: string; imageUrl?: string | null };
+  stockReorder?: {
+    id: string;
+    requestedQty: number;
+    status: ReorderStatus;
+  } | null;
+};
+
+export function createCustomerOrder(
+  customerToken: string,
+  body: { productId: string; quantity: number },
+) {
+  return fetchApi<CustomerOrder>("/api/orders", {
+    customerToken,
+    method: "POST",
+    body,
+  });
+}
+
+export function fetchCustomerOrders(customerToken: string) {
+  return fetchApi<CustomerOrder[]>("/api/orders", { customerToken });
 }
 
 export function createProduct(body: {

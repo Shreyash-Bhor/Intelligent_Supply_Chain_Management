@@ -40,7 +40,7 @@ export function ManagerAccessCard({
   const [userPassword, setUserPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
 
-  const handleUserLogin = (event: FormEvent<HTMLFormElement>) => {
+  const handleUserLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (role === "warehouse_manager") {
@@ -49,7 +49,7 @@ export function ManagerAccessCard({
     }
 
     try {
-      loginUser(userEmail, userPassword);
+      await loginUser(userEmail, userPassword);
       setMessage(null);
       router.push("/user");
     } catch (err) {
@@ -57,7 +57,7 @@ export function ManagerAccessCard({
     }
   };
 
-  const handleSignup = (event: FormEvent<HTMLFormElement>) => {
+  const handleSignup = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (role === "warehouse_manager") {
@@ -78,7 +78,7 @@ export function ManagerAccessCard({
         email: userEmail,
         password: userPassword,
       });
-      loginUser(userEmail, userPassword);
+      await loginUser(userEmail, userPassword);
       setMessage(null);
       router.push("/user");
     } catch (err) {

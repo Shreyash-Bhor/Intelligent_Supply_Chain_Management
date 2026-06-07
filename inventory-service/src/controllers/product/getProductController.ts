@@ -5,6 +5,7 @@ type UserDashboardProduct = {
   id: string;
   name: string;
   imageUrl: string | null;
+  availableQty: number;
 };
 type CatalogProduct = {
   id: string;
@@ -63,44 +64,44 @@ export const getAllProducts = asyncHandler(
 );
 export const getUserDashboardProducts = asyncHandler(
   async (_req: Request, res: Response) => {
-    const inventoryItems = await prisma.inventory.findMany({
+    const products = await prisma.product.findMany({
       where: {
-        availableQty: { gt: 0 },
-        product: { isActive: true },
-        warehouse: { isActive: true },
+        isActive: true,
+        inventories: { some: { warehouse: { isActive: true } } },
       },
-      include: {
-        product: {
-          select: {
-            id: true,
-            name: true,
-            imageUrl: true,
-          },
+      select: {
+        id: true,
+        name: true,
+        imageUrl: true,
+        inventories: {
+          where: { warehouse: { isActive: true } },
+          select: { availableQty: true },
         },
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: { name: "asc" },
     });
-
-    const productsMap = new Map<string, UserDashboardProduct>();
-
-    for (const item of inventoryItems) {
-      if (!productsMap.has(item.product.id)) {
-        productsMap.set(item.product.id, {
-          id: item.product.id,
-          name: item.product.name,
-          imageUrl: item.product.imageUrl,
-        });
-      }
-    }
-
-    const products = Array.from(productsMap.values()).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
 
     return res.status(200).json({
       status: "success",
       message: "User dashboard products fetched successfully",
-      data: products,
+      data: products.map(
+        ({
+          inventories,
+          ...product
+        }: {
+          inventories: Array<{ availableQty: number }>;
+          id: string;
+          name: string;
+          imageUrl: string | null;
+        }) => ({
+          ...product,
+          availableQty: inventories.reduce(
+            (sum: number, item: { availableQty: number }) =>
+              sum + item.availableQty,
+            0,
+          ),
+        }),
+      ),
     });
   },
 );

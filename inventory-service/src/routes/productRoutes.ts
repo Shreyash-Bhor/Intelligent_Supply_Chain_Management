@@ -7,6 +7,7 @@ import {
   getProduct,
   getUserDashboardProducts,
 } from "../controllers/product/getProductController";
+import { requireCustomerAccess } from "../middleware/customerAccess";
 import {
   updateProduct,
   updateProductStatus,
@@ -17,7 +18,7 @@ router.post("/", createProduct);
 
 router.get("/products", getAllProducts);
 router.get("/catalog", getCatalogProducts);
-router.get("/user-dashboard", getUserDashboardProducts);
+router.get("/user-dashboard", requireCustomerAccess, getUserDashboardProducts);
 router.get("/:productId", getProduct);
 
 router.delete("/:productId", deleteProduct);
