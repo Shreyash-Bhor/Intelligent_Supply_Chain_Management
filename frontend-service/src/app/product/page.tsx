@@ -19,6 +19,7 @@ import {
   type StatusFilter,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/Pagination";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -40,6 +41,7 @@ export default function ProductPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   const loadProducts = useCallback(
     async (filter: StatusFilter = statusFilter) => {
@@ -131,6 +133,11 @@ export default function ProductPage() {
     );
   }, [products, search]);
 
+  const activePage = Math.min(
+    page,
+    Math.max(1, Math.ceil(filteredProducts.length / 10)),
+  );
+
   const updateLocalProduct = (
     productId: string,
     key: "name" | "sku",
@@ -142,6 +149,7 @@ export default function ProductPage() {
       ),
     );
   };
+
   useEffect(() => {
     if (!hydrated) return;
     if (authSession?.role === "user") {
@@ -225,103 +233,105 @@ export default function ProductPage() {
               </TableHeader>
 
               <TableBody>
-                {filteredProducts.slice(0, 10).map((product) => {
-                  const editing = editingId === product.id;
+                {filteredProducts
+                  .slice((activePage - 1) * 10, activePage * 10)
+                  .map((product) => {
+                    const editing = editingId === product.id;
 
-                  return (
-                    <TableRow key={product.id}>
-                      <TableCell>
-                        {editing ? (
-                          <input
-                            className="border-input bg-background w-full rounded-md border px-2 py-1 text-sm"
-                            value={product.name}
-                            onChange={(event) =>
-                              updateLocalProduct(
-                                product.id,
-                                "name",
-                                event.target.value,
-                              )
-                            }
-                          />
-                        ) : (
-                          product.name
-                        )}
-                      </TableCell>
+                    return (
+                      <TableRow key={product.id}>
+                        <TableCell>
+                          {editing ? (
+                            <input
+                              className="border-input bg-background w-full rounded-md border px-2 py-1 text-sm"
+                              value={product.name}
+                              onChange={(event) =>
+                                updateLocalProduct(
+                                  product.id,
+                                  "name",
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          ) : (
+                            product.name
+                          )}
+                        </TableCell>
 
-                      <TableCell>
-                        {editing ? (
-                          <input
-                            className="border-input bg-background w-full rounded-md border px-2 py-1 text-sm"
-                            value={product.sku}
-                            onChange={(event) =>
-                              updateLocalProduct(
-                                product.id,
-                                "sku",
-                                event.target.value,
-                              )
-                            }
-                          />
-                        ) : (
-                          product.sku
-                        )}
-                      </TableCell>
+                        <TableCell>
+                          {editing ? (
+                            <input
+                              className="border-input bg-background w-full rounded-md border px-2 py-1 text-sm"
+                              value={product.sku}
+                              onChange={(event) =>
+                                updateLocalProduct(
+                                  product.id,
+                                  "sku",
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          ) : (
+                            product.sku
+                          )}
+                        </TableCell>
 
-                      <TableCell>
-                        {product.isActive ? "Active" : "Inactive"}
-                      </TableCell>
+                        <TableCell>
+                          {product.isActive ? "Active" : "Inactive"}
+                        </TableCell>
 
-                      <TableCell className="space-x-2 text-right">
-                        {editing ? (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() => void handleUpdate(product)}
-                              disabled={loading}
-                            >
-                              Save
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setEditingId(null)}
-                              disabled={loading}
-                            >
-                              Cancel
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setEditingId(product.id)}
-                            >
-                              Edit
-                            </Button>
+                        <TableCell className="space-x-2 text-right">
+                          {editing ? (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => void handleUpdate(product)}
+                                disabled={loading}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditingId(null)}
+                                disabled={loading}
+                              >
+                                Cancel
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditingId(product.id)}
+                              >
+                                Edit
+                              </Button>
 
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => void handleToggleStatus(product)}
-                              disabled={loading}
-                            >
-                              {product.isActive ? "Deactivate" : "Activate"}
-                            </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => void handleToggleStatus(product)}
+                                disabled={loading}
+                              >
+                                {product.isActive ? "Deactivate" : "Activate"}
+                              </Button>
 
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => void handleDelete(product.id)}
-                              disabled={loading}
-                            >
-                              Delete
-                            </Button>
-                          </>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => void handleDelete(product.id)}
+                                disabled={loading}
+                              >
+                                Delete
+                              </Button>
+                            </>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
 
                 {!filteredProducts.length ? (
                   <TableRow>
@@ -338,6 +348,11 @@ export default function ProductPage() {
               </TableBody>
             </Table>
           </div>
+          <Pagination
+            page={activePage}
+            totalItems={filteredProducts.length}
+            onPageChange={setPage}
+          />
         </CardContent>
       </Card>
     </main>

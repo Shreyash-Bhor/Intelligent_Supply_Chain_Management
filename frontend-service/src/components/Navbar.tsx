@@ -38,7 +38,13 @@ export function Navbar() {
         ? MANAGER_LINKS
         : [{ href: "/", label: "Access Portal" }];
 
-  const showLogout = session?.role === "user";
+  const showLogout = Boolean(session);
+
+  const logout = () => {
+    window.localStorage.removeItem("warehouse_manager_session");
+    clearAuthSession();
+    router.push("/");
+  };
 
   if (!hydrated) {
     return null;
@@ -48,28 +54,36 @@ export function Navbar() {
     <header className="bg-background/85 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-50 border-b backdrop-blur">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-5">
-          <Link href={session?.role === "user" ? "/user" : "/"} className="group flex items-center gap-2" aria-label="SupplySync home">
-            <span className="bg-primary text-primary-foreground grid size-8 place-items-center rounded-lg text-sm font-bold shadow-sm transition-transform group-hover:scale-105">S</span>
-            <span className="hidden text-sm font-semibold tracking-tight sm:inline">SupplySync</span>
+          <Link
+            href={session?.role === "user" ? "/user" : "/"}
+            className="group flex items-center gap-2"
+            aria-label="SupplySync home"
+          >
+            <span className="bg-primary text-primary-foreground grid size-8 place-items-center rounded-lg text-sm font-bold shadow-sm transition-transform group-hover:scale-105">
+              S
+            </span>
+            <span className="hidden text-sm font-semibold tracking-tight sm:inline">
+              SupplySync
+            </span>
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
-          {navLinks.map((link) => {
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
           </nav>
         </div>
 
@@ -92,27 +106,13 @@ export function Navbar() {
                 </DropdownMenuItem>
               ))}
               {showLogout ? (
-                <DropdownMenuItem
-                  onClick={() => {
-                    clearAuthSession();
-                    router.push("/");
-                  }}
-                >
-                  Logout
-                </DropdownMenuItem>
+                <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
               ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
 
           {showLogout ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                clearAuthSession();
-                router.push("/");
-              }}
-            >
+            <Button variant="outline" size="sm" onClick={logout}>
               Logout
             </Button>
           ) : null}
