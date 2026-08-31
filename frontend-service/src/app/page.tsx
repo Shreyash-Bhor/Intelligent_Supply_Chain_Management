@@ -81,6 +81,13 @@ export default function Home() {
   const [stockStatusFilter, setStockStatusFilter] = useState<
     "all" | "healthy" | "low"
   >("all");
+  const [healthFilter, setHealthFilter] = useState("all");
+  const [reorderMixFilter, setReorderMixFilter] = useState("all");
+  const [riskWarehouseFilter, setRiskWarehouseFilter] = useState("all");
+  const [stockWarehouseFilter, setStockWarehouseFilter] = useState("all");
+  const [utilizationWarehouseFilter, setUtilizationWarehouseFilter] =
+    useState("all");
+  const [recentReorderFilter, setRecentReorderFilter] = useState("all");
   useEffect(() => {
     if (!hydrated) return;
     if (authSession?.role === "user") {
@@ -143,54 +150,100 @@ export default function Home() {
         <StatsGrid stats={stats} loading={loading || authLoading} />
 
         <section className="grid gap-4 xl:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle>Inventory Health</CardTitle>
+          <Card className="flex h-[390px] flex-col overflow-hidden">
+            <CardHeader className="shrink-0">
+              <div className="flex items-start justify-between gap-3">
+                <CardTitle>Inventory Health</CardTitle>
+                <select
+                  aria-label="Filter inventory health"
+                  className="border-input bg-background rounded-md border px-2 py-1.5 text-xs"
+                  value={healthFilter}
+                  onChange={(event) => setHealthFilter(event.target.value)}
+                >
+                  <option value="all">All states</option>
+                  <option value="healthy">Healthy</option>
+                  <option value="low">Low</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
               <CardDescription>
                 Healthy vs low vs critical SKU positions
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-h-0 flex-1">
               <InventoryHealthPieChart
                 data={summary?.inventoryHealthBreakdown ?? []}
                 loading={loading}
+                statusFilter={healthFilter}
               />
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Reorder Status Mix</CardTitle>
+          <Card className="flex h-[390px] flex-col overflow-hidden">
+            <CardHeader className="shrink-0">
+              <div className="flex items-start justify-between gap-3">
+                <CardTitle>Reorder Status Mix</CardTitle>
+                <select
+                  aria-label="Filter reorder status mix"
+                  className="border-input bg-background rounded-md border px-2 py-1.5 text-xs"
+                  value={reorderMixFilter}
+                  onChange={(event) => setReorderMixFilter(event.target.value)}
+                >
+                  <option value="all">All statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
               <CardDescription>
                 Pending, completed, and cancelled requests
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-h-0 flex-1">
               <ReorderStatusPieChart
                 data={summary?.reorderStatusBreakdown ?? []}
                 loading={loading}
+                statusFilter={reorderMixFilter}
               />
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Top SKU Risks</CardTitle>
+          <Card className="flex h-[390px] flex-col overflow-hidden">
+            <CardHeader className="shrink-0">
+              <div className="flex items-start justify-between gap-3">
+                <CardTitle>Top SKU Risks</CardTitle>
+                <select
+                  aria-label="Filter SKU risks by warehouse"
+                  className="border-input bg-background max-w-32 rounded-md border px-2 py-1.5 text-xs"
+                  value={riskWarehouseFilter}
+                  onChange={(event) =>
+                    setRiskWarehouseFilter(event.target.value)
+                  }
+                >
+                  <option value="all">All warehouses</option>
+                  {warehouseOptions.map(([id, name]) => (
+                    <option key={id} value={id}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <CardDescription>
                 Prioritized by deficit against reorder target
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-h-0 flex-1">
               <RiskItemsPanel
                 items={summary?.topRiskItems ?? []}
                 loading={loading}
+                warehouseFilter={riskWarehouseFilter}
               />
             </CardContent>
           </Card>
         </section>
 
         <section className="grid gap-4 lg:grid-cols-5">
-          <Card className="lg:col-span-3">
+          <Card className="flex h-[560px] flex-col overflow-hidden lg:col-span-3">
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <CardTitle>Inventory by SKU</CardTitle>
@@ -229,7 +282,7 @@ export default function Home() {
               </div>
             </CardHeader>
 
-            <CardContent>
+            <CardContent className="min-h-0 flex-1">
               <InventoryTable
                 inventories={inventories}
                 loading={loading}
@@ -239,49 +292,102 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Stock by Warehouse</CardTitle>
+          <Card className="flex h-[560px] flex-col overflow-hidden lg:col-span-2">
+            <CardHeader className="shrink-0">
+              <div className="flex items-start justify-between gap-3">
+                <CardTitle>Stock by Warehouse</CardTitle>
+                <select
+                  aria-label="Filter stock by warehouse"
+                  className="border-input bg-background max-w-32 rounded-md border px-2 py-1.5 text-xs"
+                  value={stockWarehouseFilter}
+                  onChange={(event) =>
+                    setStockWarehouseFilter(event.target.value)
+                  }
+                >
+                  <option value="all">All warehouses</option>
+                  {warehouseOptions.map(([id, name]) => (
+                    <option key={id} value={id}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <CardDescription>
                 Total available units by warehouse
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-h-0 flex-1">
               <StockPerWarehouseChart
                 data={summary?.stockPerWarehouse ?? []}
                 loading={loading}
+                warehouseFilter={stockWarehouseFilter}
               />
             </CardContent>
           </Card>
         </section>
 
         <section className="grid gap-4 xl:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Warehouse Utilization</CardTitle>
+          <Card className="flex h-[460px] flex-col overflow-hidden">
+            <CardHeader className="shrink-0">
+              <div className="flex items-start justify-between gap-3">
+                <CardTitle>Warehouse Utilization</CardTitle>
+                <select
+                  aria-label="Filter warehouse utilization"
+                  className="border-input bg-background max-w-32 rounded-md border px-2 py-1.5 text-xs"
+                  value={utilizationWarehouseFilter}
+                  onChange={(event) =>
+                    setUtilizationWarehouseFilter(event.target.value)
+                  }
+                >
+                  <option value="all">All warehouses</option>
+                  {warehouseOptions.map(([id, name]) => (
+                    <option key={id} value={id}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <CardDescription>
                 Stacked available vs reserved capacity footprint
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-h-0 flex-1">
               <WarehouseUtilizationChart
                 data={summary?.warehouseUtilization ?? []}
                 loading={loading}
+                warehouseFilter={utilizationWarehouseFilter}
               />
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Reorder Activity</CardTitle>
+          <Card className="flex h-[460px] flex-col overflow-hidden">
+            <CardHeader className="shrink-0">
+              <div className="flex items-start justify-between gap-3">
+                <CardTitle>Recent Reorder Activity</CardTitle>
+                <select
+                  aria-label="Filter recent reorders by status"
+                  className="border-input bg-background rounded-md border px-2 py-1.5 text-xs"
+                  value={recentReorderFilter}
+                  onChange={(event) =>
+                    setRecentReorderFilter(event.target.value)
+                  }
+                >
+                  <option value="all">All statuses</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="CANCELLED">Cancelled</option>
+                  <option value="FAILED">Failed</option>
+                </select>
+              </div>
               <CardDescription>
                 Latest replenishment requests and execution states
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-h-0 flex-1">
               <RecentReorders
                 data={summary?.recentReorders ?? []}
                 loading={loading}
+                statusFilter={recentReorderFilter}
               />
             </CardContent>
           </Card>

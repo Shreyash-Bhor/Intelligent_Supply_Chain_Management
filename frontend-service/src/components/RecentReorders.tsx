@@ -15,7 +15,10 @@ type Reorder = {
 type Props = {
   data: Reorder[];
   loading?: boolean;
+  statusFilter?: string;
 };
+
+const MAX_VISIBLE_ROWS = 50;
 
 const statusStyles: Record<string, string> = {
   PENDING: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
@@ -24,14 +27,24 @@ const statusStyles: Record<string, string> = {
   CANCELLED: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
 };
 
-export function RecentReorders({ data, loading = false }: Props) {
-  const latestReorders = [...data].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
+export function RecentReorders({
+  data,
+  loading = false,
+  statusFilter = "all",
+}: Props) {
+  const latestReorders = [...data]
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
+    .filter(
+      (reorder) => statusFilter === "all" || reorder.status === statusFilter,
+    )
+    .slice(0, MAX_VISIBLE_ROWS);
 
   if (loading) {
     return (
-      <div className="space-y-3">
+      <div className="h-full space-y-3 overflow-hidden">
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={`reorder-skeleton-${index}`}
@@ -57,6 +70,7 @@ export function RecentReorders({ data, loading = false }: Props) {
                 {item.productName}{" "}
                 <span className="text-muted-foreground">({item.sku})</span>
               </p>
+
               <p className="text-muted-foreground text-xs">
                 {item.warehouseName}
               </p>

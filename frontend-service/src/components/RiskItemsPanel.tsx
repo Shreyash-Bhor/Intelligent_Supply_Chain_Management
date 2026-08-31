@@ -11,19 +11,27 @@ type RiskItem = {
   reorderQty: number;
   deficit: number;
 };
-
+const MAX_VISIBLE_ROWS = 50;
 export function RiskItemsPanel({
   items,
   loading = false,
+  warehouseFilter = "all",
 }: {
   items: RiskItem[];
   loading?: boolean;
+  warehouseFilter?: string;
 }) {
-  const latestRisks = [...items].sort((a, b) => b.deficit - a.deficit);
+  const latestRisks = [...items]
+    .filter(
+      (item) =>
+        warehouseFilter === "all" || item.warehouseName === warehouseFilter,
+    )
+    .sort((a, b) => b.deficit - a.deficit)
+    .slice(0, MAX_VISIBLE_ROWS);
 
   if (loading) {
     return (
-      <div className="space-y-3">
+      <div className="h-full space-y-3 overflow-hidden">
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={`risk-skeleton-${index}`}

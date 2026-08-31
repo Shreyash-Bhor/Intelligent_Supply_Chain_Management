@@ -18,25 +18,38 @@ type Props = {
     reservedUnits: number;
   }>;
   loading?: boolean;
+  warehouseFilter?: string;
 };
 
-export function WarehouseUtilizationChart({ data, loading = false }: Props) {
+const MAX_VISIBLE_ROWS = 50;
+
+export function WarehouseUtilizationChart({
+  data,
+  loading = false,
+  warehouseFilter = "all",
+}: Props) {
+  const visibleData = data
+    .filter(
+      (item) =>
+        warehouseFilter === "all" || item.warehouseName === warehouseFilter,
+    )
+    .slice(0, MAX_VISIBLE_ROWS);
   if (loading) {
-    return <div className="bg-muted h-80 w-full animate-pulse rounded-md" />;
+    return <div className="bg-muted h-full w-full animate-pulse rounded-md" />;
   }
 
-  if (!data.length) {
+  if (!visibleData.length) {
     return (
-      <div className="text-muted-foreground flex h-80 items-center justify-center text-sm">
+      <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
         No data available
       </div>
     );
   }
 
   return (
-    <div className="h-80 w-full">
+    <div className="h-full w-full">
       <ResponsiveContainer>
-        <BarChart data={data}>
+        <BarChart data={visibleData}>
           <CartesianGrid
             strokeDasharray="3 3"
             vertical={false}

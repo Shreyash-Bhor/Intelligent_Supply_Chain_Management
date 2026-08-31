@@ -19,6 +19,7 @@ type Props = {
   warehouseFilter?: string;
   statusFilter?: InventoryStatusFilter;
 };
+const MAX_VISIBLE_ROWS = 50;
 
 export function InventoryTable({
   inventories,
@@ -37,10 +38,11 @@ export function InventoryTable({
 
       const isLowStock = inventory.availableQty <= inventory.reorderQty;
       return statusFilter === "low" ? isLowStock : !isLowStock;
-    });
+    })
+    .slice(0, MAX_VISIBLE_ROWS);
 
   return (
-    <div className="scrollbar-hidden h-full overflow-y-auto">
+    <div className="scrollbar-hidden h-full overflow-auto">
       <Table className="w-full">
         <TableHeader>
           <TableRow>
