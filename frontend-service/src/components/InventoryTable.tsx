@@ -42,9 +42,9 @@ export function InventoryTable({
     .slice(0, MAX_VISIBLE_ROWS);
 
   return (
-    <div className="scrollbar-hidden h-full overflow-auto">
-      <Table className="w-full">
-        <TableHeader>
+    <div className="scrollbar-hidden h-full overflow-auto rounded-lg border">
+      <Table className="w-full min-w-[760px]">
+        <TableHeader className="bg-muted/70 sticky top-0 z-10">
           <TableRow>
             <TableHead>Product</TableHead>
             <TableHead>SKU</TableHead>
@@ -84,17 +84,25 @@ export function InventoryTable({
                   className={isLowStock ? "bg-destructive/5" : ""}
                 >
                   <TableCell className="font-medium">
-                    {inventory.product.name}
+                    <div className="max-w-44 truncate">{inventory.product.name}</div>
                   </TableCell>
-                  <TableCell>{inventory.product.sku}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{inventory.product.sku}</TableCell>
                   <TableCell>{inventory.warehouse.name}</TableCell>
                   <TableCell className="text-right">
-                    {inventory.availableQty}
+                    <div className="font-semibold tabular-nums">{inventory.availableQty}</div>
+                    <div className="bg-muted ml-auto mt-1 h-1.5 w-16 overflow-hidden rounded-full">
+                      <div
+                        className={isLowStock ? "h-full bg-rose-500" : "h-full bg-emerald-500"}
+                        style={{
+                          width: `${Math.min(100, Math.round((inventory.availableQty / Math.max(inventory.reorderQty * 2, 1)) * 100))}%`,
+                        }}
+                      />
+                    </div>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right tabular-nums">
                     {inventory.reservedQty}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right tabular-nums">
                     {inventory.reorderQty}
                   </TableCell>
                   <TableCell className="text-right">
