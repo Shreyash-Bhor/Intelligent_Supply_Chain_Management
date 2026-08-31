@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import { History, IndianRupee } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Pagination } from "@/components/Pagination";
 import {
   Table,
   TableBody,
@@ -15,6 +19,10 @@ type PriceHistoryTableProps = {
 };
 
 export function PriceHistoryTable({ history }: PriceHistoryTableProps) {
+  const [page, setPage] = useState(1);
+  const activePage = Math.min(page, Math.max(1, Math.ceil(history.length / 8)));
+  const visibleHistory = history.slice((activePage - 1) * 8, activePage * 8);
+
   return (
     <Card className="mx-auto w-full max-w-3xl">
       <CardHeader>
@@ -36,7 +44,7 @@ export function PriceHistoryTable({ history }: PriceHistoryTableProps) {
             </TableHeader>
             <TableBody>
               {history.length ? (
-                history.map((entry) => (
+                visibleHistory.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell>{entry.changeType}</TableCell>
                     <TableCell>
@@ -76,6 +84,12 @@ export function PriceHistoryTable({ history }: PriceHistoryTableProps) {
             </TableBody>
           </Table>
         </div>
+        <Pagination
+          page={page}
+          totalItems={history.length}
+          pageSize={8}
+          onPageChange={setPage}
+        />
       </CardContent>
     </Card>
   );

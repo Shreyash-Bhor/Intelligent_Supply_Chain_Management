@@ -18,6 +18,7 @@ import {
   type Warehouse,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/Pagination";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -40,6 +41,7 @@ export default function WarehousePage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   const loadWarehouses = useCallback(
     async (filter: StatusFilter = statusFilter) => {
@@ -126,6 +128,11 @@ export default function WarehousePage() {
     );
   }, [warehouses, search]);
 
+  const activePage = Math.min(
+    page,
+    Math.max(1, Math.ceil(filteredWarehouses.length / 10)),
+  );
+
   const updateLocalWarehouse = (
     warehouseId: string,
     key: "name" | "city" | "pincode",
@@ -139,6 +146,7 @@ export default function WarehousePage() {
       ),
     );
   };
+
   useEffect(() => {
     if (!hydrated) return;
     if (authSession?.role === "user") {
@@ -231,112 +239,116 @@ export default function WarehousePage() {
               </TableHeader>
 
               <TableBody>
-                {filteredWarehouses.slice(0, 10).map((warehouse) => {
-                  const editing = editingId === warehouse.id;
+                {filteredWarehouses
+                  .slice((activePage - 1) * 10, activePage * 10)
+                  .map((warehouse) => {
+                    const editing = editingId === warehouse.id;
 
-                  return (
-                    <TableRow key={warehouse.id}>
-                      <TableCell>
-                        {editing ? (
-                          <input
-                            className="border-input bg-background w-full rounded-md border px-2 py-1 text-sm"
-                            value={warehouse.name}
-                            onChange={(event) =>
-                              updateLocalWarehouse(
-                                warehouse.id,
-                                "name",
-                                event.target.value,
-                              )
-                            }
-                          />
-                        ) : (
-                          warehouse.name
-                        )}
-                      </TableCell>
+                    return (
+                      <TableRow key={warehouse.id}>
+                        <TableCell>
+                          {editing ? (
+                            <input
+                              className="border-input bg-background w-full rounded-md border px-2 py-1 text-sm"
+                              value={warehouse.name}
+                              onChange={(event) =>
+                                updateLocalWarehouse(
+                                  warehouse.id,
+                                  "name",
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          ) : (
+                            warehouse.name
+                          )}
+                        </TableCell>
 
-                      <TableCell>
-                        {editing ? (
-                          <input
-                            className="border-input bg-background w-full rounded-md border px-2 py-1 text-sm"
-                            value={warehouse.city}
-                            onChange={(event) =>
-                              updateLocalWarehouse(
-                                warehouse.id,
-                                "city",
-                                event.target.value,
-                              )
-                            }
-                          />
-                        ) : (
-                          warehouse.city
-                        )}
-                      </TableCell>
+                        <TableCell>
+                          {editing ? (
+                            <input
+                              className="border-input bg-background w-full rounded-md border px-2 py-1 text-sm"
+                              value={warehouse.city}
+                              onChange={(event) =>
+                                updateLocalWarehouse(
+                                  warehouse.id,
+                                  "city",
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          ) : (
+                            warehouse.city
+                          )}
+                        </TableCell>
 
-                      <TableCell>
-                        {editing ? (
-                          <input
-                            className="border-input bg-background w-full rounded-md border px-2 py-1 text-sm"
-                            value={warehouse.pincode}
-                            maxLength={6}
-                            onChange={(event) =>
-                              updateLocalWarehouse(
-                                warehouse.id,
-                                "pincode",
-                                event.target.value,
-                              )
-                            }
-                          />
-                        ) : (
-                          warehouse.pincode
-                        )}
-                      </TableCell>
+                        <TableCell>
+                          {editing ? (
+                            <input
+                              className="border-input bg-background w-full rounded-md border px-2 py-1 text-sm"
+                              value={warehouse.pincode}
+                              maxLength={6}
+                              onChange={(event) =>
+                                updateLocalWarehouse(
+                                  warehouse.id,
+                                  "pincode",
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          ) : (
+                            warehouse.pincode
+                          )}
+                        </TableCell>
 
-                      <TableCell>
-                        {warehouse.isActive ? "Active" : "Inactive"}
-                      </TableCell>
+                        <TableCell>
+                          {warehouse.isActive ? "Active" : "Inactive"}
+                        </TableCell>
 
-                      <TableCell className="space-x-2 text-right">
-                        {editing ? (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() => void handleUpdate(warehouse)}
-                              disabled={loading}
-                            >
-                              Save
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setEditingId(null)}
-                              disabled={loading}
-                            >
-                              Cancel
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setEditingId(warehouse.id)}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => void handleToggleStatus(warehouse)}
-                              disabled={loading}
-                            >
-                              {warehouse.isActive ? "Deactivate" : "Activate"}
-                            </Button>
-                          </>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                        <TableCell className="space-x-2 text-right">
+                          {editing ? (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => void handleUpdate(warehouse)}
+                                disabled={loading}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditingId(null)}
+                                disabled={loading}
+                              >
+                                Cancel
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditingId(warehouse.id)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() =>
+                                  void handleToggleStatus(warehouse)
+                                }
+                                disabled={loading}
+                              >
+                                {warehouse.isActive ? "Deactivate" : "Activate"}
+                              </Button>
+                            </>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
 
                 {!filteredWarehouses.length ? (
                   <TableRow>
@@ -353,6 +365,11 @@ export default function WarehousePage() {
               </TableBody>
             </Table>
           </div>
+          <Pagination
+            page={activePage}
+            totalItems={filteredWarehouses.length}
+            onPageChange={setPage}
+          />
         </CardContent>
       </Card>
     </main>
