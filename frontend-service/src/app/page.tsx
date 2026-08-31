@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { InventoryTable } from "@/components/InventoryTable";
 import { RecentReorders } from "@/components/RecentReorders";
 import { RiskItemsPanel } from "@/components/RiskItemsPanel";
@@ -74,6 +75,8 @@ export default function Home() {
     error,
     stats,
     warehouseOptions,
+    lastUpdated,
+    refresh,
     setError,
   } = useDashboardData(managerSession);
 
@@ -123,20 +126,37 @@ export default function Home() {
   return (
     <div className="from-background to-muted/30 min-h-screen bg-gradient-to-b">
       <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8">
-        <section className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Warehouse Manager SaaS Command Center
-            </h1>
-            <p className="text-muted-foreground mt-1 text-sm">
-              15-second backend sync that only updates the dashboard when data
-              changes.
-            </p>
-          </div>
-          <Button variant="outline" onClick={handleLogout}>
+        <DashboardHeader
+          loading={loading || authLoading}
+          lastUpdated={lastUpdated}
+          hasActiveFilters={[
+            warehouseFilter,
+            stockStatusFilter,
+            healthFilter,
+            reorderMixFilter,
+            riskWarehouseFilter,
+            stockWarehouseFilter,
+            utilizationWarehouseFilter,
+            recentReorderFilter,
+          ].some((filter) => filter !== "all")}
+          onRefresh={refresh}
+          onResetFilters={() => {
+            setWarehouseFilter("all");
+            setStockStatusFilter("all");
+            setHealthFilter("all");
+            setReorderMixFilter("all");
+            setRiskWarehouseFilter("all");
+            setStockWarehouseFilter("all");
+            setUtilizationWarehouseFilter("all");
+            setRecentReorderFilter("all");
+          }}
+        />
+
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
             Sign out
           </Button>
-        </section>
+        </div>
 
         {error || authError ? (
           <Card className="border-destructive/40 bg-destructive/5">

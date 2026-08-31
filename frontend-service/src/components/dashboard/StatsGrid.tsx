@@ -22,7 +22,7 @@ export function StatsGrid({ stats, loading }: Props) {
       {stats.map((item) => (
         <Card
           key={item.title}
-          className={item.danger ? "border-destructive/40" : ""}
+          className={`transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${item.danger ? "border-destructive/40 bg-destructive/[0.02]" : ""}`}
         >
           <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-medium">{item.title}</CardTitle>
@@ -31,7 +31,7 @@ export function StatsGrid({ stats, loading }: Props) {
             />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-semibold">
+            <p className="text-3xl font-semibold tabular-nums">
               {loading
                 ? "..."
                 : typeof item.value === "number"
