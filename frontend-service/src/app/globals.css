@@ -149,3 +149,16 @@
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
 }
+
+.dashboard-hero {
+  background:
+    radial-gradient(circle at 88% 18%, color-mix(in oklch, var(--primary) 17%, transparent), transparent 32%),
+    radial-gradient(circle at 68% 100%, color-mix(in oklch, var(--chart-2) 14%, transparent), transparent 36%),
+    linear-gradient(120deg, color-mix(in oklch, var(--primary) 7%, var(--card)), var(--card));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    scroll-behavior: auto !important;
+  }
+}
