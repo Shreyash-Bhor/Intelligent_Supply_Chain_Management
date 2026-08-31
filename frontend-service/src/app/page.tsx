@@ -16,6 +16,7 @@ import { RecentReorders } from "@/components/RecentReorders";
 import { RiskItemsPanel } from "@/components/RiskItemsPanel";
 import { ManagerAccessCard } from "@/components/dashboard/ManagerAccessCard";
 import { StatsGrid } from "@/components/dashboard/StatsGrid";
+import { OperationsPulse } from "@/components/dashboard/OperationsPulse";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useManagerSession } from "@/hooks/useManagerSession";
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -168,6 +169,8 @@ export default function Home() {
         ) : null}
 
         <StatsGrid stats={stats} loading={loading || authLoading} />
+
+        <OperationsPulse summary={summary} loading={loading || authLoading} />
 
         <section className="grid gap-4 xl:grid-cols-3">
           <Card className="flex h-[390px] flex-col overflow-hidden">
