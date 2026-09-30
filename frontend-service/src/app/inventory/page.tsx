@@ -22,6 +22,7 @@ import {
   type Warehouse,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/Pagination";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -60,6 +61,7 @@ export default function InventoryPage() {
   const [stockStatusFilter, setStockStatusFilter] = useState<
     "all" | "healthy" | "low"
   >("all");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(SESSION_KEY);
@@ -214,6 +216,11 @@ export default function InventoryPage() {
     }
   };
 
+  const activePage = Math.min(
+    page,
+    Math.max(1, Math.ceil(filteredInventories.length / 10)),
+  );
+
   const updateLocalInventory = (
     inventoryId: string,
     key: "availableQty" | "reservedQty" | "reorderQty",
@@ -225,6 +232,7 @@ export default function InventoryPage() {
       ),
     );
   };
+
   useEffect(() => {
     if (!hydrated) return;
     if (authSession?.role === "user") {
@@ -411,150 +419,160 @@ export default function InventoryPage() {
               </TableHeader>
 
               <TableBody>
-                {filteredInventories.slice(0, 10).map((inventory) => {
-                  const isLow = inventory.availableQty <= inventory.reorderQty;
-                  const currentQty = requestQtyByInventory[inventory.id] ?? "0";
-                  const editing = editingId === inventory.id;
+                {filteredInventories
+                  .slice((activePage - 1) * 10, activePage * 10)
+                  .map((inventory) => {
+                    const isLow =
+                      inventory.availableQty <= inventory.reorderQty;
+                    const currentQty =
+                      requestQtyByInventory[inventory.id] ?? "0";
+                    const editing = editingId === inventory.id;
 
-                  return (
-                    <TableRow key={inventory.id}>
-                      <TableCell>
-                        <p className="font-medium">{inventory.product.name}</p>
-                        <p className="text-muted-foreground text-xs">
-                          {inventory.product.sku}
-                        </p>
-                      </TableCell>
-                      <TableCell>{inventory.warehouse.name}</TableCell>
-                      <TableCell>
-                        {editing ? (
-                          <input
-                            type="number"
-                            min={0}
-                            className="border-input bg-background w-24 rounded-md border px-2 py-1 text-sm"
-                            value={inventory.availableQty}
-                            onChange={(event) =>
-                              updateLocalInventory(
-                                inventory.id,
-                                "availableQty",
-                                Number(event.target.value),
-                              )
-                            }
-                          />
-                        ) : (
-                          inventory.availableQty
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editing ? (
-                          <input
-                            type="number"
-                            min={0}
-                            className="border-input bg-background w-24 rounded-md border px-2 py-1 text-sm"
-                            value={inventory.reservedQty}
-                            onChange={(event) =>
-                              updateLocalInventory(
-                                inventory.id,
-                                "reservedQty",
-                                Number(event.target.value),
-                              )
-                            }
-                          />
-                        ) : (
-                          inventory.reservedQty
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editing ? (
-                          <input
-                            type="number"
-                            min={0}
-                            className="border-input bg-background w-24 rounded-md border px-2 py-1 text-sm"
-                            value={inventory.reorderQty}
-                            onChange={(event) =>
-                              updateLocalInventory(
-                                inventory.id,
-                                "reorderQty",
-                                Number(event.target.value),
-                              )
-                            }
-                          />
-                        ) : (
-                          inventory.reorderQty
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            inventory.isReorderPending ? "secondary" : "outline"
-                          }
-                        >
-                          {inventory.isReorderPending
-                            ? "Reorder Pending"
-                            : isLow
-                              ? "Low Stock"
-                              : "Healthy"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
+                    return (
+                      <TableRow key={inventory.id}>
+                        <TableCell>
+                          <p className="font-medium">
+                            {inventory.product.name}
+                          </p>
+                          <p className="text-muted-foreground text-xs">
+                            {inventory.product.sku}
+                          </p>
+                        </TableCell>
+                        <TableCell>{inventory.warehouse.name}</TableCell>
+                        <TableCell>
                           {editing ? (
-                            <>
-                              <Button
-                                size="sm"
-                                onClick={() =>
-                                  void handleInventoryUpdate(inventory)
-                                }
-                                disabled={loading}
-                              >
-                                Save
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setEditingId(null)}
-                                disabled={loading}
-                              >
-                                Cancel
-                              </Button>
-                            </>
+                            <input
+                              type="number"
+                              min={0}
+                              className="border-input bg-background w-24 rounded-md border px-2 py-1 text-sm"
+                              value={inventory.availableQty}
+                              onChange={(event) =>
+                                updateLocalInventory(
+                                  inventory.id,
+                                  "availableQty",
+                                  Number(event.target.value),
+                                )
+                              }
+                            />
                           ) : (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setEditingId(inventory.id)}
-                                disabled={loading}
-                              >
-                                Edit
-                              </Button>
-                              <input
-                                type="number"
-                                min={1}
-                                className="border-input bg-background w-24 rounded-md border px-2 py-1 text-sm"
-                                value={currentQty}
-                                onChange={(event) =>
-                                  setRequestQtyByInventory((prev) => ({
-                                    ...prev,
-                                    [inventory.id]: event.target.value,
-                                  }))
-                                }
-                              />
-                              <Button
-                                size="sm"
-                                onClick={() =>
-                                  void handleCreateReorder(inventory.id)
-                                }
-                                disabled={loading || inventory.isReorderPending}
-                              >
-                                Request
-                              </Button>
-                            </>
+                            inventory.availableQty
                           )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                        </TableCell>
+                        <TableCell>
+                          {editing ? (
+                            <input
+                              type="number"
+                              min={0}
+                              className="border-input bg-background w-24 rounded-md border px-2 py-1 text-sm"
+                              value={inventory.reservedQty}
+                              onChange={(event) =>
+                                updateLocalInventory(
+                                  inventory.id,
+                                  "reservedQty",
+                                  Number(event.target.value),
+                                )
+                              }
+                            />
+                          ) : (
+                            inventory.reservedQty
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editing ? (
+                            <input
+                              type="number"
+                              min={0}
+                              className="border-input bg-background w-24 rounded-md border px-2 py-1 text-sm"
+                              value={inventory.reorderQty}
+                              onChange={(event) =>
+                                updateLocalInventory(
+                                  inventory.id,
+                                  "reorderQty",
+                                  Number(event.target.value),
+                                )
+                              }
+                            />
+                          ) : (
+                            inventory.reorderQty
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              inventory.isReorderPending
+                                ? "secondary"
+                                : "outline"
+                            }
+                          >
+                            {inventory.isReorderPending
+                              ? "Reorder Pending"
+                              : isLow
+                                ? "Low Stock"
+                                : "Healthy"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {editing ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() =>
+                                    void handleInventoryUpdate(inventory)
+                                  }
+                                  disabled={loading}
+                                >
+                                  Save
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setEditingId(null)}
+                                  disabled={loading}
+                                >
+                                  Cancel
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setEditingId(inventory.id)}
+                                  disabled={loading}
+                                >
+                                  Edit
+                                </Button>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  className="border-input bg-background w-24 rounded-md border px-2 py-1 text-sm"
+                                  value={currentQty}
+                                  onChange={(event) =>
+                                    setRequestQtyByInventory((prev) => ({
+                                      ...prev,
+                                      [inventory.id]: event.target.value,
+                                    }))
+                                  }
+                                />
+                                <Button
+                                  size="sm"
+                                  onClick={() =>
+                                    void handleCreateReorder(inventory.id)
+                                  }
+                                  disabled={
+                                    loading || inventory.isReorderPending
+                                  }
+                                >
+                                  Request
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
 
                 {!filteredInventories.length ? (
                   <TableRow>
@@ -571,6 +589,11 @@ export default function InventoryPage() {
               </TableBody>
             </Table>
           </div>
+          <Pagination
+            page={activePage}
+            totalItems={filteredInventories.length}
+            onPageChange={setPage}
+          />
         </CardContent>
       </Card>
     </main>

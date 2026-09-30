@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/Pagination";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -42,6 +43,7 @@ export default function ReorderPage() {
   const [historyStatusFilter, setHistoryStatusFilter] = useState<
     "all" | "COMPLETED" | "CANCELLED"
   >("all");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(SESSION_KEY);
@@ -151,6 +153,12 @@ export default function ReorderPage() {
       historyStatusFilter,
     ],
   );
+
+  const activePage = Math.min(
+    page,
+    Math.max(1, Math.ceil(filteredReorders.length / 10)),
+  );
+
   useEffect(() => {
     if (!hydrated) return;
     if (authSession?.role === "user") {
@@ -272,61 +280,65 @@ export default function ReorderPage() {
               </TableHeader>
 
               <TableBody>
-                {filteredReorders.map((reorder) => {
-                  const inventory = inventoryLookup[reorder.inventoryId];
+                {filteredReorders
+                  .slice((activePage - 1) * 10, activePage * 10)
+                  .map((reorder) => {
+                    const inventory = inventoryLookup[reorder.inventoryId];
 
-                  return (
-                    <TableRow key={reorder.id}>
-                      <TableCell>
-                        {inventory ? (
-                          <>
-                            <p className="font-medium">
-                              {inventory.product.name}
-                            </p>
-                            <p className="text-muted-foreground text-xs">
-                              {inventory.product.sku}
-                            </p>
-                          </>
-                        ) : (
-                          "Unknown item"
-                        )}
-                      </TableCell>
-
-                      <TableCell>{inventory?.warehouse.name ?? "-"}</TableCell>
-
-                      <TableCell>{reorder.requestedQty}</TableCell>
-
-                      <TableCell>
-                        <Badge variant="secondary">{reorder.status}</Badge>
-                      </TableCell>
-
-                      {reorderView === "current" ? (
-                        <TableCell className="space-x-2 text-right">
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              void processReorder(reorder.id, "COMPLETED")
-                            }
-                            disabled={loading}
-                          >
-                            Complete
-                          </Button>
-
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              void processReorder(reorder.id, "CANCELLED")
-                            }
-                            disabled={loading}
-                          >
-                            Cancel
-                          </Button>
+                    return (
+                      <TableRow key={reorder.id}>
+                        <TableCell>
+                          {inventory ? (
+                            <>
+                              <p className="font-medium">
+                                {inventory.product.name}
+                              </p>
+                              <p className="text-muted-foreground text-xs">
+                                {inventory.product.sku}
+                              </p>
+                            </>
+                          ) : (
+                            "Unknown item"
+                          )}
                         </TableCell>
-                      ) : null}
-                    </TableRow>
-                  );
-                })}
+
+                        <TableCell>
+                          {inventory?.warehouse.name ?? "-"}
+                        </TableCell>
+
+                        <TableCell>{reorder.requestedQty}</TableCell>
+
+                        <TableCell>
+                          <Badge variant="secondary">{reorder.status}</Badge>
+                        </TableCell>
+
+                        {reorderView === "current" ? (
+                          <TableCell className="space-x-2 text-right">
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                void processReorder(reorder.id, "COMPLETED")
+                              }
+                              disabled={loading}
+                            >
+                              Complete
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                void processReorder(reorder.id, "CANCELLED")
+                              }
+                              disabled={loading}
+                            >
+                              Cancel
+                            </Button>
+                          </TableCell>
+                        ) : null}
+                      </TableRow>
+                    );
+                  })}
 
                 {!filteredReorders.length ? (
                   <TableRow>
@@ -345,6 +357,11 @@ export default function ReorderPage() {
               </TableBody>
             </Table>
           </div>
+          <Pagination
+            page={activePage}
+            totalItems={filteredReorders.length}
+            onPageChange={setPage}
+          />
         </CardContent>
       </Card>
     </main>

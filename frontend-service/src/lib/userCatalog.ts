@@ -11,7 +11,7 @@ export function buildProductDescription(product: UserInventoryProduct) {
     return product.description.trim();
   }
 
-  return `Premium ${product.name} designed for dependable quality and everyday performance.`;
+  return "Product details are not available.";
 }
 
 export function formatCurrency(price: number | null, currency: string) {

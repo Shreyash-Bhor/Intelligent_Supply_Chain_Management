@@ -27,7 +27,9 @@ export function useDashboardData(managerSession: ManagerSession | null) {
   const [inventories, setInventories] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const latestSnapshotRef = useRef<string>("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!managerSession) {
@@ -35,6 +37,7 @@ export function useDashboardData(managerSession: ManagerSession | null) {
       setSummary(null);
       setInventories([]);
       setError(null);
+      setLastUpdated(null);
       setLoading(false);
       return;
     }
@@ -64,6 +67,7 @@ export function useDashboardData(managerSession: ManagerSession | null) {
         }
 
         setError(null);
+        setLastUpdated(new Date());
       } catch (err) {
         if (!mounted) return;
 
@@ -84,7 +88,7 @@ export function useDashboardData(managerSession: ManagerSession | null) {
       mounted = false;
       clearInterval(pollId);
     };
-  }, [managerSession]);
+  }, [managerSession, refreshKey]);
 
   const stats = useMemo(
     () => [
@@ -135,11 +139,17 @@ export function useDashboardData(managerSession: ManagerSession | null) {
     );
   }, [inventories]);
 
+  const refresh = () => {
+    setRefreshKey((current) => current + 1);
+  };
+
   return {
     summary,
     inventories,
     loading,
     error,
+    lastUpdated,
+    refresh,
     stats,
     warehouseOptions,
     setError,

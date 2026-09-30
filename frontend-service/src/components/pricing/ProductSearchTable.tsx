@@ -1,6 +1,10 @@
+"use client";
+
+import { useState } from "react";
 import { Search, ShoppingBag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/Pagination";
 import {
   Table,
   TableBody,
@@ -26,6 +30,13 @@ export function ProductSearchTable({
   selectedProductId,
   onSelectProduct,
 }: ProductSearchTableProps) {
+  const [page, setPage] = useState(1);
+  const activePage = Math.min(
+    page,
+    Math.max(1, Math.ceil(products.length / 8)),
+  );
+  const visibleProducts = products.slice((activePage - 1) * 8, activePage * 8);
+
   return (
     <Card className="mx-auto w-full max-w-3xl">
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -54,7 +65,7 @@ export function ProductSearchTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.map((product) => {
+              {visibleProducts.map((product) => {
                 const isSelected = selectedProductId === product.id;
                 return (
                   <TableRow key={product.id}>
@@ -77,6 +88,12 @@ export function ProductSearchTable({
             </TableBody>
           </Table>
         </div>
+        <Pagination
+          page={page}
+          totalItems={products.length}
+          pageSize={8}
+          onPageChange={setPage}
+        />
       </CardContent>
     </Card>
   );
