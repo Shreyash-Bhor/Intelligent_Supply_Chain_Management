@@ -38,4 +38,8 @@ class Settings:
     #Agent
     maxAgentIterations: int = int(os.getenv("MAX_AGENT_ITERATIONS", "5"))
 
+    #Backend Client
+    inventoryServiceUrl: str = getRequiredEnv("INVENTORY_SERVICE_URL")
+    pricingServiceUrl: str = getRequiredEnv("PRICING_SERVICE_URL")
+
 settings = Settings()

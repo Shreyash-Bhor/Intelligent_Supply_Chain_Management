@@ -3,11 +3,11 @@ import uuid
 
 from qdrant_client.models import PointStruct
 
-from config import settings
-from documentLoader import loadDocuments
-from chunker import createChunks
-from embeddings import generateEmbeddings
-from vectorStore import createCollection, getClient
+from app.config import settings
+from app.documentLoader import loadDocuments
+from app.chunker import createChunks
+from app.embeddings import generateEmbeddings
+from app.vectorStore import createCollection, getClient
 
 def ingest():
     createCollection()

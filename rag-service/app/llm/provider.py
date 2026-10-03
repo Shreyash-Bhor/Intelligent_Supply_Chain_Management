@@ -1,7 +1,7 @@
 from openai import AsyncOpenAI
 
-from config import settings
-from llm.base import LLMProvider
+from app.config import settings
+from app.llm.base import LLMProvider
 
 class GroqProvider(LLMProvider):
     def __init__(self, model: str | None = None, ):
