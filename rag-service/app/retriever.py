@@ -1,6 +1,6 @@
-from config import settings
-from embeddings import generateEmbedding
-from vectorStore import getClient
+from app.config import settings
+from app.embeddings import generateEmbedding
+from app.vectorStore import getClient
 
 def retrieve(query: str,topK: int | None = None,)-> list[dict]:
     if not query or not query.strip():

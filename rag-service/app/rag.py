@@ -1,5 +1,5 @@
-from llm.factory import getLLM
-from retriever import retrieve
+from app.llm.factory import getLLM
+from app.retriever import retrieve
 
 SYSTEM_INSTRUCTION = """
 

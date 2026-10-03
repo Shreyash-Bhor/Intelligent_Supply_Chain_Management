@@ -1,6 +1,6 @@
-from config import settings
-from llm.base import LLMProvider
-from llm.provider import GroqProvider
+from app.config import settings
+from app.llm.base import LLMProvider
+from app.llm.provider import GroqProvider
 
 def getLLM() -> LLMProvider:
     if settings.llmProvider == "groq":

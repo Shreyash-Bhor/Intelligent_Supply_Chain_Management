@@ -3,7 +3,7 @@ from functools import lru_cache
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 
-from config import settings
+from app.config import settings
 
 @lru_cache(maxsize=1)
 def getClient() -> QdrantClient:
