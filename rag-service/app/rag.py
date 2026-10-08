@@ -11,12 +11,18 @@ Rules:
 - Keep the answer short and factual.
 - Do not assume any information related to products and their description, use only provided information.
 - Always give a suggestion or recommendation related to the user's original query to keep engagement.
+- Use the minimum number of tool calls necessary.
+- Once you have enough information to answer, stop using tools.
+- Do not call a tool again for information already obtained.
 
 The goal is to answer the user's query using information from the knowledge base. Be short and to the point.
 """.strip()
 
 def buildInput( query: str, contexts: list[dict]) -> str:
-    contextText = "\n\n".join(f"Source: {item['fileName']}\n{item['text']}" for item in contexts)
+    contextText = "\n\n".join(
+        item["text"]
+        for item in contexts
+    )
 
     return f"""
 Context:{contextText}
@@ -27,7 +33,7 @@ async def answer(query:str) -> str:
     if not query or not query.strip():
         raise ValueError("Query must not be empty.")
 
-    contexts = retrieve( query= query, topK=5)
+    contexts = retrieve( query= query, topK=3)
 
     llm = getLLM()
 

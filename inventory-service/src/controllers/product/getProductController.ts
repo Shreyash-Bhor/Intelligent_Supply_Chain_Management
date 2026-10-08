@@ -168,3 +168,59 @@ export const getCatalogProducts = asyncHandler(
     });
   },
 );
+export const searchProducts = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { query, category } = req.query;
+
+    const products = await prisma.product.findMany({
+      where: {
+        isActive: true,
+
+        ...(query
+          ? {
+              OR: [
+                {
+                  name: {
+                    contains: String(query),
+                    mode: "insensitive",
+                  },
+                },
+                {
+                  sku: {
+                    contains: String(query),
+                    mode: "insensitive",
+                  },
+                },
+              ],
+            }
+          : {}),
+
+        ...(category
+          ? {
+              category: String(category) as any,
+            }
+          : {}),
+      },
+
+      select: {
+        id: true,
+        name: true,
+        sku: true,
+        category: true,
+        imageUrl: true,
+        isActive: true,
+      },
+
+      orderBy: {
+        name: "asc",
+      },
+      take: 3,
+    });
+
+    return res.status(200).json({
+      status: "success",
+      message: "Products searched successfully",
+      data: products,
+    });
+  },
+);

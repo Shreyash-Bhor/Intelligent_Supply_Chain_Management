@@ -73,21 +73,21 @@ async def runAgent(
 
     llm = getLLM()
 
-    inputItems = [
-        {
-            "role": "user",
-            "content": query.strip(),
-        }
-    ]
+    userInput = {
+        "role": "user",
+        "content": query.strip(),
+    }
 
-    response = await llm.client.responses.create(
-        model=llm.model,
-        instructions=AGENT_INSTRUCTIONS,
-        input=inputItems,
-        tools=toolDefinitions,
-    )
+    inputItems = [userInput]
 
     for _ in range(settings.maxAgentIterations):
+        response = await llm.client.responses.create(
+            model=llm.model,
+            instructions=AGENT_INSTRUCTIONS,
+            input=inputItems,
+            tools=toolDefinitions,
+        )
+
         functionCalls = [
             item
             for item in response.output
@@ -104,8 +104,8 @@ async def runAgent(
 
             return finalAnswer.strip()
 
-        # Preserve the model's tool-call output.
-        inputItems.extend(response.output)
+        # Keep only the current model output + its tool results.
+        nextInput = list(response.output)
 
         for call in functionCalls:
             tool = toolMap.get(call.name)
@@ -125,20 +125,18 @@ async def runAgent(
                     **arguments,
                 )
 
-            inputItems.append({
+            nextInput.append({
                 "type": "function_call_output",
                 "call_id": call.call_id,
                 "output": json.dumps(result),
             })
 
-        # Groq Responses API is stateless, so the complete
-        # conversation/tool state is sent again.
-        response = await llm.client.responses.create(
-            model=llm.model,
-            instructions=AGENT_INSTRUCTIONS,
-            input=inputItems,
-            tools=toolDefinitions,
-        )
+        # Next request contains:
+        # original user query + current tool round
+        inputItems = [
+            userInput,
+            *nextInput,
+        ]
 
     raise RuntimeError(
         "Agent exceeded the maximum number of tool iterations."

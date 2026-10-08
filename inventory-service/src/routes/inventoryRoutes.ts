@@ -9,12 +9,14 @@ import {
   updateInventory,
   updateInventoryStatus,
 } from "../controllers/inventory/updateInventoryController";
+import { getProductAvailability } from "../controllers/inventory/getInventoryController";
 
 const router = Router();
 
 // Inventory CRUD
 router.post("/", createInventory);
 router.get("/", getAllInventory);
+router.get("/product/:productId", getProductAvailability);
 router.get("/:inventoryId", getInventoryDetails);
 router.patch("/:inventoryId", updateInventory);
 
