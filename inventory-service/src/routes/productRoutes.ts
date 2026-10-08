@@ -6,6 +6,7 @@ import {
   getCatalogProducts,
   getProduct,
   getUserDashboardProducts,
+  searchProducts,
 } from "../controllers/product/getProductController";
 import { requireCustomerAccess } from "../middleware/customerAccess";
 import {
@@ -18,6 +19,7 @@ router.post("/", createProduct);
 
 router.get("/products", getAllProducts);
 router.get("/catalog", getCatalogProducts);
+router.get("/search", searchProducts);
 router.get("/user-dashboard", requireCustomerAccess, getUserDashboardProducts);
 router.get("/:productId", getProduct);
 
