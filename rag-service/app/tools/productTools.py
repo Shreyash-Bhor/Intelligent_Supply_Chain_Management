@@ -85,7 +85,6 @@ async def searchProducts(
         await inventoryClient.close()
         await pricingClient.close()
 
-
 async def getProductDetails(
     accessToken: str | None = None,
     productId: str = "",
@@ -101,12 +100,22 @@ async def getProductDetails(
     )
 
     try:
-        return await client.get(
+        response = await client.get(
             f"/api/product/{productId.strip()}"
         )
+
+        data = response.get("data", {})
+
+        return {
+            "id": data.get("id"),
+            "name": data.get("name"),
+            "sku": data.get("sku"),
+            "category": data.get("category"),
+            "imageUrl": data.get("imageUrl"),
+        }
+
     finally:
         await client.close()
-
 
 async def getProductAvailability(
     accessToken: str | None = None,
