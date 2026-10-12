@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { RagChatbot } from "@/components/RagChatbot";
 
 export const metadata: Metadata = {
   title: "Intelligent Supply Chain Dashboard",
@@ -25,6 +26,7 @@ export default function RootLayout({
         >
           <Navbar />
           {children}
+          <RagChatbot />
         </ThemeProvider>
       </body>
     </html>

@@ -26,8 +26,13 @@ export default function UserDashboardPage() {
   const [products, setProducts] = useState<UserInventoryProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [productId, setProductId] = useState<string | null>(null);
   const { products: catalogProducts, loadingPrices } =
     useUserProductCatalog(products);
+
+  useEffect(() => {
+    setProductId(new URLSearchParams(window.location.search).get("product"));
+  }, []);
 
   useEffect(() => {
     if (!hydrated || session?.role !== "user") return;
@@ -137,6 +142,7 @@ export default function UserDashboardPage() {
                 products={catalogProducts}
                 loadingPrices={loadingPrices}
                 customerToken={session.token ?? ""}
+                focusProductId={productId}
               />
             </div>
           )}

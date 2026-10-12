@@ -20,6 +20,6 @@
     "zod": "^4.3.2"
   },
   "scripts": {
-    "dev": "nodemon src/index.ts"
+    "dev": "nodemon --exec ts-node src/index.ts"
   }
 }

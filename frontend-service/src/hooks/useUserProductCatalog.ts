@@ -24,7 +24,7 @@ function toCatalogProduct(
     ...product,
     description: buildProductDescription(product),
     price: price?.price ?? null,
-    currency: price?.currency ?? "USD",
+    currency: price?.currency ?? "INR",
   };
 }
 
