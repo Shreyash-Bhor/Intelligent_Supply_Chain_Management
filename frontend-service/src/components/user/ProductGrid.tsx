@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, Sparkles } from "lucide-react";
 import type { UserCatalogProduct } from "@/lib/userCatalog";
 import { Pagination } from "@/components/Pagination";
@@ -13,17 +13,20 @@ type ProductGridProps = {
   products: UserCatalogProduct[];
   loadingPrices: boolean;
   customerToken: string;
+  focusProductId?: string | null;
 };
 
 export function ProductGrid({
   products,
   loadingPrices,
   customerToken,
+  focusProductId,
 }: ProductGridProps) {
   const [selected, setSelected] = useState<UserCatalogProduct | null>(null);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"name" | "stock">("name");
   const [page, setPage] = useState(1);
+  const [focused, setFocused] = useState<string | null>(null);
   const filteredProducts = useMemo(() => {
     const term = query.trim().toLowerCase();
     return products
@@ -34,6 +37,17 @@ export function ProductGrid({
           : a.name.localeCompare(b.name),
       );
   }, [products, query, sort]);
+
+  useEffect(() => {
+    if (!focusProductId) return;
+    const targetIndex = filteredProducts.findIndex((product) => product.id === focusProductId);
+    if (targetIndex < 0) return;
+    setPage(Math.floor(targetIndex / PAGE_SIZE) + 1);
+    setFocused(focusProductId);
+    setSelected(filteredProducts[targetIndex]);
+    const timer = window.setTimeout(() => document.getElementById(`product-${focusProductId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+    return () => window.clearTimeout(timer);
+  }, [focusProductId, filteredProducts]);
 
   if (!products.length) {
     return (
@@ -94,6 +108,8 @@ export function ProductGrid({
             <ProductCard
               key={product.id}
               {...product}
+              id={`product-${product.id}`}
+              className={focused === product.id ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : undefined}
               onClick={() => setSelected(product)}
             />
           ))}

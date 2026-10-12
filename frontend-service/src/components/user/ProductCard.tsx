@@ -2,6 +2,7 @@ import Image from "next/image";
 import { BadgeDollarSign, FileText, ShoppingBag } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/userCatalog";
+import { cn } from "@/lib/utils";
 
 type ProductCardProps = {
   name: string;
@@ -11,6 +12,8 @@ type ProductCardProps = {
   imageUrl?: string | null;
   availableQty: number;
   onClick: () => void;
+  id?: string;
+  className?: string;
 };
 
 export function ProductCard({
@@ -21,15 +24,18 @@ export function ProductCard({
   imageUrl,
   availableQty,
   onClick,
+  id,
+  className,
 }: ProductCardProps) {
   return (
     <button
       type="button"
+      id={id}
       onClick={onClick}
       className="text-left"
       aria-label={`Order ${name}`}
     >
-      <Card className="group h-full overflow-hidden border-border/70 bg-gradient-to-br from-background to-muted/30 py-0 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg">
+      <Card className={cn("group h-100 overflow-hidden border-border/70 bg-gradient-to-br from-background to-muted/30 py-0 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg", className)}>
         <div className="bg-muted/20 relative aspect-square w-full overflow-hidden">
           {imageUrl ? (
             <Image
