@@ -1,6 +1,8 @@
 import prisma from "../../lib/prisma";
 import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { Category } from "@prisma/client";
+import { getCurrentProductPrices } from "../../services/pricingService";
 type UserDashboardProduct = {
   id: string;
   name: string;
@@ -72,6 +74,9 @@ export const getUserDashboardProducts = asyncHandler(
       select: {
         id: true,
         name: true,
+        sku: true,
+        category: true,
+        createdAt: true,
         imageUrl: true,
         inventories: {
           where: { warehouse: { isActive: true } },
@@ -92,6 +97,9 @@ export const getUserDashboardProducts = asyncHandler(
           inventories: Array<{ availableQty: number }>;
           id: string;
           name: string;
+          sku: string;
+          category: Category;
+          createdAt: Date;
           imageUrl: string | null;
         }) => ({
           ...product,
@@ -105,6 +113,61 @@ export const getUserDashboardProducts = asyncHandler(
     });
   },
 );
+
+export const getPagedUserCatalog = asyncHandler(async (req: Request, res: Response) => {
+  const page = Number(req.query.page ?? 1);
+  const pageSize = Number(req.query.pageSize ?? 12);
+  const query = typeof req.query.query === "string" ? req.query.query.trim() : "";
+  const rawCategory = typeof req.query.category === "string" ? req.query.category : "";
+  const category = Object.values(Category).find((value) => value.toLowerCase() === rawCategory.toLowerCase());
+  const inStock = req.query.inStock === "true";
+  const sort = req.query.sort ?? "name";
+  if (!Number.isInteger(page) || page < 1 || page > 100000 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100 || query.length > 200 || (req.query.inStock !== undefined && !["true", "false"].includes(String(req.query.inStock))) || (rawCategory && !category) || !["name", "newest", "price-asc", "price-desc", "stock"].includes(String(sort))) {
+    return res.status(400).json({ status: "error", message: "Invalid catalog query parameters" });
+  }
+  const where: any = {
+    isActive: true,
+    ...(category ? { category } : {}),
+    ...(query ? { OR: [{ name: { contains: query, mode: "insensitive" } }, { sku: { contains: query, mode: "insensitive" } }] } : {}),
+    inventories: { some: { warehouse: { isActive: true }, ...(inStock ? { availableQty: { gt: 0 } } : {}) } },
+  };
+  const total = await prisma.product.count({ where });
+  let orderedIds: string[] | undefined;
+  if (sort === "price-asc" || sort === "price-desc") {
+    const all = await prisma.product.findMany({ where, select: { id: true } });
+    const priceMap = new Map<string, { price: string; currency: string }>();
+    for (let offset = 0; offset < all.length; offset += 100) {
+      const prices = await getCurrentProductPrices(all.slice(offset, offset + 100).map((item) => item.id));
+      prices.forEach((value, id) => priceMap.set(id, value));
+    }
+    orderedIds = all.sort((a, b) => {
+      const left = priceMap.get(a.id)?.price;
+      const right = priceMap.get(b.id)?.price;
+      const diff = left == null ? (right == null ? 0 : 1) : right == null ? -1 : Math.round(Number(left) * 100) - Math.round(Number(right) * 100);
+      return (sort === "price-asc" ? diff : -diff) || a.id.localeCompare(b.id);
+    }).map((item) => item.id);
+  } else if (sort === "stock") {
+    const all = await prisma.product.findMany({ where, select: { id: true } });
+    const stock = await prisma.inventory.groupBy({ by: ["productId"], where: { productId: { in: all.map((item) => item.id) }, warehouse: { isActive: true } }, _sum: { availableQty: true } });
+    const totals = new Map(stock.map((item) => [item.productId, item._sum.availableQty ?? 0]));
+    orderedIds = all.sort((a, b) => (totals.get(b.id) ?? 0) - (totals.get(a.id) ?? 0) || a.id.localeCompare(b.id)).map((item) => item.id);
+  }
+  const idsForPage = orderedIds?.slice((page - 1) * pageSize, page * pageSize);
+  const products = await prisma.product.findMany({
+    where: { ...where, ...(idsForPage ? { id: { in: idsForPage } } : {}) },
+    select: { id: true, name: true, sku: true, category: true, createdAt: true, imageUrl: true, inventories: { where: { warehouse: { isActive: true } }, select: { availableQty: true, reservedQty: true, warehouse: { select: { name: true } } } } },
+    orderBy: sort === "newest" ? [{ createdAt: "desc" }, { id: "asc" }] : sort === "stock" ? [{ id: "asc" }] : [{ name: "asc" }, { id: "asc" }],
+    ...(idsForPage ? {} : { skip: (page - 1) * pageSize, take: pageSize }),
+  });
+  const byId = new Map(products.map((product) => [product.id, product]));
+  const data = (idsForPage ? idsForPage.map((id) => byId.get(id)).filter(Boolean) : products).map((product: any) => ({
+    id: product.id, name: product.name, sku: product.sku, category: product.category, createdAt: product.createdAt, imageUrl: product.imageUrl,
+    availableQty: product.inventories.reduce((sum: number, item: any) => sum + item.availableQty, 0),
+    reservedQty: product.inventories.reduce((sum: number, item: any) => sum + item.reservedQty, 0),
+    warehouses: [...new Set(product.inventories.map((item: any) => item.warehouse.name))],
+  }));
+  return res.status(200).json({ status: "success", data: { data, pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) } } });
+});
 
 export const getCatalogProducts = asyncHandler(
   async (_req: Request, res: Response) => {
@@ -172,22 +235,42 @@ export const searchProducts = asyncHandler(
   async (req: Request, res: Response) => {
     const { query, category } = req.query;
 
+    // Validate and normalize category
+    const categoryValue = category
+      ? String(category).trim().toLowerCase()
+      : undefined;
+
+    const validCategory = categoryValue
+      ? Object.values(Category).find(
+          (value) => value.toLowerCase() === categoryValue,
+        )
+      : undefined;
+
+    if (categoryValue && !validCategory) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid product category",
+      });
+    }
+
+    const searchQuery = typeof query === "string" ? query.trim() : undefined;
+
     const products = await prisma.product.findMany({
       where: {
         isActive: true,
 
-        ...(query
+        ...(searchQuery
           ? {
               OR: [
                 {
                   name: {
-                    contains: String(query),
+                    contains: searchQuery,
                     mode: "insensitive",
                   },
                 },
                 {
                   sku: {
-                    contains: String(query),
+                    contains: searchQuery,
                     mode: "insensitive",
                   },
                 },
@@ -195,11 +278,7 @@ export const searchProducts = asyncHandler(
             }
           : {}),
 
-        ...(category
-          ? {
-              category: String(category) as any,
-            }
-          : {}),
+        ...(validCategory ? { category: validCategory } : {}),
       },
 
       select: {
@@ -214,6 +293,7 @@ export const searchProducts = asyncHandler(
       orderBy: {
         name: "asc",
       },
+
       take: 3,
     });
 

@@ -2,23 +2,23 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
-  ArrowUp, Check, ChevronRight, LoaderCircle, MessageCircle, PackageSearch,
+  ArrowUp, Check, ChevronRight, LoaderCircle, PackageSearch,
   RotateCcw, Sparkles, X,
 } from "lucide-react";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { fetchUserDashboardProducts, type UserInventoryProduct } from "@/lib/api";
+import { AssistantAnswer } from "@/components/chat/AssistantAnswer";
 
 type Message = { id: string; role: "assistant" | "user"; text: string };
 const STARTER_QUESTIONS = ["Find something for my home", "What’s in stock?", "How does ordering work?"];
 
 export function RagChatbot() {
-  const pathname = usePathname();
   const { session } = useAuthSession();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const conversationId = useRef(crypto.randomUUID());
   const [products, setProducts] = useState<UserInventoryProduct[]>([]);
   const [messages, setMessages] = useState<Message[]>([
     { id: "welcome", role: "assistant", text: "Hi there! I’m SupplySync’s shopping assistant. Tell me what you’re looking for, or ask me about products, stock, and ordering." },
@@ -52,7 +52,7 @@ export function RagChatbot() {
           "Content-Type": "application/json",
           ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}),
         },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query, conversationId: conversationId.current }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message ?? payload.detail ?? "I couldn’t get an answer just now.");
@@ -63,15 +63,6 @@ export function RagChatbot() {
       const text = error instanceof Error ? error.message : "The assistant is unavailable. Please try again.";
       setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", text }]);
     } finally { setBusy(false); }
-  }
-
-  function renderAnswer(text: string) {
-    if (session?.role !== "user" || !productMatches.length) return text;
-    const pattern = new RegExp(`(${productMatches.map((product) => product.name.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")).join("|")})`, "gi");
-    return text.split(pattern).map((part, index) => {
-      const product = productMatches.find((item) => item.name.toLowerCase() === part.toLowerCase());
-      return product ? <Link key={`${product.id}-${index}`} href={`/user?product=${encodeURIComponent(product.id)}`} onClick={() => setOpen(false)} className="inline-flex items-center gap-0.5 rounded-md bg-primary/10 px-1.5 py-0.5 font-medium text-primary underline decoration-primary/40 underline-offset-2 hover:bg-primary/15">{part}<ChevronRight className="size-3" /></Link> : part;
-    });
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -86,7 +77,7 @@ export function RagChatbot() {
         <span className="pr-1 text-left"><span className="block text-sm font-semibold">Ask SupplySync</span><span className="block text-[11px] text-primary-foreground/75">Your product assistant</span></span>
       </button>}
 
-      <aside aria-label="SupplySync shopping assistant" aria-hidden={!open} className={`fixed inset-y-0 right-0 z-[70] flex w-full flex-col border-l border-border/70 bg-background shadow-2xl transition-transform duration-300 sm:w-[420px] ${open ? "translate-x-0" : "pointer-events-none translate-x-full"}`}>
+      <aside aria-label="SupplySync shopping assistant" aria-hidden={!open} className={`fixed inset-y-0 right-0 z-[70] flex w-full flex-col border-l border-border/70 bg-background shadow-2xl transition-transform duration-300 sm:w-[min(760px,calc(100%-2rem))] ${open ? "translate-x-0" : "pointer-events-none translate-x-full"}`}>
         <header className="relative overflow-hidden border-b border-border/70 bg-card px-5 pb-5 pt-5">
           <div className="pointer-events-none absolute -right-10 -top-16 size-44 rounded-full bg-primary/10 blur-3xl" />
           <div className="relative flex items-center justify-between">
@@ -94,22 +85,21 @@ export function RagChatbot() {
               <div className="grid size-11 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-md shadow-primary/20"><Sparkles className="size-5" /></div>
               <div><div className="flex items-center gap-2"><h2 className="text-sm font-semibold">SupplySync assistant</h2><span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">ONLINE</span></div><p className="mt-0.5 text-xs text-muted-foreground">Product discovery, made easy</p></div>
             </div>
-            <div className="flex items-center gap-1"><button type="button" onClick={() => setMessages([{ id: crypto.randomUUID(), role: "assistant", text: "Hi there! I’m SupplySync’s shopping assistant. Tell me what you’re looking for, or ask me about products, stock, and ordering." }])} aria-label="Start a new conversation" className="grid size-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><RotateCcw className="size-4" /></button><button type="button" onClick={() => setOpen(false)} aria-label="Close assistant" className="grid size-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><X className="size-4" /></button></div>
+            <div className="flex items-center gap-1"><button type="button" onClick={() => { conversationId.current = crypto.randomUUID(); setMessages([{ id: crypto.randomUUID(), role: "assistant", text: "Hi there! I’m SupplySync’s shopping assistant. Tell me what you’re looking for, or ask me about products, stock, and ordering." }]); }} aria-label="Start a new conversation" className="grid size-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><RotateCcw className="size-4" /></button><button type="button" onClick={() => setOpen(false)} aria-label="Close assistant" className="grid size-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><X className="size-4" /></button></div>
           </div>
           <div className="relative mt-4 flex items-center gap-2 rounded-xl border border-border/60 bg-background/80 px-3 py-2 text-xs text-muted-foreground"><span className="grid size-6 place-items-center rounded-md bg-primary/10 text-primary"><Check className="size-3.5" /></span>Answers grounded in your supply catalog</div>
         </header>
 
-        <div ref={listRef} className="scrollbar-hidden flex-1 space-y-5 overflow-y-auto px-4 py-5" aria-live="polite">
-          <div className="flex justify-center"><span className="rounded-full bg-muted px-3 py-1 text-[10px] font-medium text-muted-foreground">TODAY</span></div>
-          {messages.map((message) => <div key={message.id} className={`flex gap-2.5 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-            {message.role === "assistant" && <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><Sparkles className="size-3.5" /></span>}
-            <div className={`max-w-[86%] rounded-2xl px-3.5 py-3 text-[13px] leading-6 ${message.role === "user" ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border border-border/70 bg-card text-card-foreground shadow-sm"}`}>
-              <p className="whitespace-pre-wrap">{message.role === "assistant" ? renderAnswer(message.text) : message.text}</p>
+        <div ref={listRef} className="scrollbar-hidden flex-1 space-y-7 overflow-y-auto px-5 py-6 sm:px-7" aria-live="polite">
+          {messages.map((message) => <article key={message.id} className={`mx-auto flex w-full max-w-3xl gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+            {message.role === "assistant" && <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Sparkles className="size-4" /></span>}
+            <div className={message.role === "user" ? "max-w-[88%] rounded-3xl bg-muted px-4 py-2.5 text-sm leading-6 text-foreground" : "min-w-0 flex-1 pt-0.5"}>
+              {message.role === "assistant" ? <AssistantAnswer text={message.text} products={session?.role === "user" ? productMatches : []} onProductClick={() => setOpen(false)} /> : <p className="whitespace-pre-wrap">{message.text}</p>}
               {message.role === "assistant" && session?.role !== "user" && message.id !== "welcome" && <Link href="/user" onClick={() => setOpen(false)} className="mt-3 flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">Browse the user store <ChevronRight className="size-3.5" /></Link>}
             </div>
-          </div>)}
-          {busy && <div className="flex gap-2.5"><span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><Sparkles className="size-3.5" /></span><div className="flex items-center gap-2 rounded-2xl rounded-bl-md border border-border/70 bg-card px-4 py-3 text-xs text-muted-foreground"><LoaderCircle className="size-3.5 animate-spin text-primary" /> Finding the right answer…</div></div>}
-          {messages.length === 1 && <div className="space-y-2 pl-9"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Try asking</p>{STARTER_QUESTIONS.map((question) => <button key={question} onClick={() => void sendMessage(question)} className="flex w-full items-center justify-between rounded-xl border border-border/70 bg-card px-3 py-2.5 text-left text-xs text-foreground transition hover:border-primary/40 hover:bg-primary/5">{question}<ChevronRight className="size-3.5 text-muted-foreground" /></button>)}</div>}
+          </article>)}
+          {busy && <div className="mx-auto flex w-full max-w-3xl gap-3"><span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Sparkles className="size-4" /></span><div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin text-primary" /> Finding the right answer…</div></div>}
+          {messages.length === 1 && <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-2 pl-11 sm:grid-cols-3"><p className="col-span-full text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Try asking</p>{STARTER_QUESTIONS.map((question) => <button key={question} onClick={() => void sendMessage(question)} className="flex items-center justify-between gap-2 rounded-xl border border-border/70 bg-card px-3 py-2.5 text-left text-xs text-foreground transition hover:border-primary/40 hover:bg-primary/5">{question}<ChevronRight className="size-3.5 shrink-0 text-muted-foreground" /></button>)}</div>}
         </div>
 
         <footer className="border-t border-border/70 bg-background px-4 pb-4 pt-3">

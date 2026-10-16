@@ -4,6 +4,7 @@ import { deleteProduct } from "../controllers/product/deleteProductController";
 import {
   getAllProducts,
   getCatalogProducts,
+  getPagedUserCatalog,
   getProduct,
   getUserDashboardProducts,
   searchProducts,
@@ -19,6 +20,7 @@ router.post("/", createProduct);
 
 router.get("/products", getAllProducts);
 router.get("/catalog", getCatalogProducts);
+router.get("/user-catalog", requireCustomerAccess, getPagedUserCatalog);
 router.get("/search", searchProducts);
 router.get("/user-dashboard", requireCustomerAccess, getUserDashboardProducts);
 router.get("/:productId", getProduct);

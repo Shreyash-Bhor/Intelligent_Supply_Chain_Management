@@ -9,7 +9,7 @@ def getRequiredEnv(name: str) -> str:
     value = os.getenv(name)
 
     if not value:
-        return RuntimeError(f"Required environment variable '{name}' is not set.")
+        raise RuntimeError(f"Required environment variable '{name}' is not set.")
 
     return value
 
