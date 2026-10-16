@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Menu } from "lucide-react";
+import { Menu, Search, ShoppingCart, UserRound } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ModeToggle } from "./ModeToggle";
 import { Button } from "./ui/button";
@@ -14,6 +15,8 @@ import {
 import { cn } from "@/lib/utils";
 import { clearAuthSession } from "@/lib/auth";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { cacheServerCart, cartEventName, readCart } from "@/lib/cart";
+import { fetchCustomerCart } from "@/lib/api";
 
 const MANAGER_LINKS = [
   { href: "/", label: "Manager Dashboard" },
@@ -24,12 +27,23 @@ const MANAGER_LINKS = [
   { href: "/reorder", label: "Reorders" },
 ];
 
-const USER_LINKS = [{ href: "/user", label: "User Dashboard" }];
+const USER_LINKS = [{ href: "/user", label: "Shop" }, { href: "/orders", label: "Orders" }];
 
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { session, hydrated } = useAuthSession();
+  const [cartCount, setCartCount] = useState(0);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    const sync = () => setCartCount(readCart(session?.email).reduce((sum, line) => sum + line.quantity, 0));
+    sync();
+    if (session?.role === "user" && session.token) void fetchCustomerCart(session.token).then((cart) => { cacheServerCart(cart, session.email); }).catch(() => {});
+    window.addEventListener(cartEventName, sync);
+    window.addEventListener("storage", sync);
+    return () => { window.removeEventListener(cartEventName, sync); window.removeEventListener("storage", sync); };
+  }, [session?.email, session?.role, session?.token]);
 
   const navLinks =
     session?.role === "user"
@@ -44,6 +58,11 @@ export function Navbar() {
     window.localStorage.removeItem("warehouse_manager_session");
     clearAuthSession();
     router.push("/");
+  };
+
+  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    router.push(`/user${search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ""}#products`);
   };
 
   if (!hydrated) {
@@ -87,7 +106,16 @@ export function Navbar() {
           </nav>
         </div>
 
+        {session?.role === "user" && <form onSubmit={submitSearch} role="search" className="mx-4 hidden max-w-xl flex-1 md:flex">
+          <label className="relative w-full"><span className="sr-only">Search products</span><Search className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2" aria-hidden="true"/><input value={search} onChange={(event)=>setSearch(event.target.value)} placeholder="Search products, SKU, categories…" className="border-input bg-background h-10 w-full rounded-l-md border py-2 pl-9 pr-3 text-sm focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-ring"/></label>
+          <Button type="submit" variant="outline" className="h-10 rounded-l-none border-l-0"><Search className="size-4"/><span className="sr-only">Submit product search</span></Button>
+        </form>}
+
         <div className="flex items-center gap-2">
+          {session?.role === "user" && <>
+            <Link href="/orders" className="hidden items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted sm:flex"><UserRound className="size-4" /> Orders</Link>
+            <Link href="/cart" aria-label={`Shopping cart, ${cartCount} items`} className="relative inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"><ShoppingCart className="size-4" /><span className="hidden sm:inline">Cart</span>{cartCount > 0 && <span className="bg-primary text-primary-foreground absolute -right-2 -top-2 grid size-5 place-items-center rounded-full text-[11px] font-semibold">{cartCount > 99 ? "99+" : cartCount}</span>}</Link>
+          </>}
           <DropdownMenu>
             <DropdownMenuTrigger asChild className="md:hidden">
               <Button

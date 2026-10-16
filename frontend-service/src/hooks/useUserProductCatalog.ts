@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  fetchProductPrice,
+  fetchProductPrices,
   type UserInventoryProduct,
   type ProductPrice,
 } from "@/lib/api";
@@ -18,7 +18,7 @@ type UseUserProductCatalogResult = {
 
 function toCatalogProduct(
   product: UserInventoryProduct,
-  price: ProductPrice | null,
+  price: Pick<ProductPrice, "price" | "currency"> | null,
 ): UserCatalogProduct {
   return {
     ...product,
@@ -32,7 +32,7 @@ export function useUserProductCatalog(
   products: UserInventoryProduct[],
 ): UseUserProductCatalogResult {
   const [priceByProduct, setPriceByProduct] = useState<
-    Map<string, ProductPrice | null>
+    Map<string, Pick<ProductPrice, "price" | "currency"> | null>
   >(new Map());
   const [loadingPrices, setLoadingPrices] = useState(false);
 
@@ -46,22 +46,19 @@ export function useUserProductCatalog(
     const loadPricing = async () => {
       setLoadingPrices(true);
 
-      const priceResults = await Promise.all(
-        products.map(async (product) => {
-          try {
-            const price = await fetchProductPrice(product.id);
-            return [product.id, price] as const;
-          } catch {
-            return [product.id, null] as const;
-          }
-        }),
-      );
+      let priceResults: Array<readonly [string, Pick<ProductPrice, "price" | "currency"> | null]> = [];
+      try {
+        const prices = await fetchProductPrices(products.map((product) => product.id));
+        priceResults = prices.map((price) => [price.productId, price] as const);
+      } catch {
+        priceResults = products.map((product) => [product.id, null] as const);
+      }
 
       if (!isMounted) {
         return;
       }
 
-      setPriceByProduct(new Map<string, ProductPrice | null>(priceResults));
+      setPriceByProduct(new Map<string, Pick<ProductPrice, "price" | "currency"> | null>(priceResults));
       setLoadingPrices(false);
     };
 

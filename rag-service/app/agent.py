@@ -52,7 +52,9 @@ Important rules:
   first use searchProducts to identify the product.
 - When comparing products, retrieve the required information for each
   product before answering.
-- Keep responses concise and user-friendly.
+- Treat knowledge-base tool output as source material: synthesize only the relevant facts, paraphrase them, and never paste raw passages or large retrieved tables into the response.
+- Format the final answer as clean Markdown: answer directly first, then use short paragraphs, bullets for related facts, numbered steps for processes, and a Markdown table only when a comparison is clearer in a table. Preserve relevant values and caveats, and use **bold** sparingly for key labels.
+- Keep responses concise and user-friendly; do not add unsupported recommendations or repeat the same fact.
 """.strip()
 
 toolMap = {
@@ -67,6 +69,7 @@ toolMap = {
 async def runAgent(
     query: str,
     accessToken: str | None = None,
+    history: list[dict[str, str]] | None = None,
 ) -> str:
     if not query or not query.strip():
         raise ValueError("Query must not be empty.")
@@ -78,7 +81,7 @@ async def runAgent(
         "content": query.strip(),
     }
 
-    inputItems = [userInput]
+    inputItems = [*(history or []), userInput]
 
     for _ in range(settings.maxAgentIterations):
         response = await llm.client.responses.create(
@@ -134,6 +137,7 @@ async def runAgent(
         # Next request contains:
         # original user query + current tool round
         inputItems = [
+            *(history or []),
             userInput,
             *nextInput,
         ]

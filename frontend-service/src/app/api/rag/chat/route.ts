@@ -5,7 +5,7 @@ const RAG_API_URL =
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.json()) as { query?: string; conversationId?: string };
     if (!body.query?.trim()) {
       return NextResponse.json({ message: "Enter a message to continue." }, { status: 400 });
     }
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
           ? { Authorization: request.headers.get("authorization")! }
           : {}),
       },
-      body: JSON.stringify({ query: body.query.trim() }),
+      body: JSON.stringify({ query: body.query.trim(), conversationId: body.conversationId }),
       cache: "no-store",
     });
     const payload = await response.json();

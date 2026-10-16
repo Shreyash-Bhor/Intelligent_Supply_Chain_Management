@@ -1,23 +1,19 @@
 "use client";
 
 import Image from "next/image";
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, PackageCheck, ShoppingCart, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { PackageCheck, ShoppingCart, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createCustomerOrder, type CustomerOrder } from "@/lib/api";
 import { formatCurrency, type UserCatalogProduct } from "@/lib/userCatalog";
 
 type Props = {
   product: UserCatalogProduct;
-  customerToken: string;
+  onAddToCart: (quantity: number) => void;
   onClose: () => void;
 };
 
-export function OrderDialog({ product, customerToken, onClose }: Props) {
+export function OrderDialog({ product, onAddToCart, onClose }: Props) {
   const [quantity, setQuantity] = useState(1);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [order, setOrder] = useState<CustomerOrder | null>(null);
   const total = useMemo(
     () =>
       product.price === null
@@ -36,28 +32,6 @@ export function OrderDialog({ product, customerToken, onClose }: Props) {
       document.body.style.overflow = "";
     };
   }, [onClose]);
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (product.price === null)
-      return setError(
-        "A price must be configured before this product can be ordered.",
-      );
-    try {
-      setSubmitting(true);
-      setError(null);
-      setOrder(
-        await createCustomerOrder(customerToken, {
-          productId: product.id,
-          quantity,
-        }),
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to place order");
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   return (
     <div
@@ -96,44 +70,7 @@ export function OrderDialog({ product, customerToken, onClose }: Props) {
           )}
         </div>
         <div className="flex flex-1 flex-col overflow-y-auto p-6 md:p-10">
-          {order ? (
-            <div className="flex h-full flex-col justify-center space-y-5">
-              <CheckCircle2 className="size-12 text-emerald-500" />
-              <div>
-                <p className="text-sm font-medium text-emerald-600">
-                  Order placed
-                </p>
-                <h2 id="order-title" className="text-3xl font-semibold">
-                  Thank you for your order
-                </h2>
-              </div>
-              <div className="bg-muted/50 space-y-2 rounded-xl p-4 text-sm">
-                <p>
-                  <strong>Order:</strong> {order.id}
-                </p>
-                <p>
-                  <strong>Quantity:</strong> {order.quantity}
-                </p>
-                <p>
-                  <strong>Total:</strong>{" "}
-                  {formatCurrency(order.totalPrice, order.currency)}
-                </p>
-                {order.shortageQty > 0 ? (
-                  <p className="text-amber-600">
-                    <strong>{order.shortageQty} unit(s)</strong> were
-                    unavailable and an inventory reorder was created
-                    automatically.
-                  </p>
-                ) : (
-                  <p className="text-emerald-600">
-                    All requested units were allocated from inventory.
-                  </p>
-                )}
-              </div>
-              <Button onClick={onClose}>Continue shopping</Button>
-            </div>
-          ) : (
-            <form onSubmit={submit} className="flex h-full flex-col">
+            <div className="flex h-full flex-col">
               <div className="space-y-3 pr-10">
                 <p className="text-primary text-sm font-medium">
                   Product details
@@ -145,6 +82,7 @@ export function OrderDialog({ product, customerToken, onClose }: Props) {
                   {product.name}
                 </h2>
                 <p className="text-muted-foreground">{product.description}</p>
+                <p className="text-muted-foreground text-sm">SKU {product.sku} · {product.category}</p>
               </div>
               <div className="mt-6 grid gap-3 rounded-xl border p-4 sm:grid-cols-2">
                 <div>
@@ -186,8 +124,7 @@ export function OrderDialog({ product, customerToken, onClose }: Props) {
                 <div className="mt-3 flex gap-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
                   <PackageCheck className="size-5 shrink-0" />
                   <span>
-                    {quantity - product.availableQty} additional unit(s) will be
-                    reordered automatically.
+                    Only {product.availableQty} unit(s) are currently available. Checkout will recheck stock.
                   </span>
                 </div>
               ) : null}
@@ -200,20 +137,18 @@ export function OrderDialog({ product, customerToken, onClose }: Props) {
                     {formatCurrency(total, product.currency)}
                   </strong>
                 </div>
-                {error ? (
-                  <p className="text-destructive text-sm">{error}</p>
-                ) : null}
                 <Button
-                  type="submit"
+                  type="button"
+                  variant="outline"
                   size="lg"
                   className="w-full"
-                  disabled={submitting || product.price === null}
+                  disabled={product.price === null || product.availableQty < 1}
+                  onClick={() => { onAddToCart(quantity); onClose(); }}
                 >
-                  {submitting ? "Placing order…" : "Place secured order"}
+                  <ShoppingCart className="mr-2 size-4" /> Add to cart
                 </Button>
               </div>
-            </form>
-          )}
+            </div>
         </div>
       </section>
     </div>

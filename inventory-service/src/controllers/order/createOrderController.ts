@@ -3,6 +3,7 @@ import prisma from "../../lib/prisma";
 import { createOrderSchema } from "../../schemas/orderSchema";
 import { getCurrentProductPrice } from "../../services/pricingService";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { fromMinor, toMinor } from "../../services/money";
 
 const serializeOrder = (order: any) => ({
   ...order,
@@ -47,7 +48,7 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
         allocatedQty,
         shortageQty,
         unitPrice: pricing.price,
-        totalPrice: Number((pricing.price * quantity).toFixed(2)),
+        totalPrice: fromMinor(toMinor(pricing.price) * quantity),
         currency: pricing.currency,
         status: shortageQty > 0 ? "BACKORDERED" : "CONFIRMED",
       },
