@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { createOrder } from "../controllers/order/createOrderController";
 import { getCustomerOrder, getCustomerOrders } from "../controllers/order/getOrderController";
-import { createCartOrder, getCheckoutQuote } from "../controllers/checkoutController";
+import { confirmCheckout, createCartOrder, getCheckoutQuote } from "../controllers/checkoutController";
 import { cancelCustomerOrder } from "../controllers/order/cancelOrderController";
 const router = Router();
 router.post("/quote", getCheckoutQuote);
+router.post("/confirmation", confirmCheckout);
 router.post("/checkout", createCartOrder);
 router.post("/:orderId/cancel", cancelCustomerOrder);
 router.get("/:orderId", getCustomerOrder);

@@ -11,6 +11,7 @@ from app.tools.productTools import (
 from app.tools.toolDefinitions import toolDefinitions
 from app.rag import answer as searchKnowledgeBase
 from app.config import settings
+from app.tools import shoppingTools
 
 AGENT_INSTRUCTIONS = """
 You are an e-commerce assistant for a supply-chain system.
@@ -48,6 +49,11 @@ Important rules:
 - Use backend tools for real-time data.
 - Use the knowledge base for static information.
 - You may use multiple tools when necessary.
+- Shopping mutations require an authenticated customer. Never ask for, infer, or pass a customer identifier.
+- Cart actions never place an order. For checkout, retrieve a quote and show its exact products, quantities, address, and payable total before asking for confirmation.
+- Call placeConfirmedOrder only when the current user message is an explicit affirmative response to the displayed quote. A general intention to buy is not confirmation.
+- If the user changes cart contents, quantity, address, or other checkout details, prepare and display a fresh quote before requesting confirmation again.
+- Never call placeConfirmedOrder for a manager or unauthenticated user.
 - If a tool requires a productId and the user has not provided one,
   first use searchProducts to identify the product.
 - When comparing products, retrieve the required information for each
@@ -63,16 +69,50 @@ toolMap = {
     "getProductAvailability": getProductAvailability,
     "getProductPrice": getProductPrice,
     "searchKnowledgeBase": searchKnowledgeBase,
+    "getCart": shoppingTools.getCart,
+    "addToCart": shoppingTools.addToCart,
+    "setCartQuantity": shoppingTools.setCartQuantity,
+    "removeFromCart": shoppingTools.removeFromCart,
+    "clearCart": shoppingTools.clearCart,
+    "listAddresses": shoppingTools.listAddresses,
+    "createAddress": shoppingTools.createAddress,
+    "updateAddress": shoppingTools.updateAddress,
+    "deleteAddress": shoppingTools.deleteAddress,
+    "prepareCheckout": shoppingTools.prepareCheckout,
+    "placeConfirmedOrder": shoppingTools.confirmAndSubmit,
+    "orderHistory": shoppingTools.orderHistory,
+    "orderDetails": shoppingTools.orderDetails,
 }
+
+def _checkoutSummary(quote: dict[str, Any]) -> str:
+    lines = quote.get("lines", [])
+    products = "\n".join(
+        f"- {line.get('name')} (SKU {line.get('sku')}): {line.get('quantity')} × {line.get('unitPrice')} {line.get('currency')} = {line.get('lineTotal')} {line.get('currency')}"
+        for line in lines
+    )
+    address = quote.get("address", {})
+    addressText = ", ".join(str(value) for value in [address.get("name"), address.get("address1"), address.get("address2"), address.get("city"), address.get("region"), address.get("postalCode"), address.get("country")] if value)
+    currency = quote.get("currency", "")
+    return (f"Checkout summary\n\n{products}\n\nShipping address: {addressText}\nItems subtotal: {quote.get('subtotal')} {currency}\nShipping: {quote.get('shippingTotal') or 'not calculated'}\nTax: {quote.get('taxTotal') or 'not calculated'}\nFinal payable amount: {quote.get('total')} {currency}\n\nThis quote expires at {quote.get('expiresAt')}. No payment is collected at checkout. Reply **yes** or **confirm the order** to place this exact order. Any change requires a new quote.")
 
 
 async def runAgent(
     query: str,
     accessToken: str | None = None,
     history: list[dict[str, str]] | None = None,
+    conversationId: str | None = None,
 ) -> str:
     if not query or not query.strip():
         raise ValueError("Query must not be empty.")
+
+    if accessToken and shoppingTools.isExplicitOrderConfirmation(query):
+        try:
+            result = await shoppingTools.confirmAndSubmit(accessToken, conversationId)
+            order = result.get("data", {})
+            return f"Order placed successfully. Order ID: {order.get('id', 'confirmed by backend')}. Status: {order.get('status', 'confirmed by backend')}. Total: {order.get('totalPrice', 'see order details')} {order.get('currency', '')}."
+        except PermissionError:
+            # Without an active quote, a bare affirmative must not create an order.
+            pass
 
     llm = getLLM()
 
@@ -82,6 +122,7 @@ async def runAgent(
     }
 
     inputItems = [*(history or []), userInput]
+    pendingQuoteForDisplay: dict[str, Any] | None = None
 
     for _ in range(settings.maxAgentIterations):
         response = await llm.client.responses.create(
@@ -105,6 +146,9 @@ async def runAgent(
                     "Agent returned an empty response."
                 )
 
+            if pendingQuoteForDisplay and accessToken:
+                shoppingTools.storePendingQuote(accessToken, pendingQuoteForDisplay["addressId"], pendingQuoteForDisplay["result"], conversationId)
+                return _checkoutSummary(pendingQuoteForDisplay["result"].get("data", {}))
             return finalAnswer.strip()
 
         # Keep only the current model output + its tool results.
@@ -120,13 +164,26 @@ async def runAgent(
 
             arguments = json.loads(call.arguments)
 
-            if call.name == "searchKnowledgeBase":
-                result = await tool(**arguments)
-            else:
-                result = await tool(
-                    accessToken=accessToken,
-                    **arguments,
-                )
+            try:
+                if call.name == "searchKnowledgeBase":
+                    result = await tool(**arguments)
+                elif call.name == "placeConfirmedOrder":
+                    if not accessToken or not shoppingTools.isExplicitOrderConfirmation(query):
+                        result = {"status": "confirmation_required", "message": "Please explicitly confirm the checkout summary before I place the order."}
+                    else:
+                        result = await tool(accessToken, conversationId)
+                else:
+                    if call.name in {"getCart", "addToCart", "setCartQuantity", "removeFromCart", "clearCart", "listAddresses", "createAddress", "updateAddress", "deleteAddress", "prepareCheckout", "orderHistory", "orderDetails"} and not accessToken:
+                        result = {"status": "unauthorized", "message": "Sign in with a customer account to use shopping actions."}
+                    else:
+                        result = await tool(accessToken=accessToken, **arguments)
+                        if call.name == "prepareCheckout" and accessToken and result.get("status") == "success":
+                            pendingQuoteForDisplay = {"addressId": arguments["addressId"], "result": result}
+            except (PermissionError, ValueError) as error:
+                result = {"status": "error", "message": str(error)}
+            except Exception:
+                # Backend responses can contain infrastructure details; keep them out of model context.
+                result = {"status": "error", "message": "That request could not be completed. Check the details and try again."}
 
             nextInput.append({
                 "type": "function_call_output",

@@ -41,5 +41,6 @@ class Settings:
     #Backend Client
     inventoryServiceUrl: str = getRequiredEnv("INVENTORY_SERVICE_URL")
     pricingServiceUrl: str = getRequiredEnv("PRICING_SERVICE_URL")
+    authTokenSecret: str = getRequiredEnv("AUTH_TOKEN_SECRET")
 
 settings = Settings()

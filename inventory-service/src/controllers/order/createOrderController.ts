@@ -12,6 +12,9 @@ const serializeOrder = (order: any) => ({
 });
 
 export const createOrder = asyncHandler(async (req: Request, res: Response) => {
+  return res.status(403).json({ status: "error", message: "Orders must use confirmed cart checkout." });
+  /* Legacy direct-order implementation retained below for historical reference;
+     customer orders now require a quote-bound confirmation proof. */
   const { productId, quantity } = createOrderSchema.parse(req.body);
   const customerId = res.locals.customer.sub as string;
   const [product, pricing] = await Promise.all([

@@ -6,7 +6,7 @@ import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { cartEventName, readCart, syncCart, updateCartQuantity, type CartLine } from "@/lib/cart";
-import { createCartOrder, createCustomerAddress, deleteCustomerAddress, fetchCheckoutQuote, fetchCustomerAddresses, updateCustomerAddress, type CheckoutQuote, type CustomerOrder, type ShippingAddress } from "@/lib/api";
+import { confirmCheckout, createCartOrder, createCustomerAddress, deleteCustomerAddress, fetchCheckoutQuote, fetchCustomerAddresses, updateCustomerAddress, type CheckoutQuote, type CustomerOrder, type ShippingAddress } from "@/lib/api";
 import { formatCurrency } from "@/lib/userCatalog";
 
 const emptyAddress = { name: "", phone: "", address1: "", address2: "", city: "", region: "", postalCode: "" };
@@ -24,7 +24,7 @@ export default function CartPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [order, setOrder] = useState<CustomerOrder | null>(null);
-  const idempotencyKey = useRef<string | null>(null);
+  const idempotencyKey = useRef<{ digest: string; key: string } | null>(null);
   const token = session?.token ?? "";
   const userKey = session?.email;
 
@@ -83,7 +83,12 @@ export default function CartPage() {
   const getQuote = async () => {
     if (!addressId) return;
     setBusy(true); setError("");
-    try { setQuote(await fetchCheckoutQuote(token, addressId)); }
+    try {
+      const nextQuote = await fetchCheckoutQuote(token, addressId);
+      const digest = checkoutDigest(nextQuote.quoteToken);
+      if (idempotencyKey.current && idempotencyKey.current.digest !== digest) idempotencyKey.current = null;
+      setQuote(nextQuote);
+    }
     catch (e) { setQuote(null); setError(e instanceof Error ? e.message : "Checkout quote is unavailable"); }
     finally { setBusy(false); }
   };
@@ -91,13 +96,22 @@ export default function CartPage() {
     if (!quote || !addressId) return;
     setBusy(true); setError("");
     try {
-      idempotencyKey.current ??= crypto.randomUUID();
-      const created = await createCartOrder(token, { addressId, quoteToken: quote.quoteToken }, idempotencyKey.current);
+      const digest = checkoutDigest(quote.quoteToken);
+      if (!idempotencyKey.current || idempotencyKey.current.digest !== digest) idempotencyKey.current = { digest, key: crypto.randomUUID() };
+      const confirmation = await confirmCheckout(token, addressId, quote.quoteToken);
+      const created = await createCartOrder(token, { addressId, quoteToken: quote.quoteToken, confirmationProof: confirmation.confirmationProof }, idempotencyKey.current.key);
       idempotencyKey.current = null;
       setOrder(created); setQuote(null); setLines(await syncCart(token, userKey));
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to create the order. Your cart is preserved."); setQuote(null); }
     finally { setBusy(false); }
   };
+
+  function checkoutDigest(quoteToken: string) {
+    try {
+      const encoded = quoteToken.split(".")[0].replace(/-/g, "+").replace(/_/g, "/");
+      return JSON.parse(atob(encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "="))).digest as string;
+    } catch { return quoteToken; }
+  }
 
   if (!hydrated) return null;
   if (session?.role !== "user") return <main className="mx-auto max-w-3xl px-4 py-12"><h1 className="text-2xl font-semibold">Sign in to view your cart</h1><Link className="text-primary mt-4 inline-block underline" href="/">Go to sign in</Link></main>;
