@@ -36,7 +36,7 @@ export async function createQuote(userId: string, addressId: string) {
   // explicitly uncalculated until an approved market policy is configured.
   const amounts = calculateAmounts(subtotalMinor, 0, 0);
   const expiresAt = Date.now() + 3 * 60 * 1000;
-  const digest = JSON.stringify({ userId, addressId, cartId: cart.id, lines: lines.map(({ productId, quantity, unitPrice, currency }) => ({ productId, quantity, unitPrice, currency })) });
+  const digest = JSON.stringify({ userId, addressId, address: { name: address.name, phone: address.phone, address1: address.address1, address2: address.address2, city: address.city, region: address.region, postalCode: address.postalCode, country: address.country }, cartId: cart.id, lines: lines.map(({ productId, name, sku, quantity, unitPrice, currency }) => ({ productId, name, sku, quantity, unitPrice, currency })) });
   const payload = Buffer.from(JSON.stringify({ expiresAt, digest })).toString("base64url");
   const signature = createHmac("sha256", secret()).update(payload).digest("base64url");
   return { address, lines, currency: lines[0]!.currency, subtotal: fromMinor(amounts.subtotalMinor), shippingTotal: null, taxTotal: null, total: fromMinor(amounts.totalMinor), quoteToken: `${payload}.${signature}`, expiresAt: new Date(expiresAt).toISOString(), snapshot: { cartId: cart.id, ...amounts, digest } };
@@ -52,6 +52,18 @@ export function verifyQuoteToken(token: string, currentDigestData: unknown) {
     const parsed = JSON.parse(Buffer.from(payload, "base64url").toString()) as { expiresAt: number; digest: string };
     return parsed.expiresAt > Date.now() && parsed.digest === currentDigestData;
   } catch { return false; }
+}
+
+export function getSignedQuoteDigest(token: string): string | null {
+  const [payload, signature] = token.split(".");
+  if (!payload || !signature) return null;
+  const expected = createHmac("sha256", secret()).update(payload).digest();
+  const actual = Buffer.from(signature, "base64url");
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString()) as { digest: string };
+    return typeof parsed.digest === "string" ? parsed.digest : null;
+  } catch { return null; }
 }
 
 export { toMinor };

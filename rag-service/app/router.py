@@ -41,6 +41,7 @@ async def chat(
         query=request.query,
         accessToken=accessToken,
         history=history,
+        conversationId=request.conversationId,
     )
     saveTurn(request.conversationId, accessToken, request.query.strip(), response)
 

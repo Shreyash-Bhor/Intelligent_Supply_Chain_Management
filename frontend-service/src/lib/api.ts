@@ -154,6 +154,7 @@ type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   idempotencyKey?: string;
+  confirmationProof?: string;
 };
 
 async function fetchApi<T>(
@@ -174,6 +175,7 @@ async function fetchApi<T>(
         ? { Authorization: `Bearer ${options.customerToken}` }
         : {}),
       ...(options.idempotencyKey ? { "Idempotency-Key": options.idempotencyKey } : {}),
+      ...(options.confirmationProof ? { "X-Chat-Confirmation": options.confirmationProof } : {}),
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
@@ -293,6 +295,7 @@ export function updateCustomerAddress(customerToken: string, addressId: string, 
 export function deleteCustomerAddress(customerToken: string, addressId: string) { return fetchApi<null>(`/api/addresses/${addressId}`, { customerToken, method: "DELETE" }); }
 export type CheckoutQuote = { lines: Array<{ productId: string; name: string; sku: string; imageUrl: string | null; quantity: number; unitPrice: string; currency: string; availableQty: number; lineTotal: string }>; currency: string; subtotal: string; shippingTotal: string | null; taxTotal: string | null; total: string; expiresAt: string; quoteToken: string; address: ShippingAddress; calculation: { shippingAndTax: "not_configured" } };
 export function fetchCheckoutQuote(customerToken: string, addressId: string) { return fetchApi<CheckoutQuote>("/api/orders/quote", { customerToken, method: "POST", body: { addressId } }); }
+export function confirmCheckout(customerToken: string, addressId: string, quoteToken: string) { return fetchApi<{ confirmationProof: string }>("/api/orders/confirmation", { customerToken, method: "POST", body: { addressId, quoteToken, confirmation: "I confirm this order" } }); }
 export type PaginatedCatalog = { data: UserInventoryProduct[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } };
 export function fetchPagedUserCatalog(customerToken: string, query: { page: number; pageSize: number; query?: string; category?: string; inStock?: boolean; sort?: string }) {
   const params = new URLSearchParams({ page: String(query.page), pageSize: String(query.pageSize), sort: query.sort ?? "name" });
@@ -344,8 +347,9 @@ export function fetchCustomerOrder(customerToken: string, orderId: string) {
   return fetchApi<CustomerOrder>(`/api/orders/${orderId}`, { customerToken });
 }
 export function cancelCustomerOrder(customerToken: string, orderId: string) { return fetchApi<CustomerOrder>(`/api/orders/${orderId}/cancel`, { customerToken, method: "POST" }); }
-export function createCartOrder(customerToken: string, body: { addressId: string; quoteToken: string }, idempotencyKey: string) {
-  return fetchApi<CustomerOrder>("/api/orders/checkout", { customerToken, method: "POST", body, idempotencyKey });
+export function createCartOrder(customerToken: string, body: { addressId: string; quoteToken: string; confirmationProof: string }, idempotencyKey: string) {
+  const { confirmationProof, ...checkoutBody } = body;
+  return fetchApi<CustomerOrder>("/api/orders/checkout", { customerToken, method: "POST", body: checkoutBody, idempotencyKey, confirmationProof });
 }
 
 export function createProduct(body: {

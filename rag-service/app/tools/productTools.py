@@ -9,16 +9,18 @@ async def searchProducts(
     query: str | None = None,
     category: str | None = None,
     maxPrice: float | None = None,
+    page: int = 1,
+    pageSize: int = 10,
+    inStock: bool = False,
 ) -> dict[str, Any]:
     """Search products and optionally filter by maximum price."""
 
     if maxPrice is not None and maxPrice < 0:
         raise ValueError("maxPrice must not be negative.")
 
-    inventoryClient = BackendClient(
-        baseUrl=settings.inventoryServiceUrl,
-        accessToken=accessToken,
-    )
+    if page < 1 or pageSize < 1 or pageSize > 50:
+        raise ValueError("page must be positive and pageSize must be between 1 and 50.")
+    inventoryClient = BackendClient(baseUrl=settings.inventoryServiceUrl, accessToken=accessToken)
 
     pricingClient = BackendClient(
         baseUrl=settings.pricingServiceUrl,
@@ -34,19 +36,26 @@ async def searchProducts(
         if category and category.strip():
             params["category"] = category.strip()
 
-        productResponse = await inventoryClient.get(
-            "/api/product/search",
-            params=params or None,
-        )
-
-        products = productResponse.get("data", [])
+        if accessToken:
+            catalogParams: dict[str, Any] = {"page": page, "pageSize": pageSize, "inStock": str(inStock).lower()}
+            catalogParams.update(params)
+            productResponse = await inventoryClient.get("/api/product/user-catalog", params=catalogParams)
+            catalog = productResponse.get("data", {})
+            products = catalog.get("data", [])
+            pagination = catalog.get("pagination")
+        else:
+            productResponse = await inventoryClient.get("/api/product/search", params=params or None)
+            products = productResponse.get("data", [])
+            pagination = None
 
         if not products:
             return {
                 "status": "success",
                 "data": [],
+                "pagination": pagination,
             }
 
+        products = products[:20]
         productIds = [product["id"] for product in products]
 
         priceResponse = await pricingClient.get(
@@ -71,7 +80,11 @@ async def searchProducts(
                     continue
 
             results.append({
-                **product,
+                "id": product.get("id"),
+                "name": product.get("name"),
+                "sku": product.get("sku"),
+                "category": product.get("category"),
+                "imageUrl": product.get("imageUrl"),
                 "price": priceData["price"] if priceData else None,
                 "currency": priceData["currency"] if priceData else None,
             })
@@ -79,6 +92,7 @@ async def searchProducts(
         return {
             "status": "success",
             "data": results,
+            "pagination": pagination,
         }
 
     finally:
@@ -132,9 +146,9 @@ async def getProductAvailability(
     )
 
     try:
-        return await client.get(
-            f"/api/inventory/product/{productId.strip()}"
-        )
+        response = await client.get(f"/api/inventory/product/{productId.strip()}")
+        data = response.get("data", {})
+        return {"status": response.get("status"), "data": {"productId": data.get("productId"), "availableQty": data.get("availableQty")}}
     finally:
         await client.close()
 

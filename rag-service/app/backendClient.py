@@ -45,6 +45,15 @@ class BackendClient:
         response.raise_for_status()
         return response.json()
 
+    async def request(self, method: str, path: str, *, json: Any = None,
+                      headers: dict[str, str] | None = None,
+                      params: dict[str, Any] | None = None) -> dict[str, Any]:
+        requestHeaders = self._getHeaders()
+        requestHeaders.update(headers or {})
+        response = await self.client.request(method, path, json=json, params=params, headers=requestHeaders)
+        response.raise_for_status()
+        return response.json() if response.content else {}
+
     async def close(self) -> None:
         await self.client.aclose()
 

@@ -169,6 +169,7 @@ model Order {
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @default(now())
   idempotencyKey     String?
+  checkoutDigest     String?
   paymentStatus      PaymentStatus @default(NOT_STARTED)
   paymentReference   String?
   subtotal           Decimal       @default(0) @db.Decimal(12, 2)

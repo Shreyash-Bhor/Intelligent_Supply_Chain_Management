@@ -1,8 +1,40 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma";
 import { checkoutQuoteSchema, checkoutSchema } from "../schemas/checkoutSchema";
-import { createQuote, verifyQuoteToken } from "../services/checkoutPricing";
+import { createQuote, getSignedQuoteDigest, verifyQuoteToken } from "../services/checkoutPricing";
 import { asyncHandler } from "../utils/asyncHandler";
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+function validChatConfirmation(value: string | undefined, userId: string, quoteToken: string) {
+  if (!value || !process.env.AUTH_TOKEN_SECRET) return false;
+  const [payload, signature] = value.split(".");
+  if (!payload || !signature) return false;
+  const expected = createHmac("sha256", process.env.AUTH_TOKEN_SECRET).update(payload).digest();
+  const actual = Buffer.from(signature, "base64url");
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return false;
+  try {
+    const claim = JSON.parse(Buffer.from(payload, "base64url").toString()) as { userId: string; quoteHash: string; expiresAt: number; purpose: string };
+    const quoteHash = createHmac("sha256", "quote").update(quoteToken).digest("hex");
+    return claim.purpose === "chat-checkout-confirmation" && claim.userId === userId && claim.quoteHash === quoteHash && claim.expiresAt > Date.now();
+  } catch { return false; }
+}
+
+export function issueCheckoutConfirmation(userId: string, quoteToken: string) {
+  if (!process.env.AUTH_TOKEN_SECRET) throw new Error("Checkout confirmation is unavailable.");
+  const quoteHash = createHmac("sha256", "quote").update(quoteToken).digest("hex");
+  const payload = Buffer.from(JSON.stringify({ purpose: "chat-checkout-confirmation", userId, quoteHash, expiresAt: Date.now() + 90_000 })).toString("base64url");
+  const signature = createHmac("sha256", process.env.AUTH_TOKEN_SECRET).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+export const confirmCheckout = asyncHandler(async (req: Request, res: Response) => {
+  const { addressId, quoteToken } = checkoutSchema.parse(req.body);
+  const userId = res.locals.customer.sub as string;
+  if (req.body.confirmation !== "I confirm this order") return res.status(400).json({ status: "error", message: "Explicit confirmation is required." });
+  const quote = await createQuote(userId, addressId);
+  if (!verifyQuoteToken(quoteToken, quote.snapshot.digest)) return res.status(409).json({ status: "error", message: "Checkout quote expired or changed. Review the updated quote." });
+  return res.status(200).json({ status: "success", data: { confirmationProof: issueCheckoutConfirmation(userId, quoteToken) } });
+});
 
 export const getCheckoutQuote = asyncHandler(async (req: Request, res: Response) => {
   const { addressId } = checkoutQuoteSchema.parse(req.body);
@@ -23,8 +55,17 @@ export const createCartOrder = asyncHandler(async (req: Request, res: Response) 
     items: { include: { product: { select: { id: true, name: true, sku: true, imageUrl: true } } } },
     shipments: true,
   };
+  const signedDigest = getSignedQuoteDigest(quoteToken);
+  if (!signedDigest) return res.status(409).json({ status: "error", message: "Checkout quote is invalid. Prepare a new quote." });
   const prior = await prisma.order.findFirst({ where: { userId, idempotencyKey }, include: orderInclude });
-  if (prior) return res.status(200).json({ status: "success", data: prior, idempotentReplay: true });
+  if (prior) {
+    if (prior.checkoutDigest !== signedDigest) return res.status(409).json({ status: "error", message: "Idempotency key was already used for a different checkout." });
+    return res.status(200).json({ status: "success", data: prior, idempotentReplay: true });
+  }
+
+  if (!validChatConfirmation(req.header("X-Chat-Confirmation"), userId, quoteToken)) {
+    return res.status(403).json({ status: "error", message: "Explicit confirmation for this checkout is required." });
+  }
 
   const quote = await createQuote(userId, addressId);
   if (!verifyQuoteToken(quoteToken, quote.snapshot.digest)) {
@@ -36,7 +77,7 @@ export const createCartOrder = asyncHandler(async (req: Request, res: Response) 
     const order = await prisma.$transaction(async (tx: any) => {
       const created = await tx.order.create({
         data: {
-          userId, idempotencyKey, productId: first.productId, quantity: first.quantity, allocatedQty: first.quantity, shortageQty: 0,
+          userId, idempotencyKey, checkoutDigest: signedDigest, productId: first.productId, quantity: first.quantity, allocatedQty: first.quantity, shortageQty: 0,
           unitPrice: first.unitPrice, totalPrice: quote.total, currency: quote.currency, status: "CONFIRMED", paymentStatus: "NOT_STARTED",
           subtotal: quote.subtotal, shippingTotal: null, taxTotal: null,
           shippingName: quote.address.name, shippingPhone: quote.address.phone, shippingAddress1: quote.address.address1,
@@ -69,7 +110,7 @@ export const createCartOrder = asyncHandler(async (req: Request, res: Response) 
     }
     if ((error as { code?: string }).code === "P2002") {
       const duplicate = await prisma.order.findFirst({ where: { userId, idempotencyKey }, include: orderInclude });
-      if (duplicate) return res.status(200).json({ status: "success", data: duplicate, idempotentReplay: true });
+      if (duplicate?.checkoutDigest === signedDigest) return res.status(200).json({ status: "success", data: duplicate, idempotentReplay: true });
     }
     throw error;
   }
