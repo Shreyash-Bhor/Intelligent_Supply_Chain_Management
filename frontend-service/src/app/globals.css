@@ -150,6 +150,10 @@
   display: none;
 }
 
+.assistant-chat {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
 .dashboard-hero {
   background:
     radial-gradient(circle at 88% 18%, color-mix(in oklch, var(--primary) 17%, transparent), transparent 32%),

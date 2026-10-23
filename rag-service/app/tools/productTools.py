@@ -1,4 +1,5 @@
 from typing import Any
+import asyncio
 
 from app.backendClient import BackendClient
 from app.config import settings
@@ -114,11 +115,29 @@ async def getProductDetails(
     )
 
     try:
-        response = await client.get(
-            f"/api/product/{productId.strip()}"
-        )
+        lookup = productId.strip()
+        try:
+            response = await client.get(f"/api/product/{lookup}")
+        except Exception as error:
+            # A SKU is a supported identifier; resolve it against active catalog rows.
+            import httpx
+            if not isinstance(error, httpx.HTTPStatusError) or error.response.status_code != 404:
+                raise
+            search = await client.get("/api/product/search", params={"query": lookup})
+            matches = search.get("data", [])
+            exact = [item for item in matches if str(item.get("sku", "")).casefold() == lookup.casefold()]
+            if len(exact) != 1:
+                raise ValueError("No unique active product matches that SKU. Search products and ask the customer to choose.")
+            response = {"data": exact[0]}
 
         data = response.get("data", {})
+        if data.get("isActive") is False:
+            raise ValueError("This product is not available in the customer catalog.")
+        priceTask = getProductPrice(accessToken, productId.strip())
+        stockTask = getProductAvailability(accessToken, productId.strip())
+        priceResult, stockResult = await asyncio.gather(priceTask, stockTask, return_exceptions=True)
+        priceData = priceResult.get("data", {}) if isinstance(priceResult, dict) else {}
+        stockData = stockResult.get("data", {}) if isinstance(stockResult, dict) else {}
 
         return {
             "id": data.get("id"),
@@ -126,6 +145,12 @@ async def getProductDetails(
             "sku": data.get("sku"),
             "category": data.get("category"),
             "imageUrl": data.get("imageUrl"),
+            "price": priceData.get("price"),
+            "currency": priceData.get("currency"),
+            "availableQty": stockData.get("availableQty"),
+            "description": data.get("description") if isinstance(data.get("description"), str) else None,
+            "discount": priceData.get("discount") if isinstance(priceData.get("discount"), str) else None,
+            "attributes": data.get("attributes") if isinstance(data.get("attributes"), dict) else {},
         }
 
     finally:

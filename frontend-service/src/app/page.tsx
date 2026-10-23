@@ -95,7 +95,7 @@ export default function Home() {
   useEffect(() => {
     if (!hydrated) return;
     if (authSession?.role === "user") {
-      router.replace("/user");
+      router.replace("/assistant");
     }
   }, [authSession, hydrated, router]);
   const handleManagerLogin = async (event: FormEvent<HTMLFormElement>) => {
