@@ -85,14 +85,7 @@ export const getProductAvailability = asyncHandler(
         },
       },
       select: {
-        warehouseId: true,
         availableQty: true,
-        warehouse: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
       },
     });
 
@@ -113,11 +106,6 @@ export const getProductAvailability = asyncHandler(
       data: {
         productId,
         availableQty,
-        warehouses: inventory.map((item) => ({
-          warehouseId: item.warehouse.id,
-          warehouseName: item.warehouse.name,
-          availableQty: item.availableQty,
-        })),
       },
     });
   },

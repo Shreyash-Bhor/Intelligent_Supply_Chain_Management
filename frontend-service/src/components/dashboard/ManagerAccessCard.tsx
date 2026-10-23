@@ -51,7 +51,7 @@ export function ManagerAccessCard({
     try {
       await loginUser(userEmail, userPassword);
       setMessage(null);
-      router.push("/user");
+      router.push("/assistant");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Unable to login user");
     }
@@ -80,7 +80,7 @@ export function ManagerAccessCard({
       });
       await loginUser(userEmail, userPassword);
       setMessage(null);
-      router.push("/user");
+      router.push("/assistant");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Unable to signup user");
     }

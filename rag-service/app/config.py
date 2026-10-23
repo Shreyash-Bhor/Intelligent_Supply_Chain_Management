@@ -36,7 +36,8 @@ class Settings:
     knowledgeBaseDirectory: Path = Path(os.getenv("KNOWLEDGE_BASE_DIRECTORY","knowledge_base"))
 
     #Agent
-    maxAgentIterations: int = int(os.getenv("MAX_AGENT_ITERATIONS", "5"))
+    maxAgentIterations: int = int(os.getenv("MAX_AGENT_ITERATIONS", "10"))
+    maxShoppingAgentIterations: int = int(os.getenv("MAX_SHOPPING_AGENT_ITERATIONS", "20"))
 
     #Backend Client
     inventoryServiceUrl: str = getRequiredEnv("INVENTORY_SERVICE_URL")

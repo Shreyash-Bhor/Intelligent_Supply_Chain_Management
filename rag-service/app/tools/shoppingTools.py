@@ -103,13 +103,21 @@ async def clearCart(accessToken: str):
     return await _call(accessToken, "DELETE", "/api/cart/")
 
 async def listAddresses(accessToken: str):
-    return await _call(accessToken, "GET", "/api/addresses/")
+    response = await _call(accessToken, "GET", "/api/addresses/")
+    # The model needs only an address handle and lightweight choice cues.
+    # Names, street lines, postal codes, phone numbers, and country stay backend-side.
+    addresses = response.get("data", [])
+    return {"status": response.get("status"), "data": [{key: item.get(key) for key in ("id", "isDefault", "city", "region")} for item in addresses]}
 
 async def createAddress(accessToken: str, address: dict[str, Any]):
-    return await _call(accessToken, "POST", "/api/addresses/", body=address)
+    response = await _call(accessToken, "POST", "/api/addresses/", body=address)
+    item = response.get("data", {})
+    return {"status": response.get("status"), "data": {key: item.get(key) for key in ("id", "isDefault", "city", "region")}}
 
 async def updateAddress(accessToken: str, addressId: str, address: dict[str, Any]):
-    return await _call(accessToken, "PUT", f"/api/addresses/{addressId}", body=address)
+    response = await _call(accessToken, "PUT", f"/api/addresses/{addressId}", body=address)
+    item = response.get("data", {})
+    return {"status": response.get("status"), "data": {key: item.get(key) for key in ("id", "isDefault", "city", "region")}}
 
 async def deleteAddress(accessToken: str, addressId: str):
     return await _call(accessToken, "DELETE", f"/api/addresses/{addressId}")

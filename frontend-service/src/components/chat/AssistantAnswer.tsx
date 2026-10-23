@@ -7,6 +7,7 @@ type AssistantAnswerProps = {
   text: string;
   products: UserInventoryProduct[];
   onProductClick: () => void;
+  spacious?: boolean;
 };
 
 function renderInline(text: string): ReactNode[] {
@@ -99,14 +100,14 @@ function renderAnswerText(text: string) {
   return blocks;
 }
 
-export function AssistantAnswer({ text, products, onProductClick }: AssistantAnswerProps) {
+export function AssistantAnswer({ text, products, onProductClick, spacious = false }: AssistantAnswerProps) {
   const mentionedProducts = products.filter((product) =>
     product.name && text.toLocaleLowerCase().includes(product.name.toLocaleLowerCase()),
   );
 
   return (
-    <div className="min-w-0 space-y-4 text-sm leading-7 text-foreground [&_h3]:pt-1 [&_li]:leading-6">
-      <div className="space-y-3">{renderAnswerText(text)}</div>
+    <div className={`min-w-0 space-y-4 text-foreground [&_h3]:pt-1 [&_li]:leading-7 ${spacious ? "text-[15px] leading-7 [&_h3]:text-lg [&_table]:text-sm [&_pre]:text-sm" : "text-sm leading-7"}`}>
+      <div className="space-y-4">{renderAnswerText(text)}</div>
       {mentionedProducts.length > 0 && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {mentionedProducts.slice(0, 6).map((product) => (

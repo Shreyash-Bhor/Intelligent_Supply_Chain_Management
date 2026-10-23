@@ -9,4 +9,5 @@ export const addressSchema = z.object({
   region: z.string().trim().min(2).max(100),
   postalCode: z.string().trim().regex(/^[A-Za-z0-9 -]{3,12}$/),
   country: z.string().trim().length(2).transform((value) => value.toUpperCase()).optional().nullable(),
+  isDefault: z.boolean().optional(),
 });

@@ -9,8 +9,9 @@ const secret = () => {
 };
 
 export async function createQuote(userId: string, addressId: string) {
-  const address = await prisma.address.findFirst({ where: { id: addressId, userId } });
-  if (!address) throw Object.assign(new Error("Shipping address not found"), { statusCode: 404 });
+  const storedAddress = await prisma.address.findFirst({ where: { id: addressId, userId } });
+  if (!storedAddress) throw Object.assign(new Error("Shipping address not found"), { statusCode: 404 });
+  const address = { id: storedAddress.id, name: storedAddress.name, phone: storedAddress.phone, address1: storedAddress.address1, address2: storedAddress.address2, city: storedAddress.city, region: storedAddress.region, postalCode: storedAddress.postalCode, country: storedAddress.country, isDefault: storedAddress.isDefault };
   const cart = await prisma.cart.findUnique({ where: { userId }, include: { items: true } });
   if (!cart?.items.length) throw Object.assign(new Error("Your cart is empty"), { statusCode: 422 });
   const ids = cart.items.map((item) => item.productId);

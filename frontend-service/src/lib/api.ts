@@ -285,13 +285,17 @@ export type ServerCartLine = {
 };
 export type ServerCart = { id: string | null; items: ServerCartLine[] };
 export function fetchCustomerCart(customerToken: string) { return fetchApi<ServerCart>("/api/cart", { customerToken }); }
+export function fetchCustomerProductAvailability(customerToken: string, productId: string) { return fetchApi<{ productId: string; availableQty: number }>(`/api/inventory/product/${encodeURIComponent(productId)}`, { customerToken }); }
 export function setCustomerCartItem(customerToken: string, productId: string, quantity: number) { return fetchApi<ServerCart>("/api/cart/items", { customerToken, method: "PUT", body: { productId, quantity } }); }
 export function removeCustomerCartItem(customerToken: string, productId: string) { return fetchApi<ServerCart>(`/api/cart/items/${productId}`, { customerToken, method: "DELETE" }); }
 export function clearCustomerCart(customerToken: string) { return fetchApi<ServerCart>("/api/cart", { customerToken, method: "DELETE" }); }
-export type ShippingAddress = { id: string; name: string; phone: string; address1: string; address2: string | null; city: string; region: string; postalCode: string; country?: string | null };
+export type ShippingAddress = { id: string; name: string; phone: string; address1: string; address2: string | null; city: string; region: string; postalCode: string; country?: string | null; isDefault: boolean };
+export type CustomerProfile = { id: string; name: string; email: string };
+export function fetchCustomerProfile(customerToken: string) { return fetchApi<CustomerProfile>("/api/auth/me", { customerToken }); }
 export function fetchCustomerAddresses(customerToken: string) { return fetchApi<ShippingAddress[]>("/api/addresses", { customerToken }); }
-export function createCustomerAddress(customerToken: string, body: Omit<ShippingAddress, "id">) { return fetchApi<ShippingAddress>("/api/addresses", { customerToken, method: "POST", body }); }
-export function updateCustomerAddress(customerToken: string, addressId: string, body: Omit<ShippingAddress, "id">) { return fetchApi<ShippingAddress>(`/api/addresses/${addressId}`, { customerToken, method: "PUT", body }); }
+export function createCustomerAddress(customerToken: string, body: Omit<ShippingAddress, "id" | "isDefault"> & { isDefault?: boolean }, idempotencyKey?: string) { return fetchApi<ShippingAddress>("/api/addresses", { customerToken, method: "POST", body, idempotencyKey }); }
+export function updateCustomerAddress(customerToken: string, addressId: string, body: Omit<ShippingAddress, "id" | "isDefault">) { return fetchApi<ShippingAddress>(`/api/addresses/${addressId}`, { customerToken, method: "PUT", body }); }
+export function setCustomerDefaultAddress(customerToken: string, addressId: string) { return fetchApi<ShippingAddress>(`/api/addresses/${addressId}/default`, { customerToken, method: "PUT" }); }
 export function deleteCustomerAddress(customerToken: string, addressId: string) { return fetchApi<null>(`/api/addresses/${addressId}`, { customerToken, method: "DELETE" }); }
 export type CheckoutQuote = { lines: Array<{ productId: string; name: string; sku: string; imageUrl: string | null; quantity: number; unitPrice: string; currency: string; availableQty: number; lineTotal: string }>; currency: string; subtotal: string; shippingTotal: string | null; taxTotal: string | null; total: string; expiresAt: string; quoteToken: string; address: ShippingAddress; calculation: { shippingAndTax: "not_configured" } };
 export function fetchCheckoutQuote(customerToken: string, addressId: string) { return fetchApi<CheckoutQuote>("/api/orders/quote", { customerToken, method: "POST", body: { addressId } }); }
