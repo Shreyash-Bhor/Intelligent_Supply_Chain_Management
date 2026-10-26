@@ -23,12 +23,15 @@ export function Pagination({
   const currentPage = Math.min(Math.max(1, page), totalPages);
   const start = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const end = Math.min(currentPage * pageSize, totalItems);
+  const pageWindowSize = 5;
+  const firstPage = Math.min(
+    Math.max(1, currentPage - Math.floor(pageWindowSize / 2)),
+    Math.max(1, totalPages - pageWindowSize + 1),
+  );
+  const lastPage = Math.min(totalPages, firstPage + pageWindowSize - 1);
   const pages = Array.from(
-    { length: totalPages },
-    (_, index) => index + 1,
-  ).filter(
-    (value) =>
-      value === 1 || value === totalPages || Math.abs(value - currentPage) <= 1,
+    { length: lastPage - firstPage + 1 },
+    (_, index) => firstPage + index,
   );
 
   if (totalItems <= pageSize) return null;
@@ -57,7 +60,7 @@ export function Pagination({
         </Button>
         {pages.map((value, index) => (
           <span key={value} className="flex items-center gap-1">
-            {index > 0 && value - pages[index - 1] > 1 ? (
+            {index === 0 && firstPage > 1 ? (
               <span className="text-muted-foreground px-1" aria-hidden="true">
                 …
               </span>
@@ -74,6 +77,11 @@ export function Pagination({
             </Button>
           </span>
         ))}
+        {lastPage < totalPages ? (
+          <span className="text-muted-foreground px-1" aria-hidden="true">
+            …
+          </span>
+        ) : null}
         <Button
           type="button"
           variant="outline"

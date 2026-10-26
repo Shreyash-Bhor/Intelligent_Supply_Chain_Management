@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowUp, Check, ChevronRight, LoaderCircle, PackageSearch,
@@ -12,7 +12,7 @@ import { AssistantAnswer } from "@/components/chat/AssistantAnswer";
 import { ChatActionView } from "@/components/chat/ChatActionView";
 import { parseChatPayload, restoreMessages, type ChatAction } from "@/components/chat/protocol";
 
-type Message = { id: string; role: "assistant" | "user"; text: string; actions?: ChatAction[]; retryQuery?: string };
+type Message = { id: string; role: "assistant" | "user"; text: string; actions?: ChatAction[]; suggestions?: string[]; retryQuery?: string };
 const STARTER_QUESTIONS = ["Find something for my home", "What’s in stock?", "How does ordering work?"];
 
 export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
@@ -64,8 +64,6 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, busy, open]);
 
-  const productMatches = useMemo(() => [...products].sort((a, b) => b.name.length - a.name.length), [products]);
-
   async function sendMessage(value = draft): Promise<boolean> {
     const query = value.trim();
     if (!query || busy) return false;
@@ -84,8 +82,8 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message ?? payload.detail ?? "I couldn’t get an answer just now.");
       const raw = payload.data?.answer;
-      const structured = parseChatPayload(typeof raw === "string" ? { answer: raw, actions: payload.data?.actions } : raw);
-      setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", text: structured.answer, actions: structured.actions }]);
+      const structured = parseChatPayload(typeof raw === "string" ? { answer: raw, actions: payload.data?.actions, suggestions: payload.data?.suggestions } : raw);
+      setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", text: structured.answer, actions: structured.actions, suggestions: structured.suggestions }]);
       return true;
     } catch (error) {
       const text = error instanceof Error ? error.message : "The assistant is unavailable. Please try again.";
@@ -109,7 +107,9 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
       if (!await sendMessage(`Apply these product filters: ${JSON.stringify(filters)}`)) throw new Error("The assistant could not apply those filters. Retry the submission.");
       return;
     }
-    if (!await sendMessage("I submitted the requested form.")) throw new Error("The assistant could not process this form. Retry the submission.");
+    const submittedValues = Object.fromEntries(Object.entries(values).filter(([, value]) => value !== "" && value !== false));
+    const formName = action.action === "show_checkout_form" ? "checkout" : "requested";
+    if (!await sendMessage(`I submitted the ${formName} form with these selections: ${JSON.stringify(submittedValues)}. Apply my selections to the current task and continue.`)) throw new Error("The assistant could not process this form. Retry the submission.");
   }
 
   return (
@@ -145,7 +145,10 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
           {messages.map((message) => <article key={message.id} className={`mx-auto flex w-full max-w-3xl gap-3 ${message.role === "user" ? (fullPage ? "justify-end" : "justify-end") : "justify-start"}`}>
             {message.role === "assistant" && !fullPage && <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Sparkles className="size-4" /></span>}
             <div className={message.role === "user" ? (fullPage ? "max-w-[85%] rounded-3xl bg-muted px-5 py-3 text-[15px] leading-6 text-foreground sm:max-w-[75%]" : "max-w-[88%] rounded-3xl bg-muted px-4 py-2.5 text-sm leading-6 text-foreground") : "min-w-0 flex-1 pt-0.5"}>
-              {message.role === "assistant" ? <><AssistantAnswer text={message.text} products={session?.role === "user" ? productMatches : []} onProductClick={() => setOpen(false)} spacious={fullPage} />{message.actions?.map((action, index) => <ChatActionView key={`${message.id}-${index}`} instanceId={`${message.id}-${index}`} action={action} busy={busy} onConfirm={() => void sendMessage("I confirm this order")} onFormSubmit={submitStructuredForm} />)}{message.retryQuery && <button type="button" disabled={busy} onClick={() => void sendMessage(message.retryQuery)} className="mt-3 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium hover:bg-muted disabled:opacity-50"><RotateCcw className="size-3.5"/>Retry request</button>}</> : <p className="whitespace-pre-wrap">{message.text}</p>}
+              {message.role === "assistant" ? <><AssistantAnswer text={message.text} spacious={fullPage} />{message.actions?.map((action, index) => <ChatActionView key={`${message.id}-${index}`} instanceId={`${message.id}-${index}`} action={action} busy={busy} onConfirm={() => void sendMessage("I confirm this order")} onFormSubmit={submitStructuredForm} onAddressSaved={() => {
+                const ordering = messages.some((item) => item.role === "user" && /\b(order|checkout|buy|purchase|cart)\b/i.test(item.text));
+                void sendMessage(ordering ? "My delivery address has been saved. Continue checkout using this address." : "My delivery address has been saved.");
+              }} />)}{message.suggestions?.length && !message.retryQuery ? <div className="mt-3 flex flex-wrap gap-2" aria-label="Suggested replies">{message.suggestions.map((reply) => <button key={reply} type="button" disabled={busy} onClick={() => void sendMessage(reply)} className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-left text-xs font-medium text-primary transition hover:border-primary/40 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50">{reply}</button>)}</div> : null}{message.retryQuery && <button type="button" disabled={busy} onClick={() => void sendMessage(message.retryQuery)} className="mt-3 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium hover:bg-muted disabled:opacity-50"><RotateCcw className="size-3.5"/>Retry request</button>}</> : <p className="whitespace-pre-wrap">{message.text}</p>}
               {message.role === "assistant" && session?.role !== "user" && message.id !== "welcome" && <Link href="/user" onClick={() => setOpen(false)} className="mt-3 flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">Browse the user store <ChevronRight className="size-3.5" /></Link>}
             </div>
           </article>)}

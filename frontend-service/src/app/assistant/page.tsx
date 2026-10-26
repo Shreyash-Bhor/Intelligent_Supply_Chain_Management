@@ -9,7 +9,7 @@ export default function AssistantPage() {
   const router = useRouter();
   const { session, hydrated } = useAuthSession();
   useEffect(() => {
-    if (hydrated && session?.role !== "user") router.replace("/");
+    if (hydrated && session?.role !== "user") router.replace(session?.role === "warehouse_manager" ? "/manager" : "/login/user");
   }, [hydrated, router, session?.role]);
   if (!hydrated || session?.role !== "user") return <main className="grid min-h-[100dvh] place-items-center text-sm text-muted-foreground">Opening your shopping assistant…</main>;
   return <RagChatbot fullPage />;

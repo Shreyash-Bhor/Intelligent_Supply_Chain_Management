@@ -26,7 +26,7 @@ export default function OrderConfirmationPage({ params }: { params: Promise<{ or
   }, [session?.token, orderId]);
   useEffect(() => { if (hydrated && session?.role === "user" && orderId) void load(); }, [hydrated, session?.role, orderId, load]);
   if (!hydrated) return null;
-  if (session?.role !== "user") return <main className="mx-auto max-w-3xl px-4 py-12"><h1 className="text-2xl font-semibold">Sign in to view this order</h1><Link className="text-primary mt-4 inline-block underline" href="/">Go to sign in</Link></main>;
+  if (session?.role !== "user") return <main className="mx-auto max-w-3xl px-4 py-12"><h1 className="text-2xl font-semibold">Sign in to view this order</h1><Link className="text-primary mt-4 inline-block underline" href="/manager">Go to sign in</Link></main>;
   const lines = order?.items?.length ? order.items : order ? [{ id: order.id, productId: order.product.id, quantity: order.quantity, allocatedQty: order.allocatedQty, unitPrice: String(order.unitPrice), totalPrice: String(order.totalPrice), product: order.product }] : [];
   const cancel = async () => {
     if (!session?.token || !orderId) return;

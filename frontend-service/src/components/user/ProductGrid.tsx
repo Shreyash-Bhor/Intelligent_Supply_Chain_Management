@@ -21,6 +21,7 @@ export function ProductGrid({ customerToken, customerKey, focusProductId }: { cu
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<UserCatalogProduct | null>(null);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [category, setCategory] = useState("");
   const [inStock, setInStock] = useState(false);
   const [sort, setSort] = useState<Sort>("name");
@@ -35,14 +36,18 @@ export function ProductGrid({ customerToken, customerKey, focusProductId }: { cu
     return () => window.clearTimeout(timer);
   }, []);
   useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedQuery(query.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+  useEffect(() => {
     let active = true;
-    void fetchPagedUserCatalog(customerToken, { page, pageSize: PAGE_SIZE, query, category, inStock, sort }).then((result) => {
+    void fetchPagedUserCatalog(customerToken, { page, pageSize: PAGE_SIZE, query: debouncedQuery, category, inStock, sort }).then((result) => {
       if (!active) return;
       setProducts(result.data); setTotal(result.pagination.total);
     }).catch((e) => { if (active) setError(e instanceof Error ? e.message : "Unable to load products"); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [customerToken, page, query, category, inStock, sort]);
+  }, [customerToken, page, debouncedQuery, category, inStock, sort]);
   useEffect(() => {
     if (!focusProductId) return;
     const item = pricedProducts.find((product) => product.id === focusProductId);

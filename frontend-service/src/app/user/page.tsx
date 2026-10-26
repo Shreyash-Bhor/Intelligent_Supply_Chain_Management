@@ -36,7 +36,7 @@ export default function UserDashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => router.push("/")}>
+            <Button onClick={() => router.push("/manager")}>
               Go to Manager Dashboard
             </Button>
           </CardContent>
@@ -56,14 +56,14 @@ export default function UserDashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex gap-3">
-            <Button onClick={() => router.push("/")}>
+            <Button onClick={() => router.push("/manager")}>
               Go to Access Portal
             </Button>
             <Button
               variant="outline"
               onClick={() => {
                 clearAuthSession();
-                router.push("/");
+                router.push("/manager");
               }}
             >
               Reset session

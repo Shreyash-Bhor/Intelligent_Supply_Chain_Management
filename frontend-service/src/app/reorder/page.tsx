@@ -5,9 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import {
   fetchReorders,
-  fetchInventory,
   updateReorderStatus,
-  type InventoryItem,
   type ManagerSession,
   type StockReorder,
 } from "@/lib/api";
@@ -30,9 +28,6 @@ export default function ReorderPage() {
   const router = useRouter();
   const { session: authSession, hydrated } = useAuthSession();
   const [session, setSession] = useState<ManagerSession | null>(null);
-  const [inventoryLookup, setInventoryLookup] = useState<
-    Record<string, InventoryItem>
-  >({});
   const [reorders, setReorders] = useState<StockReorder[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,20 +59,7 @@ export default function ReorderPage() {
 
     try {
       setLoading(true);
-      const [reorderData, inventoryData] = await Promise.all([
-        fetchReorders(reorderView),
-        fetchInventory(session),
-      ]);
-
-      const lookup = inventoryData.reduce<Record<string, InventoryItem>>(
-        (acc, item) => {
-          acc[item.id] = item;
-          return acc;
-        },
-        {},
-      );
-
-      setInventoryLookup(lookup);
+      const reorderData = await fetchReorders(reorderView);
       setReorders(reorderData);
       setError(null);
     } catch (err) {
@@ -118,25 +100,22 @@ export default function ReorderPage() {
   const warehouseOptions = useMemo(() => {
     const warehouseMap = new Map<string, string>();
 
-    Object.values(inventoryLookup).forEach((inventory) => {
-      warehouseMap.set(inventory.warehouse.name, inventory.warehouse.name);
+    reorders.forEach((reorder) => {
+      warehouseMap.set(reorder.inventory.warehouse.name, reorder.inventory.warehouse.name);
     });
 
     return Array.from(warehouseMap.entries()).sort((a, b) =>
       a[1].localeCompare(b[1]),
     );
-  }, [inventoryLookup]);
+  }, [reorders]);
 
   const filteredReorders = useMemo(
     () =>
       reorders.filter((reorder) => {
-        const inventory = inventoryLookup[reorder.inventoryId];
-        if (!inventory) return false;
-
         const warehouseMatches =
           warehouseFilter === "all"
             ? true
-            : inventory.warehouse.name === warehouseFilter;
+            : reorder.inventory.warehouse.name === warehouseFilter;
         if (!warehouseMatches) return false;
 
         if (reorderView === "history" && historyStatusFilter !== "all") {
@@ -147,7 +126,6 @@ export default function ReorderPage() {
       }),
     [
       reorders,
-      inventoryLookup,
       warehouseFilter,
       reorderView,
       historyStatusFilter,
@@ -283,23 +261,12 @@ export default function ReorderPage() {
                 {filteredReorders
                   .slice((activePage - 1) * 10, activePage * 10)
                   .map((reorder) => {
-                    const inventory = inventoryLookup[reorder.inventoryId];
+                    const inventory = reorder.inventory;
 
                     return (
                       <TableRow key={reorder.id}>
                         <TableCell>
-                          {inventory ? (
-                            <>
-                              <p className="font-medium">
-                                {inventory.product.name}
-                              </p>
-                              <p className="text-muted-foreground text-xs">
-                                {inventory.product.sku}
-                              </p>
-                            </>
-                          ) : (
-                            "Unknown item"
-                          )}
+                          <><p className="font-medium">{inventory.product.name}</p><p className="text-muted-foreground text-xs">{inventory.product.sku}</p></>
                         </TableCell>
 
                         <TableCell>

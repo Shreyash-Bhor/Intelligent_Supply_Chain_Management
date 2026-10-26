@@ -9,12 +9,21 @@ const product = (productId: string) => ({
 });
 
 test("accepts legacy text responses and strips unsafe product image URLs", () => {
-  assert.deepEqual(parseChatPayload({ answer: "Hello" }), { answer: "Hello", actions: [] });
+  assert.deepEqual(parseChatPayload({ answer: "Hello" }), { answer: "Hello", actions: [], suggestions: [] });
   const parsed = parseChatPayload({ answer: "Details", actions: [product("p1")] });
   assert.equal(parsed.actions[0].type, "product_detail");
   if (parsed.actions[0].type === "product_detail") assert.equal(parsed.actions[0].imageUrl, null);
   const olderCard = parseChatPayload({ answer: "Older product card", actions: [{ type: "product_detail", productId: "p2", name: "Older", sku: "OLD", category: null, imageUrl: null, price: null, currency: null, availableQty: null }] });
   if (olderCard.actions[0].type === "product_detail") assert.equal(olderCard.actions[0].description, null);
+});
+
+test("accepts assistant-selected suggestions and order confirmation details", () => {
+  const parsed = parseChatPayload({ answer: "Order placed", suggestions: ["Explore more Grocery"], actions: [{
+    type: "order_confirmation", orderId: "order-1", status: "CONFIRMED", total: "12.50", currency: "USD",
+    lines: [{ productId: "p1", name: "Rice", sku: "R1", category: "Grocery", quantity: 1, unitPrice: "12.50", lineTotal: "12.50", currency: "USD" }],
+  }] });
+  assert.deepEqual(parsed.suggestions, ["Explore more Grocery"]);
+  assert.equal(parsed.actions[0].type, "order_confirmation");
 });
 
 test("validates and accepts product comparisons", () => {

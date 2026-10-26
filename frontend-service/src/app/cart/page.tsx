@@ -116,7 +116,7 @@ export default function CartPage() {
   }
 
   if (!hydrated) return null;
-  if (session?.role !== "user") return <main className="mx-auto max-w-3xl px-4 py-12"><h1 className="text-2xl font-semibold">Sign in to view your cart</h1><Link className="text-primary mt-4 inline-block underline" href="/">Go to sign in</Link></main>;
+  if (session?.role !== "user") return <main className="mx-auto max-w-3xl px-4 py-12"><h1 className="text-2xl font-semibold">Sign in to view your cart</h1><Link className="text-primary mt-4 inline-block underline" href="/manager">Go to sign in</Link></main>;
   const count = lines.reduce((sum, line) => sum + line.quantity, 0);
   return <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
     <Link href="/user" className="text-muted-foreground inline-flex items-center gap-2 text-sm hover:text-foreground"><ArrowLeft className="size-4"/> Continue shopping</Link>

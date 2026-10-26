@@ -9,6 +9,10 @@ export type CheckoutSummaryAction = {
   address: { name?: string; address1?: string; address2?: string | null; city?: string; region?: string; postalCode?: string; country?: string };
   subtotal: string; shippingTotal: string | null; taxTotal: string | null; total: string; currency: string; expiresAt: string;
 };
+export type OrderConfirmationAction = {
+  type: "order_confirmation"; orderId: string; status: string; total: string; currency: string;
+  lines: Array<{ productId: string; name: string; sku: string; category: string | null; quantity: number; unitPrice: string; lineTotal: string; currency: string }>;
+};
 export type ProductDetailAction = ProductDetails & { type: "product_detail" };
 export type ProductComparisonAction = { type: "product_comparison"; products: ProductDetails[] };
 export type FormField = {
@@ -18,7 +22,7 @@ export type FormField = {
 };
 export type StructuredFormAction = { type: "structured_form"; action: "show_checkout_form" | "show_address_form" | "show_product_filters"; title: string; fields: FormField[] };
 export type AddressFormAction = { type: "address_form" };
-export type ChatAction = CheckoutSummaryAction | ProductDetailAction | ProductComparisonAction | StructuredFormAction | AddressFormAction;
+export type ChatAction = CheckoutSummaryAction | OrderConfirmationAction | ProductDetailAction | ProductComparisonAction | StructuredFormAction | AddressFormAction;
 
 export function validateFormValues(fields: FormField[], values: Record<string, string | number | boolean>) {
   const errors: Record<string, string> = {};
@@ -45,16 +49,27 @@ function product(value: unknown): ProductDetails {
   return { productId: data.productId, name: data.name, sku: data.sku, category: data.category, imageUrl: safeImage, price: data.price, currency: data.currency, availableQty: data.availableQty as number | null, description: data.description === undefined ? null : data.description as string | null, discount: data.discount === undefined ? null : data.discount as string | null, attributes };
 }
 
-export function parseChatPayload(value: unknown): { answer: string; actions: ChatAction[] } {
+export function parseChatPayload(value: unknown): { answer: string; actions: ChatAction[]; suggestions: string[] } {
   if (!value || typeof value !== "object") throw new Error("The assistant returned an invalid response. Please retry.");
   const record = value as Record<string, unknown>;
   if (typeof record.answer !== "string" || !record.answer.trim()) throw new Error("The assistant returned an empty response. Please retry.");
-  if (record.actions === undefined) return { answer: record.answer, actions: [] };
+  const suggestions = Array.isArray(record.suggestions) ? record.suggestions.filter((item): item is string => typeof item === "string" && Boolean(item.trim()) && item.length <= 100).slice(0, 4).map((item) => item.trim()) : [];
+  if (record.actions === undefined) return { answer: record.answer, actions: [], suggestions };
   if (!Array.isArray(record.actions) || record.actions.length > 4) throw new Error("The assistant returned unsupported interactive content. Please retry.");
   const actions = record.actions.map((action): ChatAction => {
     if (!action || typeof action !== "object") throw new Error("The assistant returned unsupported interactive content. Please retry.");
     const data = action as Record<string, unknown>;
     if (data.type === "address_form") return { type: "address_form" };
+    if (data.type === "order_confirmation") {
+      if (typeof data.orderId !== "string" || !data.orderId || typeof data.status !== "string" || typeof data.total !== "string" || typeof data.currency !== "string" || !Array.isArray(data.lines) || !data.lines.length || data.lines.length > 100) throw new Error("The order confirmation is incomplete.");
+      const lines = data.lines.map((line): OrderConfirmationAction["lines"][number] => {
+        if (!line || typeof line !== "object") throw new Error("The order details are invalid.");
+        const item = line as Record<string, unknown>;
+        if (["productId", "name", "sku", "unitPrice", "lineTotal", "currency"].some((key) => typeof item[key] !== "string") || !(typeof item.category === "string" || item.category === null) || !Number.isSafeInteger(item.quantity) || Number(item.quantity) < 1) throw new Error("The order details are incomplete.");
+        return { productId: item.productId as string, name: item.name as string, sku: item.sku as string, category: item.category as string | null, quantity: item.quantity as number, unitPrice: item.unitPrice as string, lineTotal: item.lineTotal as string, currency: item.currency as string };
+      });
+      return { type: "order_confirmation", orderId: data.orderId, status: data.status, total: data.total, currency: data.currency, lines };
+    }
     if (data.type === "product_detail") return { ...product(data), type: "product_detail" };
     if (data.type === "product_comparison") {
       if (!Array.isArray(data.products) || data.products.length < 2 || data.products.length > 4) throw new Error("The product comparison is invalid.");
@@ -109,10 +124,10 @@ export function parseChatPayload(value: unknown): { answer: string; actions: Cha
     });
     return { type: "checkout_summary", lines, address: data.address as CheckoutSummaryAction["address"], subtotal: String(data.subtotal ?? ""), shippingTotal: typeof data.shippingTotal === "string" ? data.shippingTotal : null, taxTotal: typeof data.taxTotal === "string" ? data.taxTotal : null, total: data.total, currency: data.currency, expiresAt: data.expiresAt };
   });
-  return { answer: record.answer, actions };
+  return { answer: record.answer, actions, suggestions };
 }
 
-export function restoreMessages(value: unknown): Array<{ id: string; role: "assistant" | "user"; text: string; actions?: ChatAction[]; retryQuery?: string }> {
+export function restoreMessages(value: unknown): Array<{ id: string; role: "assistant" | "user"; text: string; actions?: ChatAction[]; suggestions?: string[]; retryQuery?: string }> {
   if (!Array.isArray(value)) return [];
   return value.slice(-60).flatMap((item) => {
     if (!item || typeof item !== "object") return [];
@@ -120,7 +135,8 @@ export function restoreMessages(value: unknown): Array<{ id: string; role: "assi
     if (typeof message.id !== "string" || (message.role !== "assistant" && message.role !== "user") || typeof message.text !== "string") return [];
     try {
       const actions = message.actions === undefined ? undefined : parseChatPayload({ answer: "restored", actions: message.actions }).actions;
-      return [{ id: message.id, role: message.role, text: message.text, ...(actions ? { actions } : {}), ...(typeof message.retryQuery === "string" ? { retryQuery: message.retryQuery } : {}) }];
+      const suggestions = Array.isArray(message.suggestions) ? message.suggestions.filter((item): item is string => typeof item === "string" && Boolean(item.trim()) && item.length <= 100).slice(0, 4).map((item) => item.trim()) : undefined;
+      return [{ id: message.id, role: message.role, text: message.text, ...(actions ? { actions } : {}), ...(suggestions?.length ? { suggestions } : {}), ...(typeof message.retryQuery === "string" ? { retryQuery: message.retryQuery } : {}) }];
     } catch { return [{ id: message.id, role: message.role, text: message.text }]; }
   });
 }
