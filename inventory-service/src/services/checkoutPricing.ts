@@ -16,7 +16,7 @@ export async function createQuote(userId: string, addressId: string) {
   if (!cart?.items.length) throw Object.assign(new Error("Your cart is empty"), { statusCode: 422 });
   const ids = cart.items.map((item) => item.productId);
   const [products, prices, stock] = await Promise.all([
-    prisma.product.findMany({ where: { id: { in: ids }, isActive: true }, select: { id: true, name: true, sku: true, imageUrl: true } }),
+    prisma.product.findMany({ where: { id: { in: ids }, isActive: true }, select: { id: true, name: true, sku: true, category: true, imageUrl: true } }),
     getCurrentProductPrices(ids),
     prisma.inventory.groupBy({ by: ["productId"], where: { productId: { in: ids }, warehouse: { isActive: true } }, _sum: { availableQty: true } }),
   ]);
@@ -28,7 +28,7 @@ export async function createQuote(userId: string, addressId: string) {
     if (!product || !price) throw Object.assign(new Error("A cart product is unavailable or no longer priced"), { statusCode: 409 });
     const availableQty = stockMap.get(item.productId) ?? 0;
     if (item.quantity > availableQty) throw Object.assign(new Error(`${product.name} has only ${availableQty} available`), { statusCode: 409 });
-    return { productId: item.productId, name: product.name, sku: product.sku, imageUrl: product.imageUrl, quantity: item.quantity, unitPrice: price.price, currency: price.currency, lineTotalMinor: toMinor(price.price) * item.quantity, availableQty };
+    return { productId: item.productId, name: product.name, sku: product.sku, category: product.category, imageUrl: product.imageUrl, quantity: item.quantity, unitPrice: price.price, currency: price.currency, lineTotalMinor: toMinor(price.price) * item.quantity, availableQty };
   });
   const currencies = new Set(lines.map((line) => line.currency));
   if (currencies.size !== 1) throw Object.assign(new Error("Cart items must use one currency"), { statusCode: 422 });

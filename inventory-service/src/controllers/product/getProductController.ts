@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { Category } from "@prisma/client";
 import { getCurrentProductPrices } from "../../services/pricingService";
+import { getOrLoad } from "../../lib/cache";
 type UserDashboardProduct = {
   id: string;
   name: string;
@@ -22,11 +23,9 @@ type CatalogProduct = {
 };
 
 export const getProduct = asyncHandler(async (req: Request, res: Response) => {
-  const { productId } = req.params;
+  const productId = req.params.productId ?? "";
 
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
-  });
+  const product = await getOrLoad(productId, "products", 30, () => prisma.product.findUnique({ where: { id: productId } }));
 
   if (!product) {
     return res
@@ -52,10 +51,7 @@ export const getAllProducts = asyncHandler(
           ? {}
           : { isActive: true };
 
-    const products = await prisma.product.findMany({
-      where: whereClause,
-      orderBy: { createdAt: "desc" },
-    });
+    const products = await getOrLoad(String(statusFilter ?? "active"), "products", 30, () => prisma.product.findMany({ where: whereClause, orderBy: { createdAt: "desc" } }));
 
     return res.status(200).json({
       status: "success",
@@ -66,6 +62,7 @@ export const getAllProducts = asyncHandler(
 );
 export const getUserDashboardProducts = asyncHandler(
   async (_req: Request, res: Response) => {
+    const products = await getOrLoad("active-dashboard", "catalog", 15, async () => {
     const products = await prisma.product.findMany({
       where: {
         isActive: true,
@@ -86,30 +83,18 @@ export const getUserDashboardProducts = asyncHandler(
       orderBy: { name: "asc" },
     });
 
+    return products.map(
+      ({ inventories, ...product }: { inventories: Array<{ availableQty: number }>; id: string; name: string; sku: string; category: Category; createdAt: Date; imageUrl: string | null }) => ({
+        ...product,
+        availableQty: inventories.reduce((sum, item) => sum + item.availableQty, 0),
+      }),
+    );
+    });
+
     return res.status(200).json({
       status: "success",
       message: "User dashboard products fetched successfully",
-      data: products.map(
-        ({
-          inventories,
-          ...product
-        }: {
-          inventories: Array<{ availableQty: number }>;
-          id: string;
-          name: string;
-          sku: string;
-          category: Category;
-          createdAt: Date;
-          imageUrl: string | null;
-        }) => ({
-          ...product,
-          availableQty: inventories.reduce(
-            (sum: number, item: { availableQty: number }) =>
-              sum + item.availableQty,
-            0,
-          ),
-        }),
-      ),
+      data: products,
     });
   },
 );
@@ -131,6 +116,8 @@ export const getPagedUserCatalog = asyncHandler(async (req: Request, res: Respon
     ...(query ? { OR: [{ name: { contains: query, mode: "insensitive" } }, { sku: { contains: query, mode: "insensitive" } }] } : {}),
     inventories: { some: { warehouse: { isActive: true }, ...(inStock ? { availableQty: { gt: 0 } } : {}) } },
   };
+  const cacheKey = JSON.stringify({ page, pageSize, query: query.toLowerCase(), category, inStock, sort });
+  const catalogPage = await getOrLoad(cacheKey, "catalog", 10, async () => {
   const total = await prisma.product.count({ where });
   let orderedIds: string[] | undefined;
   if (sort === "price-asc" || sort === "price-desc") {
@@ -166,11 +153,14 @@ export const getPagedUserCatalog = asyncHandler(async (req: Request, res: Respon
     reservedQty: product.inventories.reduce((sum: number, item: any) => sum + item.reservedQty, 0),
     warehouses: [...new Set(product.inventories.map((item: any) => item.warehouse.name))],
   }));
-  return res.status(200).json({ status: "success", data: { data, pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) } } });
+  return { data, pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) } };
+  });
+  return res.status(200).json({ status: "success", data: catalogPage });
 });
 
 export const getCatalogProducts = asyncHandler(
   async (_req: Request, res: Response) => {
+    const catalog = await getOrLoad("available", "catalog", 15, async () => {
     const inventoryItems = await prisma.inventory.findMany({
       where: {
         availableQty: { gt: 0 },
@@ -221,13 +211,13 @@ export const getCatalogProducts = asyncHandler(
       }
     }
 
+    return Array.from(catalog.values()).sort((a, b) => b.availableQty - a.availableQty || a.name.localeCompare(b.name));
+    });
+
     return res.status(200).json({
       status: "success",
       message: "Catalog products fetched successfully",
-      data: Array.from(catalog.values()).sort(
-        (a, b) =>
-          b.availableQty - a.availableQty || a.name.localeCompare(b.name),
-      ),
+      data: catalog,
     });
   },
 );
@@ -255,7 +245,7 @@ export const searchProducts = asyncHandler(
 
     const searchQuery = typeof query === "string" ? query.trim() : undefined;
 
-    const products = await prisma.product.findMany({
+    const products = await getOrLoad(JSON.stringify({ query: searchQuery?.toLowerCase() ?? "", category: validCategory ?? "" }), "products", 15, () => prisma.product.findMany({
       where: {
         isActive: true,
 
@@ -295,7 +285,7 @@ export const searchProducts = asyncHandler(
       },
 
       take: 3,
-    });
+    }));
 
     return res.status(200).json({
       status: "success",

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { createInventorySchema } from "../../schemas/inventorySchema";
 import prisma from "../../lib/prisma";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { invalidateCache } from "../../lib/cache";
 
 export const createInventory = asyncHandler(
   async (req: Request, res: Response) => {
@@ -30,6 +31,7 @@ export const createInventory = asyncHandler(
         reorderQty,
       },
     });
+    await invalidateCache("inventory", "catalog", "dashboard", "warehouses");
     return res.status(201).json({
       status: "success",
       message: "Inventory created successfully",

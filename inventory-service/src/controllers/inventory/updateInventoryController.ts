@@ -5,6 +5,7 @@ import {
 } from "../../schemas/inventorySchema";
 import prisma from "../../lib/prisma";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { invalidateCache } from "../../lib/cache";
 
 export const updateInventory = asyncHandler(
   async (req: Request, res: Response) => {
@@ -17,6 +18,7 @@ export const updateInventory = asyncHandler(
       },
       data,
     });
+    await invalidateCache("inventory", "catalog", "dashboard", "warehouses");
     return res.status(200).json({
       status: "success",
       message: "Inventory updated successfully",
@@ -35,6 +37,7 @@ export const updateInventoryStatus = asyncHandler(
       },
       data: { isReorderPending },
     });
+    await invalidateCache("inventory", "catalog", "dashboard", "warehouses");
     return res.status(200).json({
       status: "success",
       message: "Inventory status updated successfully",

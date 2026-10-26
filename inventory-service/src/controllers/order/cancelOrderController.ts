@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../../lib/prisma";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { invalidateCache } from "../../lib/cache";
 
 export const cancelCustomerOrder = asyncHandler(async (req: Request, res: Response) => {
   const userId = res.locals.customer.sub as string;
@@ -39,6 +40,7 @@ export const cancelCustomerOrder = asyncHandler(async (req: Request, res: Respon
 
     if (order.kind === "missing") return res.status(404).json({ status: "error", message: "Order not found" });
     if (order.kind === "ineligible") return res.status(409).json({ status: "error", message: "This order cannot be cancelled in its current payment or order state" });
+    await invalidateCache("inventory", "catalog", "dashboard", "warehouses");
     const data = await prisma.order.findFirst({
       where: { id: req.params.orderId, userId },
       include: { product: { select: { id: true, name: true, sku: true, imageUrl: true } }, items: { include: { product: { select: { id: true, name: true, sku: true, imageUrl: true } } } }, shipments: true },
