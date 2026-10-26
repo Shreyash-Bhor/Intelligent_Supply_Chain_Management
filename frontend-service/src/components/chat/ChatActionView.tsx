@@ -22,7 +22,7 @@ function loadAddressFormData(token: string) {
   return request;
 }
 
-export function ChatActionView({ action, onConfirm, busy, onFormSubmit, instanceId = "chat-action" }: { action: ChatAction; onConfirm: () => void; busy: boolean; onFormSubmit?: (action: Extract<ChatAction, { type: "structured_form" }>, values: Record<string, string | number | boolean>) => Promise<void>; instanceId?: string }) {
+export function ChatActionView({ action, onConfirm, busy, onFormSubmit, onAddressSaved, instanceId = "chat-action" }: { action: ChatAction; onConfirm: () => void; busy: boolean; onFormSubmit?: (action: Extract<ChatAction, { type: "structured_form" }>, values: Record<string, string | number | boolean>) => Promise<void>; onAddressSaved?: () => void; instanceId?: string }) {
   const [confirmed, setConfirmed] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const [cartBusy, setCartBusy] = useState(false);
@@ -99,6 +99,7 @@ export function ChatActionView({ action, onConfirm, busy, onFormSubmit, instance
       addressFormCache.set(session.token, Promise.resolve({ addresses: normalizedAddresses, profile: profileRef.current }));
       setSelectedAddress(saved.id);
       setAddressSaved(true);
+      onAddressSaved?.();
     } catch (error) {
       setAddressError(error instanceof Error ? error.message : "Unable to save this address. Review the fields and retry.");
     } finally { addressSubmitting.current = false; setAddressBusy(false); }
@@ -131,7 +132,7 @@ export function ChatActionView({ action, onConfirm, busy, onFormSubmit, instance
         {Object.entries(addressFieldErrors).map(([field, message]) => message ? <p id={`address-error-${field}`} key={field} role="alert" className="sm:col-span-2 text-xs text-destructive">{message}</p> : null)}
         {fields.map(([field, label, type]) => <label key={field} className={`block text-xs font-medium ${field === "address1" || field === "address2" ? "sm:col-span-2" : ""}`}>{label}<input required={!(["address2", "country"] as string[]).includes(field)} type={type} autoComplete={field === "name" ? "name" : field === "phone" ? "tel" : field === "address1" ? "address-line1" : field === "address2" ? "address-line2" : field === "city" ? "address-level2" : field === "region" ? "address-level1" : field === "postalCode" ? "postal-code" : "country"} maxLength={field === "country" ? 2 : 160} aria-invalid={!!addressFieldErrors[field]} aria-describedby={addressFieldErrors[field] ? `address-error-${field}` : undefined} value={formAddress[field]} onChange={(event) => update(field, event.target.value)} className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" /></label>)}
         {addressError && <p role="alert" className="sm:col-span-2 text-xs text-destructive">{addressError}</p>}
-        {addressSaved ? <p role="status" className="sm:col-span-2 flex items-center gap-2 text-sm text-emerald-700"><CheckCircle2 className="size-4"/>Address {selectedAddress ? "updated" : "saved"} to your account.</p> : <button type="submit" disabled={addressBusy || addressLoading} className="sm:col-span-2 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">{addressBusy && <LoaderCircle className="size-4 animate-spin"/>}{addressBusy ? "Saving address…" : selectedAddress ? "Update saved address" : "Save new address"}</button>}
+      {addressSaved ? <p role="status" className="sm:col-span-2 flex items-center gap-2 text-sm text-emerald-700"><CheckCircle2 className="size-4"/>Address {selectedAddress ? "updated" : "saved"} to your account.</p> : <button type="submit" disabled={addressBusy || addressLoading} className="sm:col-span-2 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">{addressBusy && <LoaderCircle className="size-4 animate-spin"/>}{addressBusy ? "Saving address…" : selectedAddress ? "Update saved address" : "Save new address"}</button>}
       </form>
     </section>;
   }
@@ -156,29 +157,34 @@ export function ChatActionView({ action, onConfirm, busy, onFormSubmit, instance
       } catch (error) { setCartMessage(error instanceof Error ? error.message : "Could not add this product to your cart. Retry."); }
       finally { cartSubmitting.current = false; setCartBusy(false); }
     };
-    return <article className="mt-4 overflow-hidden rounded-2xl border bg-card shadow-sm sm:flex" aria-label={`Product details for ${action.name}`}>
-      <div className="aspect-[4/3] bg-muted sm:aspect-auto sm:w-48 sm:shrink-0">
+    return <article className="mt-4 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm sm:flex" aria-label={`Product details for ${action.name}`}>
+      <div className="aspect-[4/3] max-h-80 bg-muted sm:aspect-auto sm:min-h-full sm:w-56 sm:shrink-0">
         {action.imageUrl && !imageFailed ? <>
           {/* Product images may be hosted by the customer's catalog service. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={action.imageUrl} alt={action.name} loading="lazy" className="size-full object-cover" onError={() => setImageFailed(true)} />
+          <img src={action.imageUrl} alt={action.name} loading="lazy" className="size-full object-contain p-3" onError={() => setImageFailed(true)} />
         </> : <div className="grid size-full min-h-36 place-items-center text-muted-foreground"><PackageSearch className="size-10" aria-hidden="true" /></div>}
       </div>
-      <div className="min-w-0 flex-1 space-y-2 p-4">
-        <div><h3 className="text-base font-semibold">{action.name}</h3><p className="text-xs text-muted-foreground">SKU {action.sku}{action.category ? ` · ${action.category}` : ""}</p></div>
-        <p className="text-sm font-semibold">{action.price !== null && action.currency ? `${action.price} ${action.currency}` : "Current price unavailable"}</p>
-        <p className="text-xs text-muted-foreground">{action.availableQty === null ? "Availability could not be verified" : action.availableQty > 0 ? `${action.availableQty} available` : "Currently out of stock"}</p>
-        {action.discount && <p className="text-xs font-medium text-emerald-700">{action.discount}</p>}
-        {action.description && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{action.description}</p>}
-        {Object.keys(action.attributes).length > 0 && <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">{Object.entries(action.attributes).map(([key, value]) => <div key={key} className="contents"><dt className="text-muted-foreground">{key}</dt><dd>{String(value)}</dd></div>)}</dl>}
+      <div className="min-w-0 flex-1 space-y-3 p-4 sm:p-5">
+        <div><h3 className="break-words text-lg font-semibold leading-snug">{action.name}</h3><p className="mt-1 break-words text-sm text-muted-foreground">SKU {action.sku}{action.category ? ` · ${action.category}` : ""}</p></div>
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1"><p className="text-base font-semibold">{action.price !== null && action.currency ? `${action.price} ${action.currency}` : "Current price unavailable"}</p><p className="text-sm text-muted-foreground">{action.availableQty === null ? "Availability could not be verified" : action.availableQty > 0 ? `${action.availableQty} available` : "Currently out of stock"}</p></div>
+        {action.discount && <p className="w-fit rounded-md bg-emerald-500/10 px-2.5 py-1 text-sm font-medium text-emerald-700 dark:text-emerald-400">{action.discount}</p>}
+        {action.description && <p className="whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">{action.description}</p>}
+        {Object.keys(action.attributes).length > 0 && <dl className="grid gap-x-5 gap-y-2 border-t border-border/70 pt-3 text-sm sm:grid-cols-2">{Object.entries(action.attributes).map(([key, value]) => <div key={key} className="grid min-w-0 grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-2"><dt className="break-words text-muted-foreground">{key}</dt><dd className="break-words font-medium">{String(value)}</dd></div>)}</dl>}
         <div className="flex flex-wrap gap-2"><Link href={`/user?product=${encodeURIComponent(action.productId)}&q=${encodeURIComponent(action.sku)}`} className="inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold"><ShoppingBag className="size-3.5"/>View product</Link>{session?.role === "user" && <button type="button" onClick={() => void addToCart()} disabled={cartBusy || action.availableQty === 0} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50">{cartBusy && <LoaderCircle className="size-3.5 animate-spin"/>}{cartBusy ? "Checking…" : "Add 1 to cart"}</button>}</div>
         {cartMessage && <p role="status" className="text-xs text-muted-foreground">{cartMessage}</p>}
       </div>
     </article>;
   }
-  if (action.type === "product_comparison") return <section className="mt-4 rounded-2xl border bg-card p-4" aria-label="Product comparison"><h3 className="font-semibold">Product comparison</h3><div className="grid gap-3 md:grid-cols-2">{action.products.map((product) => <ChatActionView key={product.productId} action={{ ...product, type: "product_detail" }} onConfirm={onConfirm} busy={busy} onFormSubmit={onFormSubmit} />)}</div></section>;
-  if (action.type === "structured_form" && action.action === "show_address_form") return <ChatActionView action={{ type: "address_form" }} onConfirm={onConfirm} busy={busy} onFormSubmit={onFormSubmit} instanceId={instanceId} />;
+  if (action.type === "product_comparison") return <section className="mt-4 rounded-2xl border bg-card p-4" aria-label="Product comparison"><h3 className="font-semibold">Product comparison</h3><div className="grid gap-3 md:grid-cols-2">{action.products.map((product) => <ChatActionView key={product.productId} action={{ ...product, type: "product_detail" }} onConfirm={onConfirm} busy={busy} onFormSubmit={onFormSubmit} onAddressSaved={onAddressSaved} />)}</div></section>;
+  if (action.type === "structured_form" && action.action === "show_address_form") return <ChatActionView action={{ type: "address_form" }} onConfirm={onConfirm} busy={busy} onFormSubmit={onFormSubmit} onAddressSaved={onAddressSaved} instanceId={instanceId} />;
   if (action.type === "structured_form") return <StructuredFormView action={action} onSubmit={(values) => onFormSubmit ? onFormSubmit(action, values) : Promise.resolve()} />;
+  if (action.type === "order_confirmation") return <section className="mt-4 space-y-3 rounded-2xl border border-emerald-500/25 bg-card p-4" aria-label="Order details">
+    <div className="flex items-start justify-between gap-3"><div><h3 className="flex items-center gap-2 font-semibold"><CheckCircle2 className="size-4 text-emerald-600"/>Order confirmed</h3><p className="mt-1 text-xs text-muted-foreground">Order {action.orderId} · {action.status}</p></div><Link href={`/orders/${encodeURIComponent(action.orderId)}`} className="shrink-0 text-xs font-semibold text-primary hover:underline">View order</Link></div>
+    <div className="divide-y divide-border/70">{action.lines.map((line) => <div key={line.productId} className="flex justify-between gap-3 py-2 text-sm"><span>{line.name}<span className="block text-xs text-muted-foreground">SKU {line.sku}{line.category ? ` · ${line.category}` : ""} · Qty {line.quantity}</span></span><span className="shrink-0 font-medium">{line.lineTotal} {line.currency}</span></div>)}</div>
+    <div className="flex justify-between border-t pt-3 text-sm font-semibold"><span>Order total</span><span>{action.total} {action.currency}</span></div>
+    <p className="text-xs text-muted-foreground">No payment was collected at checkout.</p>
+  </section>;
   if (action.type !== "checkout_summary") return null;
   const address = action.address;
   const addressText = [address.name, address.address1, address.address2, address.city, address.region, address.postalCode, address.country].filter(Boolean).join(", ");

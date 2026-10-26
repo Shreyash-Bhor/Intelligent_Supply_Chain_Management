@@ -12,7 +12,7 @@ import { useAuthSession } from "@/hooks/useAuthSession";
 import {
   createInventory,
   createInventoryReorder,
-  fetchInventory,
+  fetchInventoryPage,
   updateInventory,
   fetchProducts,
   fetchWarehouses,
@@ -35,12 +35,14 @@ import {
 } from "@/components/ui/table";
 
 const SESSION_KEY = "warehouse_manager_session";
+const INVENTORY_PAGE_SIZE = 50;
 
 export default function InventoryPage() {
   const router = useRouter();
   const { session: authSession, hydrated } = useAuthSession();
   const [session, setSession] = useState<ManagerSession | null>(null);
   const [inventories, setInventories] = useState<InventoryItem[]>([]);
+  const [inventoryTotal, setInventoryTotal] = useState(0);
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(false);
@@ -82,15 +84,15 @@ export default function InventoryPage() {
 
     try {
       setLoading(true);
-      const [inventoryData, productData, warehouseData] = await Promise.all([
-        fetchInventory(session),
-        fetchProducts("active"),
-        fetchWarehouses("active"),
-      ]);
+      const inventoryPage = await fetchInventoryPage(
+        session,
+        page,
+        INVENTORY_PAGE_SIZE,
+        { warehouseId: warehouseFilter },
+      );
 
-      setInventories(inventoryData);
-      setProducts(productData);
-      setWarehouses(warehouseData);
+      setInventories(inventoryPage.items);
+      setInventoryTotal(inventoryPage.pagination.total);
       setError(null);
     } catch (err) {
       setError(
@@ -99,11 +101,29 @@ export default function InventoryPage() {
     } finally {
       setLoading(false);
     }
+  }, [session, page, warehouseFilter]);
+
+  const loadReferenceData = useCallback(async () => {
+    if (!session) return;
+    try {
+      const [productData, warehouseData] = await Promise.all([
+        fetchProducts("active"),
+        fetchWarehouses("active"),
+      ]);
+      setProducts(productData);
+      setWarehouses(warehouseData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load options");
+    }
   }, [session]);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    void loadReferenceData();
+  }, [loadReferenceData]);
 
   const inventoryStats = useMemo(() => {
     const flagged = inventories.filter((item) => item.isReorderPending).length;
@@ -112,25 +132,20 @@ export default function InventoryPage() {
     ).length;
 
     return {
-      total: inventories.length,
+      total: inventoryTotal,
       lowStock,
       flagged,
     };
-  }, [inventories]);
+  }, [inventories, inventoryTotal]);
 
   const filteredInventories = useMemo(
-    () =>
-      inventories
-        .filter((inventory) =>
-          warehouseFilter === "all"
-            ? true
-            : inventory.warehouse.name === warehouseFilter,
-        )
-        .filter((inventory) => {
-          if (stockStatusFilter === "all") return true;
-          const isLow = inventory.availableQty <= inventory.reorderQty;
-          return stockStatusFilter === "low" ? isLow : !isLow;
-        }),
+    () => inventories
+      .filter((inventory) => warehouseFilter === "all" || inventory.warehouseId === warehouseFilter)
+      .filter((inventory) => {
+        if (stockStatusFilter === "all") return true;
+        const low = inventory.availableQty <= inventory.reorderQty;
+        return stockStatusFilter === "low" ? low : !low;
+      }),
     [inventories, warehouseFilter, stockStatusFilter],
   );
   const productOptionMap = useMemo(() => {
@@ -216,10 +231,7 @@ export default function InventoryPage() {
     }
   };
 
-  const activePage = Math.min(
-    page,
-    Math.max(1, Math.ceil(filteredInventories.length / 10)),
-  );
+  const activePage = page;
 
   const updateLocalInventory = (
     inventoryId: string,
@@ -373,11 +385,14 @@ export default function InventoryPage() {
             <select
               className="border-input bg-background rounded-md border px-3 py-2 text-sm"
               value={warehouseFilter}
-              onChange={(event) => setWarehouseFilter(event.target.value)}
+              onChange={(event) => {
+                setPage(1);
+                setWarehouseFilter(event.target.value);
+              }}
             >
               <option value="all">All Warehouses</option>
               {warehouses.map((warehouse) => (
-                <option key={warehouse.id} value={warehouse.name}>
+                <option key={warehouse.id} value={warehouse.id}>
                   {warehouse.name}
                 </option>
               ))}
@@ -387,9 +402,10 @@ export default function InventoryPage() {
               className="border-input bg-background rounded-md border px-3 py-2 text-sm"
               value={stockStatusFilter}
               onChange={(event) =>
-                setStockStatusFilter(
-                  event.target.value as "all" | "healthy" | "low",
-                )
+                {
+                  setPage(1);
+                  setStockStatusFilter(event.target.value as "all" | "healthy" | "low");
+                }
               }
             >
               <option value="all">All Stock Status</option>
@@ -419,9 +435,7 @@ export default function InventoryPage() {
               </TableHeader>
 
               <TableBody>
-                {filteredInventories
-                  .slice((activePage - 1) * 10, activePage * 10)
-                  .map((inventory) => {
+                {filteredInventories.map((inventory) => {
                     const isLow =
                       inventory.availableQty <= inventory.reorderQty;
                     const currentQty =
@@ -591,8 +605,9 @@ export default function InventoryPage() {
           </div>
           <Pagination
             page={activePage}
-            totalItems={filteredInventories.length}
-            onPageChange={setPage}
+            totalItems={inventoryTotal}
+            pageSize={INVENTORY_PAGE_SIZE}
+            onPageChange={(nextPage) => { setPage(nextPage); }}
           />
         </CardContent>
       </Card>

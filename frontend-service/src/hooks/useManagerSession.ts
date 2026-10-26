@@ -14,10 +14,16 @@ export function useManagerSession() {
   const [accessKey, setAccessKey] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    if (getAuthSession()?.role === "user") {
+      window.localStorage.removeItem(SESSION_KEY);
+      setHydrated(true);
+      return;
+    }
     const stored = window.localStorage.getItem(SESSION_KEY);
-    if (!stored) return;
+    if (!stored) { setHydrated(true); return; }
 
     try {
       const parsed = JSON.parse(stored) as ManagerSession;
@@ -31,6 +37,7 @@ export function useManagerSession() {
     } catch {
       window.localStorage.removeItem(SESSION_KEY);
     }
+    setHydrated(true);
   }, []);
 
   const login = async () => {
@@ -71,6 +78,7 @@ export function useManagerSession() {
 
   return {
     managerSession,
+    hydrated,
     email,
     setEmail,
     accessKey,

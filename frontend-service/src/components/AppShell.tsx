@@ -14,12 +14,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const role = session?.role;
   const email = session?.email;
   const assistantPage = pathname === "/assistant";
+  const canUseAssistant = session?.role === "user";
 
   useEffect(() => {
     if (!hydrated || !role) return;
 
     const routes = role === "warehouse_manager"
-      ? ["/", "/inventory", "/reorder", "/warehouse", "/product", "/pricing"]
+      ? ["/manager", "/inventory", "/reorder", "/warehouse", "/product", "/pricing"]
       : ["/assistant", "/user", "/cart", "/orders"];
     const [priority, ...deferred] = routes;
     let cancelled = false;
@@ -55,6 +56,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return <>
     {!assistantPage && <Navbar />}
     {children}
-    {!assistantPage && <RagChatbot />}
+    {!assistantPage && canUseAssistant && <RagChatbot />}
   </>;
 }

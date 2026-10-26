@@ -1,12 +1,7 @@
-import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
-import { ChevronRight, PackageSearch } from "lucide-react";
-import type { UserInventoryProduct } from "@/lib/api";
 
 type AssistantAnswerProps = {
   text: string;
-  products: UserInventoryProduct[];
-  onProductClick: () => void;
   spacious?: boolean;
 };
 
@@ -100,36 +95,10 @@ function renderAnswerText(text: string) {
   return blocks;
 }
 
-export function AssistantAnswer({ text, products, onProductClick, spacious = false }: AssistantAnswerProps) {
-  const mentionedProducts = products.filter((product) =>
-    product.name && text.toLocaleLowerCase().includes(product.name.toLocaleLowerCase()),
-  );
-
+export function AssistantAnswer({ text, spacious = false }: AssistantAnswerProps) {
   return (
     <div className={`min-w-0 space-y-4 text-foreground [&_h3]:pt-1 [&_li]:leading-7 ${spacious ? "text-[15px] leading-7 [&_h3]:text-lg [&_table]:text-sm [&_pre]:text-sm" : "text-sm leading-7"}`}>
       <div className="space-y-4">{renderAnswerText(text)}</div>
-      {mentionedProducts.length > 0 && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {mentionedProducts.slice(0, 6).map((product) => (
-            <Link key={product.id} href={`/user?product=${encodeURIComponent(product.id)}`} onClick={onProductClick}
-              className="group overflow-hidden rounded-xl border border-border bg-card transition hover:border-primary/40 hover:shadow-md">
-              <div className="aspect-[4/3] overflow-hidden bg-muted">
-                {product.imageUrl ? (
-                  // Catalog images may be hosted remotely, so use a native image element.
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={product.imageUrl} alt={product.name} loading="lazy" className="size-full object-cover transition duration-300 group-hover:scale-105" />
-                ) : (
-                  <div className="grid size-full place-items-center text-muted-foreground"><PackageSearch className="size-7" /></div>
-                )}
-              </div>
-              <div className="flex items-center gap-1 px-2.5 py-2 text-xs font-medium">
-                <span className="min-w-0 flex-1 truncate">{product.name}</span>
-                <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
