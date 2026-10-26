@@ -12,6 +12,20 @@ const PORT = process.env.PORT || 5555;
 
 app.use(express.json());
 app.use(cors());
+app.use((req, res, next) => {
+  const startedAt = process.hrtime.bigint();
+  res.on("finish", () => {
+    console.info(JSON.stringify({
+      event: "http_request_complete",
+      service: "pricing",
+      method: req.method,
+      route: req.route?.path ?? req.path,
+      status: res.statusCode,
+      durationMs: Number(process.hrtime.bigint() - startedAt) / 1_000_000,
+    }));
+  });
+  next();
+});
 
 app.get("/health", async (_req: Request, res: Response) => {
   try {
@@ -53,15 +67,18 @@ app.use((error: Error, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 async function startServer() {
-  try {
-    await prisma.$connect();
-    console.log("Database Connected");
-  } catch (_error) {
-    console.warn("Database connection unavailable. Starting in fallback mode.");
-  }
-
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`Server running on port : ${PORT}`);
+  });
+  server.on("error", (error) => {
+    console.error("Pricing service failed to bind its HTTP port:", error);
+    process.exitCode = 1;
+  });
+
+  void prisma.$connect().then(() => {
+    console.log("Database Connected");
+  }).catch((error) => {
+    console.warn("Database is unavailable; pricing service remains online and will connect on demand.", error instanceof Error ? error.message : error);
   });
 }
 
