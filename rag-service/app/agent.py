@@ -1,4 +1,6 @@
+import asyncio
 import json
+import re
 from typing import Any
 
 from app.llm.factory import getLLM
@@ -58,6 +60,10 @@ Use the available tools according to these rules:
    Use only the allowlisted action names and provide simple user-facing fields.
 
 Important rules:
+- Minimize tool rounds. In each response, request every independent tool result needed next so they run in one round; do not split independent lookups across responses.
+- Reuse results already returned in this turn. Never repeat a search or lookup unless new user input changes what is needed.
+- For a product request, use one search to identify candidates, then request details for all relevant product IDs together. getProductDetails already includes current price and availability.
+- For checkout, gather the cart and saved addresses together when both are needed, then prepare one quote after choosing an address. Never repeat a successful quote unless cart or address details change.
 - Never invent product, price, or availability information.
 - Use backend tools for real-time data.
 - Use the knowledge base for static information.
@@ -72,12 +78,15 @@ Important rules:
   first use searchProducts to identify the product.
 - For an ambiguous product name, show search results and ask which one the customer means.
 - For comparisons, retrieve each product independently and return only verified results.
-- Use requestStructuredForm for product filters when an inline form is useful. Use requestAddressForm for saved-address management and prepareCheckout for the actual quote flow. Never replace the existing quote and confirmation flow with a generated form.
+- When the customer asks to check out, inspect the cart and saved addresses. Show an inline checkout form with an editable quantity input for a single cart item, and other safe checkout choices that can be applied (never request passwords or payment details). Prefill fields only from values the customer clearly gave or an existing cart value. Use an address form if they need to enter or change a delivery address. After form submission, apply any quantity change with setCartQuantity, then use prepareCheckout to produce the authoritative quote. Keep the exact quote review and explicit order confirmation flow.
+- Use requestStructuredForm for product filters when an inline form is useful. Use requestAddressForm for saved-address management. For checkout, use the inline form to gather requested changes, then prepareCheckout for the actual quote.
+- After an address is created or updated, acknowledge that it was saved and help the customer continue the requested task. If they are ordering, use the saved/default address with the cart to prepare checkout; do not stop at the address form or ask them to repeat their request.
 - When comparing products, retrieve the required information for each
   product before answering.
 - Treat knowledge-base tool output as source material: synthesize only the relevant facts, paraphrase them, and never paste raw passages or large retrieved tables into the response.
 - Format the final answer as clean Markdown: answer directly first, then use short paragraphs, bullets for related facts, numbered steps for processes, and a Markdown table only when a comparison is clearer in a table. Preserve relevant values and caveats, and use **bold** sparingly for key labels.
 - Keep responses concise and user-friendly; do not add unsupported recommendations or repeat the same fact.
+- End each response with one clear, relevant next step when the task is not complete. Use the customer's current intent and the verified results to choose it; avoid generic follow-up questions when an available action can move the order forward.
 """.strip()
 
 toolMap = {
@@ -135,6 +144,98 @@ def _checkoutAction(quote: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _fallbackSuggestedReplies(actions: list[dict[str, Any]]) -> list[str]:
+    if any(action.get("type") == "order_confirmation" for action in actions):
+        categories = list(dict.fromkeys(line.get("category") for action in actions if action.get("type") == "order_confirmation" for line in action.get("lines", []) if isinstance(line.get("category"), str) and line["category"].strip()))
+        return [f"Explore more {category}" for category in categories[:4]] or ["Explore more products like these"]
+    if any(action.get("type") == "checkout_summary" for action in actions):
+        return ["I confirm this order", "Change my delivery address"]
+    if any(action.get("type") == "address_form" or (action.get("type") == "structured_form" and action.get("action") == "show_address_form") for action in actions):
+        return ["Continue to checkout", "Use a different address"]
+    if any(action.get("type") in {"product_detail", "product_comparison"} for action in actions):
+        return ["Add this product to my cart", "View my cart and checkout"]
+    return ["Find a product", "View my cart"]
+
+
+def _orderConfirmation(result: dict[str, Any]) -> dict[str, Any]:
+    order = result.get("data") or {}
+    details = result.get("checkoutDetails") or {}
+    total = order.get("totalPrice", details.get("total", "see order details"))
+    currency = order.get("currency", details.get("currency", ""))
+    action = {
+        "type": "order_confirmation",
+        "orderId": str(order.get("id", "")),
+        "status": str(order.get("status", "CONFIRMED")),
+        "total": str(total),
+        "currency": str(currency),
+        "lines": details.get("lines", []),
+    }
+    return {
+        "answer": f"Your order is confirmed. Order ID: {action['orderId'] or 'see order details'}. Status: {action['status']}. Total: {total} {currency}.",
+        "actions": [action],
+    }
+
+
+async def _suggestedReplies(llm: Any, query: str, history: list[dict[str, str]], answer: str, actions: list[dict[str, Any]]) -> list[str]:
+    """Ask the assistant to choose short next-step chips from this turn's context."""
+    try:
+        actionContext = []
+        for action in actions:
+            kind = action.get("type")
+            if kind == "order_confirmation":
+                actionContext.append({"type": kind, "lines": [{"name": line.get("name"), "category": line.get("category")} for line in action.get("lines", [])]})
+            elif kind == "checkout_summary":
+                actionContext.append({"type": kind, "lines": [{"name": line.get("name"), "quantity": line.get("quantity")} for line in action.get("lines", [])]})
+            elif kind == "product_detail":
+                actionContext.append({"type": kind, "name": action.get("name"), "category": action.get("category")})
+            elif kind == "product_comparison":
+                actionContext.append({"type": kind, "products": [{"name": product.get("name"), "category": product.get("category")} for product in action.get("products", [])]})
+            elif kind == "structured_form":
+                actionContext.append({"type": kind, "action": action.get("action"), "title": action.get("title")})
+            else:
+                actionContext.append({"type": kind})
+        response = await llm.client.responses.create(
+            model=llm.model,
+            instructions=(
+                "Choose 1 to 4 concise clickable reply suggestions for the customer, based on their current conversation and the assistant's latest answer/actions. "
+                "Return only a JSON array of strings. Make every suggestion a natural message the customer can send. "
+                "Prioritize the next useful step in the active task. After a completed order, suggest exploring products in the categories actually present in the order. "
+                "Never suggest confirming an order unless the actions include a live checkout_summary. Do not invent product categories or choices."
+            ),
+            input=json.dumps({
+                "recentConversation": history[-8:],
+                "latestCustomerMessage": query,
+                "latestAssistantAnswer": answer,
+                "availableActions": actionContext,
+            }, ensure_ascii=False),
+        )
+        raw = response.output_text.strip()
+        if raw.startswith("```"):
+            raw = raw.strip("`").removeprefix("json").strip()
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            match = re.search(r"\[[\s\S]*\]", raw)
+            parsed = json.loads(match.group(0)) if match else []
+        if isinstance(parsed, dict):
+            parsed = parsed.get("suggestions", [])
+        if not isinstance(parsed, list):
+            return []
+        suggestions: list[str] = []
+        seen: set[str] = set()
+        for item in parsed:
+            if not isinstance(item, str):
+                continue
+            value = " ".join(item.split())
+            key = value.casefold()
+            if value and len(value) <= 100 and key not in seen:
+                suggestions.append(value)
+                seen.add(key)
+            if len(suggestions) == 4:
+                break
+        return suggestions or _fallbackSuggestedReplies(actions)
+    except Exception:
+        return _fallbackSuggestedReplies(actions)
 async def runAgent(
     query: str,
     accessToken: str | None = None,
@@ -147,8 +248,13 @@ async def runAgent(
     if accessToken and shoppingTools.isExplicitOrderConfirmation(query):
         try:
             result = await shoppingTools.confirmAndSubmit(accessToken, conversationId)
-            order = result.get("data", {})
-            return {"answer": f"Order placed successfully. Order ID: {order.get('id', 'confirmed by backend')}. Status: {order.get('status', 'confirmed by backend')}. Total: {order.get('totalPrice', 'see order details')} {order.get('currency', '')}.", "actions": []}
+            if result.get("status") == "success":
+                confirmed = _orderConfirmation(result)
+                try:
+                    confirmed["suggestions"] = await _suggestedReplies(getLLM(), query, history or [], confirmed["answer"], confirmed["actions"])
+                except Exception:
+                    confirmed["suggestions"] = []
+                return confirmed
         except PermissionError:
             # Without an active quote, a bare affirmative must not create an order.
             pass
@@ -166,7 +272,8 @@ async def runAgent(
     formActions: list[dict[str, Any]] = []
     addressFormRequested = False
 
-    for _ in range(iterationLimit(query)):
+    maxToolRounds = iterationLimit(query)
+    for toolRound in range(maxToolRounds + 1):
         response = await llm.client.responses.create(
             model=llm.model,
             instructions=AGENT_INSTRUCTIONS,
@@ -191,7 +298,9 @@ async def runAgent(
             if pendingQuoteForDisplay and accessToken:
                 shoppingTools.storePendingQuote(accessToken, pendingQuoteForDisplay["addressId"], pendingQuoteForDisplay["result"], conversationId)
                 quote = pendingQuoteForDisplay["result"].get("data", {})
-                return {"answer": _checkoutSummary(quote), "actions": [_checkoutAction(quote)]}
+                answer = _checkoutSummary(quote)
+                actions = [_checkoutAction(quote)]
+                return {"answer": answer, "actions": actions, "suggestions": await _suggestedReplies(llm, query, history or [], answer, actions)}
             uniqueProducts = list({item["productId"]: item for item in productActions}.values())
             actions = uniqueProducts[:4]
             if len(uniqueProducts) > 1 and any(word in query.lower() for word in ("compare", "comparison", "versus", " vs ")):
@@ -204,7 +313,14 @@ async def runAgent(
             actions.extend(formActions)
             if addressFormRequested:
                 actions.append({"type": "address_form"})
-            return {"answer": finalAnswer.strip(), "actions": actions[:4]}
+            finalActions = actions[:4]
+            answer = finalAnswer.strip()
+            return {"answer": answer, "actions": finalActions, "suggestions": await _suggestedReplies(llm, query, history or [], answer, finalActions)}
+
+        # Give the model one response after the final permitted tool round so it
+        # can summarize the results, but never execute an eleventh tool round.
+        if toolRound == maxToolRounds:
+            break
 
         # Keep only the current model output + its tool results.
         nextInput = list(response.output)
@@ -248,11 +364,33 @@ async def runAgent(
                         result = {"status": "unauthorized", "message": "Sign in with a customer account to use shopping actions."}
                     else:
                         result = await tool(accessToken=accessToken, **arguments)
+                        if call.name == "addToCart" and result.get("status") == "success":
+                            # Include a verified product card on the add-to-cart turn,
+                            # even when the customer started with a direct add request.
+                            product_id = arguments.get("productId")
+                            if isinstance(product_id, str) and not any(item.get("productId") == product_id for item in productActions):
+                                try:
+                                    details = await toolMap["getProductDetails"](accessToken=accessToken, productId=product_id)
+                                    if isinstance(details, dict) and details.get("id"):
+                                        productActions.append(productAction(details))
+                                except Exception:
+                                    pass
                         if call.name == "prepareCheckout" and accessToken and result.get("status") == "success":
                             pendingQuoteForDisplay = {"addressId": arguments["addressId"], "result": result}
                             resultForModel = {"status": "success", "message": "An authoritative checkout quote is ready. The server will display its exact contents for explicit customer review."}
                         if call.name == "getProductDetails" and result.get("id"):
                             productActions.append(productAction(result))
+                        if call.name == "searchProducts" and result.get("status") == "success":
+                            candidates = [item for item in result.get("data", []) if isinstance(item, dict) and item.get("id")][:4]
+                            detailTool = toolMap["getProductDetails"]
+                            details = await asyncio.gather(
+                                *(detailTool(accessToken=accessToken, productId=item["id"]) for item in candidates),
+                                return_exceptions=True,
+                            )
+                            productActions.extend(
+                                productAction(item) for item in details
+                                if isinstance(item, dict) and item.get("id")
+                            )
                         if call.name in {"createAddress", "updateAddress"} and result.get("status") == "success":
                             addressData = result.get("data", {})
                             resultForModel = {"status": "success", "data": {key: addressData.get(key) for key in ("id", "isDefault", "city", "region")}}
