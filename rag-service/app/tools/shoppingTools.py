@@ -16,7 +16,7 @@ def _customerKey(token: str, conversationId: str | None = None) -> str:
 
 def isExplicitOrderConfirmation(text: str) -> bool:
     normalized = " ".join(text.strip().lower().split()).strip(".! ")
-    return normalized in {"yes", "yes, place the order", "confirm", "confirm the order", "place the order", "proceed with this order", "i confirm this order"}
+    return normalized in {"yes", "yes, place the order", "confirm", "confirm the order", "confirm and place this order", "place the order", "proceed with this order", "i confirm this order"}
 
 def storePendingQuote(token: str, addressId: str, quote: dict[str, Any], conversationId: str | None = None):
     data = quote.get("data", {})
@@ -44,6 +44,21 @@ async def confirmAndSubmit(token: str, conversationId: str | None = None):
         raise PermissionError("Prepare a fresh checkout summary before confirming an order.")
     result = await submitOrder(token, pending["addressId"], pending["quoteToken"], confirmationProof(token, pending), pending["idempotencyKey"])
     _pending.pop(key, None)
+    if result.get("status") == "success":
+        quote = pending.get("quote", {})
+        result["checkoutDetails"] = {
+            "lines": [
+                {
+                    "productId": line.get("productId"), "name": line.get("name"),
+                    "sku": line.get("sku"), "category": line.get("category"),
+                    "quantity": line.get("quantity"), "unitPrice": str(line.get("unitPrice")),
+                    "lineTotal": f"{line.get('lineTotalMinor', 0) / 100:.2f}",
+                    "currency": line.get("currency"),
+                }
+                for line in quote.get("lines", [])
+            ],
+            "total": quote.get("total"), "currency": quote.get("currency"),
+        }
     return result
 
 

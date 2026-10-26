@@ -28,7 +28,31 @@ def functionCall(name, arguments, callId):
 
 
 class AgentShoppingWorkflowTests(unittest.IsolatedAsyncioTestCase):
-    async def test_product_to_cart_to_checkout_survives_more_than_ten_rounds(self):
+    async def test_search_results_are_enriched_as_image_ready_product_previews(self):
+        responses = [
+            SimpleNamespace(output=[functionCall("searchProducts", '{"query":"widget"}', "search")], output_text=""),
+            SimpleNamespace(output=[], output_text="Here is the widget."),
+            SimpleNamespace(output=[], output_text='["Add the widget to my cart"]'),
+        ]
+        responseClient = SimpleNamespace(responses=SimpleNamespace(create=AsyncMock(side_effect=responses)))
+        llm = SimpleNamespace(client=responseClient, model="test-model")
+        product = {
+            "id": "product-1", "name": "Widget", "sku": "W-1", "category": "Tools",
+            "imageUrl": "https://images.example/widget.png", "price": 12.5, "currency": "USD",
+            "availableQty": 4, "description": "A useful widget", "discount": None, "attributes": {},
+        }
+        tools = {
+            "searchProducts": AsyncMock(return_value={"status": "success", "data": [{"id": "product-1"}]}),
+            "getProductDetails": AsyncMock(return_value=product),
+        }
+        with patch.object(agent, "getLLM", return_value=llm), patch.object(agent, "toolMap", tools):
+            result = await agent.runAgent("Show me the Widget product", "customer-token")
+
+        self.assertEqual(result["actions"][0]["type"], "product_detail")
+        self.assertEqual(result["actions"][0]["imageUrl"], "https://images.example/widget.png")
+        tools["getProductDetails"].assert_awaited_once_with(accessToken="customer-token", productId="product-1")
+
+    async def test_product_to_cart_to_checkout_returns_checkout_and_suggestions(self):
         calls = [
             functionCall("searchProducts", '{"query":"widget"}', "search"),
             functionCall("getProductDetails", '{"productId":"product-1"}', "details"),
@@ -36,9 +60,10 @@ class AgentShoppingWorkflowTests(unittest.IsolatedAsyncioTestCase):
             functionCall("listAddresses", "{}", "addresses"),
             functionCall("prepareCheckout", '{"addressId":"address-1"}', "quote"),
         ]
-        calls.extend(functionCall("getCart", "{}", f"cart-{index}") for index in range(6))
+        calls.extend(functionCall("getCart", "{}", f"cart-{index}") for index in range(5))
         responses = [SimpleNamespace(output=[call], output_text="") for call in calls]
         responses.append(SimpleNamespace(output=[], output_text="Checkout is ready."))
+        responses.append(SimpleNamespace(output=[], output_text='["Explore more Tools"]'))
         responseClient = SimpleNamespace(responses=SimpleNamespace(create=AsyncMock(side_effect=responses)))
         llm = SimpleNamespace(client=responseClient, model="test-model")
         product = {
@@ -70,6 +95,7 @@ class AgentShoppingWorkflowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(responseClient.responses.create.await_count, 12)
         self.assertIn("Widget", result["answer"])
         self.assertEqual(result["actions"][0]["type"], "checkout_summary")
+        self.assertEqual(result["suggestions"], ["Explore more Tools"])
         self.assertNotIn("quoteToken", str(result["actions"]))
         tools["addToCart"].assert_awaited_once()
         tools["prepareCheckout"].assert_awaited_once_with(accessToken="customer-token", addressId="address-1")

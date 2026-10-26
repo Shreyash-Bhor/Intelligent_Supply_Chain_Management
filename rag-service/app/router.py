@@ -52,5 +52,6 @@ async def chat(
         "data": {
             "answer": response["answer"],
             "actions": response.get("actions", []),
+            "suggestions": response.get("suggestions", []),
         },
     }
