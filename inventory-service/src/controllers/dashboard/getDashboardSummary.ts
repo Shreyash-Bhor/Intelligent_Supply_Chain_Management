@@ -1,10 +1,12 @@
 import { Request, Response } from "express";
 import prisma from "../../lib/prisma";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { getOrLoad } from "../../lib/cache";
 
 export const getDashboardSummary = asyncHandler(
   async (req: Request, res: Response) => {
     try {
+      const summary = await getOrLoad("summary", "dashboard", 5, async () => {
       const totalProductsPromise = prisma.product.count({
         where: { isActive: true },
       });
@@ -17,7 +19,11 @@ export const getDashboardSummary = asyncHandler(
       });
 
       const inventoriesPromise = prisma.inventory.findMany({
-        include: {
+        select: {
+          id: true,
+          availableQty: true,
+          reservedQty: true,
+          reorderQty: true,
           product: {
             select: {
               name: true,
@@ -45,9 +51,13 @@ export const getDashboardSummary = asyncHandler(
           createdAt: "desc",
         },
         take: 8,
-        include: {
+        select: {
+          id: true,
+          requestedQty: true,
+          status: true,
+          createdAt: true,
           inventory: {
-            include: {
+            select: {
               product: {
                 select: {
                   name: true,
@@ -153,7 +163,7 @@ export const getDashboardSummary = asyncHandler(
         .sort((a: any, b: any) => b.deficit - a.deficit)
         .slice(0, 6);
 
-      return res.status(200).json({
+      return {
         status: "success",
         message: "Dashboard summary fetched successfully",
         data: {
@@ -222,7 +232,9 @@ export const getDashboardSummary = asyncHandler(
             source: "database",
           },
         },
+      };
       });
+      return res.status(200).json(summary);
     } catch (error) {
       return res.status(503).json({
         status: "error",

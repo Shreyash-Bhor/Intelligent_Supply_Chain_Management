@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../../lib/prisma";
 import { updateReorderStatusSchema } from "../../schemas/reorderSchema";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { invalidateCache } from "../../lib/cache";
 
 export const updateReorderStatus = asyncHandler(
   async (req: Request, res: Response) => {
@@ -53,6 +54,7 @@ export const updateReorderStatus = asyncHandler(
         });
       }
     });
+    await invalidateCache("inventory", "catalog", "dashboard", "warehouses");
 
     return res.status(200).json({
       status: "success",

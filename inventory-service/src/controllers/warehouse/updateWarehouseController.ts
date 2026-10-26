@@ -5,6 +5,7 @@ import {
 } from "../../schemas/warehouseSchema";
 import prisma from "../../lib/prisma";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { invalidateCache } from "../../lib/cache";
 
 export const updateWarehouse = asyncHandler(
   async (req: Request, res: Response) => {
@@ -15,6 +16,7 @@ export const updateWarehouse = asyncHandler(
       where: { id: warehouseId },
       data,
     });
+    await invalidateCache("warehouses", "inventory", "catalog", "dashboard");
 
     return res.status(200).json({
       status: "success",
@@ -34,6 +36,7 @@ export const updateWarehouseStatus = asyncHandler(
       where: { id: warehouseId },
       data: { isActive },
     });
+    await invalidateCache("warehouses", "inventory", "catalog", "dashboard");
     return res
       .status(200)
       .json({

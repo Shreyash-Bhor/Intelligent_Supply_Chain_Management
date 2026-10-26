@@ -1,12 +1,13 @@
 import prisma from "../../lib/prisma";
 import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { getOrLoad } from "../../lib/cache";
 
 export const getWarehouseData = asyncHandler(
   async (req: Request, res: Response) => {
-    const { warehouseId } = req.params;
+    const warehouseId = req.params.warehouseId ?? "";
 
-    const warehouse = await prisma.warehouse.findUnique({
+    const warehouse = await getOrLoad(warehouseId, "warehouses", 20, () => prisma.warehouse.findUnique({
       where: { id: warehouseId },
       include: {
         inventories: {
@@ -15,7 +16,7 @@ export const getWarehouseData = asyncHandler(
           },
         },
       },
-    });
+    }));
 
     if (!warehouse) {
       return res
@@ -42,10 +43,10 @@ export const getWarehouses = asyncHandler(
           ? {}
           : { isActive: true };
 
-    const warehouses = await prisma.warehouse.findMany({
+    const warehouses = await getOrLoad(String(statusFilter ?? "active"), "warehouses", 30, () => prisma.warehouse.findMany({
       where: whereClause,
       orderBy: { createdAt: "desc" },
-    });
+    }));
 
     return res.status(200).json({
       status: "success",

@@ -12,7 +12,8 @@ export const getReorderDetails = asyncHandler(
         mode === "history"
           ? { status: { in: ["COMPLETED", "CANCELLED"] } }
           : { status: "PENDING" },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      include: { inventory: { select: { id: true, product: { select: { name: true, sku: true } }, warehouse: { select: { name: true } } } } },
     });
     return res.status(200).json({
       status: "success",
