@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({ query: body.query.trim(), conversationId: body.conversationId }),
       cache: "no-store",
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(60_000),
     });
     const payload = await response.json();
     const responseHeaders = new Headers();

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.agent import runAgent
-from app.memory import enforceDistributedRateLimit, getHistory, saveTurn
+from app.memory import compactHistory, enforceDistributedRateLimit, getHistory, saveTurn
 
 router = APIRouter()
 
@@ -42,7 +42,7 @@ async def chat(
     response = await runAgent(
         query=request.query,
         accessToken=accessToken,
-        history=history,
+        history=compactHistory(history),
         conversationId=request.conversationId,
     )
     await saveTurn(request.conversationId, accessToken, request.query.strip(), response["answer"])

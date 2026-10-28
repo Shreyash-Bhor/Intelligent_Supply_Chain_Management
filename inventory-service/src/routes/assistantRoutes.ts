@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { appendAssistantTurn, getAssistantConversation } from "../controllers/assistantController";
+import {
+  appendAssistantTurn,
+  getAssistantConversation,
+} from "../controllers/assistantController";
 
 const router = Router();
 router.get("/conversations/:conversationId", getAssistantConversation);

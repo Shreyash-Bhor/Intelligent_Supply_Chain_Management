@@ -13,7 +13,7 @@ import { ChatActionView } from "@/components/chat/ChatActionView";
 import { parseChatPayload, restoreMessages, type ChatAction } from "@/components/chat/protocol";
 
 type Message = { id: string; role: "assistant" | "user"; text: string; actions?: ChatAction[]; suggestions?: string[]; retryQuery?: string };
-const STARTER_QUESTIONS = ["Find something for my home", "What’s in stock?", "How does ordering work?"];
+const STARTER_QUESTIONS = ["Show me products in Electronics", "Find a product by name or SKU", "How does ordering work?"];
 
 export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
   const { session, hydrated } = useAuthSession();
@@ -120,19 +120,21 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
       </button>}
 
       <aside aria-label="SupplySync shopping assistant" aria-hidden={!open} className={fullPage ? "assistant-chat relative flex h-[100dvh] w-full flex-col bg-background text-foreground" : `fixed inset-y-0 right-0 z-[70] flex w-full flex-col border-l border-border/70 bg-background shadow-2xl transition-transform duration-300 sm:w-[min(760px,calc(100%-2rem))] ${open ? "translate-x-0" : "pointer-events-none translate-x-full"}`}>
-        <header className={fullPage ? "sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between bg-background/95 px-4 backdrop-blur sm:px-6" : "relative overflow-hidden border-b border-border/70 bg-card px-5 pb-5 pt-5"}>
+        <header className={fullPage ? "sticky top-0 z-10 flex min-h-16 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur sm:px-6" : "relative overflow-hidden border-b border-border/70 bg-card px-5 pb-5 pt-5"}>
           {!fullPage && <div className="pointer-events-none absolute -right-10 -top-16 size-44 rounded-full bg-primary/10 blur-3xl" />}
-          <div className="relative flex items-center justify-between">
+          <div className="relative grid w-full grid-cols-[1fr_auto] items-center gap-x-1 gap-y-2 sm:grid-cols-[1fr_auto_1fr]">
             <div className="flex items-center gap-3">
               {!fullPage && <div className="grid size-11 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-md shadow-primary/20"><Sparkles className="size-5" /></div>}
-              <div><div className="flex items-center gap-2"><h2 className={fullPage ? "text-base font-semibold tracking-tight" : "text-sm font-semibold"}>SupplySync assistant</h2>{!fullPage && <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">ONLINE</span>}</div>{!fullPage && <p className="mt-0.5 text-xs text-muted-foreground">Product discovery, made easy</p>}</div>
+              <div><div className="flex items-center gap-2"><h2 className={fullPage ? "text-sm font-semibold tracking-tight sm:text-base" : "text-sm font-semibold"}>SupplySync assistant</h2>{!fullPage && <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">ONLINE</span>}</div>{!fullPage && <p className="mt-0.5 text-xs text-muted-foreground">Product discovery, made easy</p>}</div>
             </div>
-            <div className="flex items-center gap-1">
+            <nav aria-label="Assistant page navigation" className="col-span-2 row-start-2 flex items-center justify-center gap-0.5 rounded-xl border border-border bg-card p-1 sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:gap-1">
               {session?.role === "user" && <>
-                <Link href="/user" aria-label="Browse storefront" title="Storefront" className="grid size-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><Store className="size-4"/></Link>
-                <Link href="/cart" aria-label="Open cart" title="Cart" className="grid size-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><ShoppingCart className="size-4"/></Link>
-                <Link href="/orders" aria-label="Order history" title="Orders" className="grid size-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><ClipboardList className="size-4"/></Link>
+                <Link href="/user" aria-label="Browse storefront" className="inline-flex h-8 items-center gap-1 rounded-lg px-1.5 text-[11px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground sm:gap-1.5 sm:px-2.5 sm:text-sm"><Store className="size-3.5 sm:size-4"/><span>Shop</span></Link>
+                <Link href="/cart" aria-label="Open cart" className="inline-flex h-8 items-center gap-1 rounded-lg px-1.5 text-[11px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground sm:gap-1.5 sm:px-2.5 sm:text-sm"><ShoppingCart className="size-3.5 sm:size-4"/><span>Cart</span></Link>
+                <Link href="/orders" aria-label="Order history" className="inline-flex h-8 items-center gap-1 rounded-lg px-1.5 text-[11px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground sm:gap-1.5 sm:px-2.5 sm:text-sm"><ClipboardList className="size-3.5 sm:size-4"/><span>Orders</span></Link>
               </>}
+            </nav>
+            <div className="col-start-2 row-start-1 flex items-center justify-end gap-1 sm:col-start-3">
               <button type="button" onClick={() => { conversationId.current = crypto.randomUUID(); setMessages([{ id: crypto.randomUUID(), role: "assistant", text: "Hi there! I’m SupplySync’s shopping assistant. Tell me what you’re looking for, or ask me about products, stock, and ordering." }]); }} aria-label="Start a new conversation" className="grid size-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><RotateCcw className="size-4" /></button>
               {!fullPage && <button type="button" onClick={() => setOpen(false)} aria-label="Close assistant" className="grid size-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><X className="size-4" /></button>}
             </div>
@@ -159,9 +161,9 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
 
         <footer className={fullPage ? "sticky bottom-0 z-10 shrink-0 bg-background px-4 pb-3 pt-3 sm:px-6 sm:pb-5" : "border-t border-border/70 bg-background px-4 pb-4 pt-3"}>
           {session?.role === "user" && products.length > 0 && <Link href="/user" onClick={() => setOpen(false)} className="mb-2 flex items-center gap-2 rounded-lg px-1 py-1 text-[11px] text-muted-foreground transition hover:text-primary"><PackageSearch className="size-3.5" />{products.length} products in your store<span className="ml-auto">Browse <ChevronRight className="inline size-3" /></span></Link>}
-          <form onSubmit={handleSubmit} className={fullPage ? "mx-auto flex max-w-3xl items-end gap-2 rounded-[28px] border border-border/80 bg-card px-3 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition focus-within:border-border focus-within:ring-1 focus-within:ring-border" : "flex items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10"}>
+          <form onSubmit={handleSubmit} className={fullPage ? "mx-auto flex max-w-3xl items-end gap-2 rounded-[28px] border border-secondary/70 bg-card px-3 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition focus-within:border-secondary focus-within:ring-2 focus-within:ring-secondary/30" : "flex items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10"}>
             <label className="sr-only" htmlFor="rag-chat-input">Message the assistant</label><textarea id="rag-chat-input" rows={1} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} placeholder="Message SupplySync" className={fullPage ? "max-h-48 min-h-11 flex-1 resize-none bg-transparent px-3 py-3 text-[15px] leading-6 outline-none placeholder:text-muted-foreground" : "max-h-28 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground"} />
-            <button type="submit" disabled={!draft.trim() || busy} aria-label="Send message" className={fullPage ? "mb-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-foreground text-background transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-30" : "grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"}><ArrowUp className="size-4" /></button>
+            <button type="submit" disabled={!draft.trim() || busy} aria-label="Send message" className={fullPage ? "mb-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-secondary-foreground transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-30" : "grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"}><ArrowUp className="size-4" /></button>
           </form>
           <p className="mt-2 text-center text-[10px] text-muted-foreground">AI can make mistakes. Check product details before ordering.</p>
         </footer>
