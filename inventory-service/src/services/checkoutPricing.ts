@@ -8,11 +8,14 @@ const secret = () => {
   return process.env.AUTH_TOKEN_SECRET;
 };
 
-export async function createQuote(userId: string, addressId: string) {
-  const storedAddress = await prisma.address.findFirst({ where: { id: addressId, userId } });
-  if (!storedAddress) throw Object.assign(new Error("Shipping address not found"), { statusCode: 404 });
+export async function createQuote(userId: string, addressId?: string) {
+  // These reads are independent and both remain scoped to the authenticated customer.
+  const [storedAddress, cart] = await Promise.all([
+    prisma.address.findFirst({ where: addressId ? { id: addressId, userId } : { userId, isDefault: true } }),
+    prisma.cart.findUnique({ where: { userId }, include: { items: true } }),
+  ]);
+  if (!storedAddress) throw Object.assign(new Error(addressId ? "Shipping address not found" : "Choose or save a default shipping address before checkout"), { statusCode: addressId ? 404 : 422 });
   const address = { id: storedAddress.id, name: storedAddress.name, phone: storedAddress.phone, address1: storedAddress.address1, address2: storedAddress.address2, city: storedAddress.city, region: storedAddress.region, postalCode: storedAddress.postalCode, country: storedAddress.country, isDefault: storedAddress.isDefault };
-  const cart = await prisma.cart.findUnique({ where: { userId }, include: { items: true } });
   if (!cart?.items.length) throw Object.assign(new Error("Your cart is empty"), { statusCode: 422 });
   const ids = cart.items.map((item) => item.productId);
   const [products, prices, stock] = await Promise.all([

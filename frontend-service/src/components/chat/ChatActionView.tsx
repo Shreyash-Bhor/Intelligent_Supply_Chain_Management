@@ -178,7 +178,10 @@ export function ChatActionView({ action, onConfirm, busy, onFormSubmit, onAddres
   }
   if (action.type === "product_comparison") return <section className="mt-4 rounded-2xl border bg-card p-4" aria-label="Product comparison"><h3 className="font-semibold">Product comparison</h3><div className="grid gap-3 md:grid-cols-2">{action.products.map((product) => <ChatActionView key={product.productId} action={{ ...product, type: "product_detail" }} onConfirm={onConfirm} busy={busy} onFormSubmit={onFormSubmit} onAddressSaved={onAddressSaved} />)}</div></section>;
   if (action.type === "structured_form" && action.action === "show_address_form") return <ChatActionView action={{ type: "address_form" }} onConfirm={onConfirm} busy={busy} onFormSubmit={onFormSubmit} onAddressSaved={onAddressSaved} instanceId={instanceId} />;
-  if (action.type === "structured_form") return <StructuredFormView action={action} onSubmit={(values) => onFormSubmit ? onFormSubmit(action, values) : Promise.resolve()} />;
+  if (action.type === "structured_form") return <StructuredFormView action={action} onSubmit={(values) => {
+    if (!onFormSubmit) return Promise.reject(new Error("This form is not connected to an assistant workflow. Please retry from the shopping assistant."));
+    return onFormSubmit(action, values);
+  }} />;
   if (action.type === "order_confirmation") return <section className="mt-4 space-y-3 rounded-2xl border border-emerald-500/25 bg-card p-4" aria-label="Order details">
     <div className="flex items-start justify-between gap-3"><div><h3 className="flex items-center gap-2 font-semibold"><CheckCircle2 className="size-4 text-emerald-600"/>Order confirmed</h3><p className="mt-1 text-xs text-muted-foreground">Order {action.orderId} · {action.status}</p></div><Link href={`/orders/${encodeURIComponent(action.orderId)}`} className="shrink-0 text-xs font-semibold text-primary hover:underline">View order</Link></div>
     <div className="divide-y divide-border/70">{action.lines.map((line) => <div key={line.productId} className="flex justify-between gap-3 py-2 text-sm"><span>{line.name}<span className="block text-xs text-muted-foreground">SKU {line.sku}{line.category ? ` · ${line.category}` : ""} · Qty {line.quantity}</span></span><span className="shrink-0 font-medium">{line.lineTotal} {line.currency}</span></div>)}</div>

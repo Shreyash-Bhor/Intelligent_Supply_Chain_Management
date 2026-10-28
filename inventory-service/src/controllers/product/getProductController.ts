@@ -158,6 +158,30 @@ export const getPagedUserCatalog = asyncHandler(async (req: Request, res: Respon
   return res.status(200).json({ status: "success", data: catalogPage });
 });
 
+/** Small assistant lookup: return at most three fully described active products. */
+export const getAssistantCategoryProducts = asyncHandler(async (req: Request, res: Response) => {
+  const rawCategory = typeof req.query.category === "string" ? req.query.category.trim() : "";
+  const category = Object.values(Category).find((value) => value.toLowerCase() === rawCategory.toLowerCase());
+  if (!category) return res.status(400).json({ status: "error", message: "A valid product category is required." });
+
+  const products = await prisma.product.findMany({
+    where: { category, isActive: true },
+    select: {
+      id: true, name: true, sku: true, category: true, imageUrl: true,
+      inventories: { where: { warehouse: { isActive: true } }, select: { availableQty: true } },
+    },
+    orderBy: { name: "asc" },
+    take: 3,
+  });
+  const prices = await getCurrentProductPrices(products.map(({ id }) => id));
+  const data = products.map(({ inventories, ...product }) => ({
+    ...product,
+    availableQty: inventories.reduce((sum: number, item: { availableQty: number }) => sum + item.availableQty, 0),
+    ...(prices.get(product.id) ?? { price: null, currency: null }),
+  }));
+  return res.status(200).json({ status: "success", data });
+});
+
 export const getCatalogProducts = asyncHandler(
   async (_req: Request, res: Response) => {
     const catalog = await getOrLoad("available", "catalog", 15, async () => {

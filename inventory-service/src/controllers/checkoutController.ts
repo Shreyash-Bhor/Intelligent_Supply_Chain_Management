@@ -76,6 +76,18 @@ export const createCartOrder = asyncHandler(async (req: Request, res: Response) 
   if (!first) return res.status(422).json({ status: "error", message: "Your cart is empty" });
   try {
     const order = await prisma.$transaction(async (tx: any) => {
+      // Read active stock once for every quoted product. Allocation writes remain
+      // conditional and transactional so concurrent checkouts cannot oversell.
+      const inventoryRows = await tx.inventory.findMany({
+        where: { productId: { in: quote.lines.map((line) => line.productId) }, warehouse: { isActive: true } },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      });
+      const inventoryByProduct = new Map<string, typeof inventoryRows>();
+      for (const row of inventoryRows) {
+        const rows = inventoryByProduct.get(row.productId) ?? [];
+        rows.push(row);
+        inventoryByProduct.set(row.productId, rows);
+      }
       const created = await tx.order.create({
         data: {
           userId, idempotencyKey, checkoutDigest: signedDigest, productId: first.productId, quantity: first.quantity, allocatedQty: first.quantity, shortageQty: 0,
@@ -88,9 +100,8 @@ export const createCartOrder = asyncHandler(async (req: Request, res: Response) 
         },
       });
       for (const line of [first, ...other]) {
-        const inventory = await tx.inventory.findMany({ where: { productId: line.productId, warehouse: { isActive: true } }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
         let remaining = line.quantity;
-        for (const row of inventory) {
+        for (const row of inventoryByProduct.get(line.productId) ?? []) {
           if (remaining <= 0) break;
           const allocate = Math.min(remaining, row.availableQty);
           if (allocate <= 0) continue;

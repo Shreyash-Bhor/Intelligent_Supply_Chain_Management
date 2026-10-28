@@ -18,6 +18,10 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 MAX_CONVERSATIONS = 2_000
 MAX_MESSAGES = 12
+# Keep a few recent turns for follow-ups without replaying a long transcript.
+MODEL_HISTORY_MESSAGES = 6
+MODEL_HISTORY_CHARS_PER_MESSAGE = 1_200
+MODEL_HISTORY_TOTAL_CHARS = 5_000
 MEMORY_TTL_SECONDS = 60 * 60
 _conversations: OrderedDict[str, tuple[float, list[dict[str, str]]]] = OrderedDict()
 RATE_LIMIT_TIMEOUT_SECONDS = 8.0
@@ -123,6 +127,25 @@ def _localHistory(conversationId: str | None, accessToken: str | None) -> list[d
         return []
     _conversations.move_to_end(key)
     return list(messages)
+
+
+def compactHistory(messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Return only a bounded, recent text history suitable for model input."""
+    recent = messages[-MODEL_HISTORY_MESSAGES:]
+    bounded = [
+        {"role": item["role"], "content": item["content"].strip()[:MODEL_HISTORY_CHARS_PER_MESSAGE]}
+        for item in recent
+        if item.get("role") in {"user", "assistant"} and isinstance(item.get("content"), str) and item["content"].strip()
+    ]
+    total = 0
+    selected = []
+    for item in reversed(bounded):
+        size = len(item["content"])
+        if selected and total + size > MODEL_HISTORY_TOTAL_CHARS:
+            break
+        selected.append(item)
+        total += size
+    return list(reversed(selected))
 
 
 async def getHistory(conversationId: str | None, accessToken: str | None) -> list[dict[str, str]]:

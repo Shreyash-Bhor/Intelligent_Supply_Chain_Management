@@ -1,8 +1,30 @@
 from typing import Any
 import asyncio
+import math
 
 from app.backendClient import BackendClient
 from app.config import settings
+
+
+# Keep in sync with inventory-service's Category enum. Categories are checked
+# here because both catalog endpoints reject unknown values with HTTP 400.
+AVAILABLE_CATEGORIES = (
+    "Appliances", "Beauty", "Electronics", "Fashion", "Home_and_Kitchen",
+    "Mobiles", "Sports", "Toys",
+)
+
+
+async def searchCategoryProducts(accessToken: str | None = None, category: str = "") -> dict[str, Any]:
+    """Fetch at most three complete products through the assistant catalog route."""
+    normalized = next((item for item in AVAILABLE_CATEGORIES if item.casefold() == category.strip().casefold()), None)
+    if not normalized:
+        raise ValueError("Choose a supported product category: " + ", ".join(AVAILABLE_CATEGORIES) + ".")
+    client = BackendClient(baseUrl=settings.inventoryServiceUrl, accessToken=accessToken)
+    try:
+        response = await client.get("/api/product/assistant/category", params={"category": normalized})
+        return {"status": response.get("status", "success"), "data": response.get("data", [])[:3]}
+    finally:
+        await client.close()
 
 
 async def searchProducts(
@@ -16,11 +38,21 @@ async def searchProducts(
 ) -> dict[str, Any]:
     """Search products and optionally filter by maximum price."""
 
-    if maxPrice is not None and maxPrice < 0:
+    if maxPrice is not None and (not isinstance(maxPrice, (int, float)) or isinstance(maxPrice, bool) or not math.isfinite(maxPrice) or maxPrice < 0):
         raise ValueError("maxPrice must not be negative.")
 
-    if page < 1 or pageSize < 1 or pageSize > 50:
+    if (not isinstance(page, int) or isinstance(page, bool) or page < 1
+            or not isinstance(pageSize, int) or isinstance(pageSize, bool)
+            or pageSize < 1 or pageSize > 50):
         raise ValueError("page must be positive and pageSize must be between 1 and 50.")
+    if not isinstance(inStock, bool):
+        raise ValueError("inStock must be a boolean.")
+    if query is not None and not isinstance(query, str):
+        raise ValueError("query must be a string.")
+    if category is not None and not isinstance(category, str):
+        raise ValueError("category must be a string.")
+    if (query is not None and len(query.strip()) > 200) or (category is not None and len(category.strip()) > 200):
+        raise ValueError("query and category must be 200 characters or fewer.")
     inventoryClient = BackendClient(baseUrl=settings.inventoryServiceUrl, accessToken=accessToken)
 
     pricingClient = BackendClient(
@@ -29,17 +61,13 @@ async def searchProducts(
     )
 
     try:
-        params: dict[str, str] = {}
-
-        if query and query.strip():
-            params["query"] = query.strip()
-
-        if category and category.strip():
-            params["category"] = category.strip()
-
+        requestedCategory = (category or "").strip()
+        validCategory = next((item for item in AVAILABLE_CATEGORIES if item.casefold() == requestedCategory.casefold()), None)
+        params: dict[str, Any] = {"query": query.strip()} if query and query.strip() else {}
+        if validCategory:
+            params["category"] = validCategory
         if accessToken:
-            catalogParams: dict[str, Any] = {"page": page, "pageSize": pageSize, "inStock": str(inStock).lower()}
-            catalogParams.update(params)
+            catalogParams: dict[str, Any] = {"page": page, "pageSize": min(pageSize, 3), "inStock": str(inStock).lower(), **params}
             productResponse = await inventoryClient.get("/api/product/user-catalog", params=catalogParams)
             catalog = productResponse.get("data", {})
             products = catalog.get("data", [])
@@ -51,12 +79,14 @@ async def searchProducts(
 
         if not products:
             return {
-                "status": "success",
+                "status": "no_results",
+                "message": "No matching products were found. Available categories: " + ", ".join(AVAILABLE_CATEGORIES) + ".",
                 "data": [],
                 "pagination": pagination,
+                "availableCategories": list(AVAILABLE_CATEGORIES),
             }
 
-        products = products[:20]
+        products = products[:3]
         productIds = [product["id"] for product in products]
 
         priceResponse = await pricingClient.get(
@@ -94,6 +124,8 @@ async def searchProducts(
             "status": "success",
             "data": results,
             "pagination": pagination,
+            "message": None if results else "No matching products were found. Available categories: " + ", ".join(AVAILABLE_CATEGORIES) + ".",
+            **({"availableCategories": list(AVAILABLE_CATEGORIES)} if not results else {}),
         }
 
     finally:

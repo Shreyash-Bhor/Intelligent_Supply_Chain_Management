@@ -89,6 +89,32 @@ class ConversationMemoryTests(unittest.TestCase):
         self.assertEqual(memory._localHistory("conversation", "customer-two-token"), [])
         self.assertEqual(memory._localHistory("another", "customer-one-token"), [])
 
+    def test_model_history_keeps_recent_conversation_with_message_and_total_limits(self):
+        history = [
+            {"role": "user" if index % 2 == 0 else "assistant", "content": f"turn {index} " + ("x" * 1_400)}
+            for index in range(12)
+        ]
+        compacted = memory.compactHistory(history)
+        self.assertEqual(len(compacted), memory.MODEL_HISTORY_MESSAGES)
+        self.assertEqual(compacted[0]["content"][:6], "turn 6 ")
+        self.assertLessEqual(sum(len(item["content"]) for item in compacted), memory.MODEL_HISTORY_TOTAL_CHARS)
+        self.assertTrue(all(len(item["content"]) <= memory.MODEL_HISTORY_CHARS_PER_MESSAGE for item in compacted))
+
+    def test_model_history_filters_invalid_messages_and_drops_oldest_when_over_budget(self):
+        history = [
+            {"role": "assistant", "content": "old"},
+            {"role": "tool", "content": "tool output should not reach the model"},
+            {"role": "user", "content": "a" * 1_200},
+            {"role": "assistant", "content": "b" * 1_200},
+            {"role": "user", "content": "c" * 1_200},
+            {"role": "assistant", "content": "d" * 1_200},
+            {"role": "user", "content": "latest"},
+        ]
+        compacted = memory.compactHistory(history)
+        self.assertNotIn("tool output should not reach the model", str(compacted))
+        self.assertEqual(compacted[-1]["content"], "latest")
+        self.assertLessEqual(sum(len(item["content"]) for item in compacted), memory.MODEL_HISTORY_TOTAL_CHARS)
+
 
 class AgentIterationBudgetTests(unittest.TestCase):
     def test_multi_step_shopping_requests_use_the_shopping_budget(self):
