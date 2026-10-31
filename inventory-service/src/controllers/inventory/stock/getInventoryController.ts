@@ -5,12 +5,12 @@ import { getOrLoad } from "../../../lib/cache";
 
 export const getInventoryDetails = asyncHandler(
   async (req: Request, res: Response) => {
-    const { inventoryId } = req.params;
+    const inventoryId = req.params.inventoryId ?? "";
 
     try {
-      const inventory = await prisma.inventory.findUnique({
+      const inventory = await getOrLoad(`detail:${inventoryId}`, "inventory", 20, () => prisma.inventory.findUnique({
         where: { id: inventoryId },
-      });
+      }));
 
       if (!inventory) {
         return res
@@ -99,7 +99,7 @@ export const getProductAvailability = asyncHandler(
       });
     }
 
-    const inventory = await prisma.inventory.findMany({
+    const inventory = await getOrLoad(`availability:${productId}`, "inventory", 20, () => prisma.inventory.findMany({
       where: {
         productId,
         warehouse: {
@@ -112,7 +112,7 @@ export const getProductAvailability = asyncHandler(
       select: {
         availableQty: true,
       },
-    });
+    }));
 
     if (inventory.length === 0) {
       return res.status(404).json({

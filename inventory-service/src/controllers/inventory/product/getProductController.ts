@@ -164,6 +164,7 @@ export const getAssistantCategoryProducts = asyncHandler(async (req: Request, re
   const category = Object.values(Category).find((value) => value.toLowerCase() === rawCategory.toLowerCase());
   if (!category) return res.status(400).json({ status: "error", message: "A valid product category is required." });
 
+  const data = await getOrLoad(`assistant-category:${category}`, "catalog", 15, async () => {
   const products = await prisma.product.findMany({
     where: { category, isActive: true },
     select: {
@@ -174,11 +175,12 @@ export const getAssistantCategoryProducts = asyncHandler(async (req: Request, re
     take: 3,
   });
   const prices = await getCurrentProductPrices(products.map(({ id }) => id));
-  const data = products.map(({ inventories, ...product }) => ({
+  return products.map(({ inventories, ...product }) => ({
     ...product,
     availableQty: inventories.reduce((sum: number, item: { availableQty: number }) => sum + item.availableQty, 0),
     ...(prices.get(product.id) ?? { price: null, currency: null }),
   }));
+  });
   return res.status(200).json({ status: "success", data });
 });
 
@@ -193,6 +195,8 @@ export const searchAssistantProducts = asyncHandler(async (req: Request, res: Re
   if (query.length > 200 || (rawCategory && !category) || (rawMaxPrice !== undefined && (!Number.isFinite(maxPrice) || maxPrice! < 0)) || (req.query.inStock !== undefined && !["true", "false"].includes(String(req.query.inStock)))) {
     return res.status(400).json({ status: "error", message: "Invalid assistant product search parameters" });
   }
+  const cacheKey = `assistant-search:${JSON.stringify({ query: query.toLowerCase(), category, maxPrice, inStock })}`;
+  const data = await getOrLoad(cacheKey, "catalog", 10, async () => {
   const products = await prisma.product.findMany({
     where: {
       isActive: true,
@@ -208,12 +212,13 @@ export const searchAssistantProducts = asyncHandler(async (req: Request, res: Re
     take: 30,
   });
   const prices = await getCurrentProductPrices(products.map(({ id }) => id));
-  const data = products.map(({ inventories, ...product }) => ({
+  return products.map(({ inventories, ...product }) => ({
     ...product, description: null, attributes: {},
     availableQty: inventories.reduce((sum: number, item: { availableQty: number }) => sum + item.availableQty, 0),
     ...(prices.get(product.id) ?? { price: null, currency: null }),
-  })).filter((product) => maxPrice === undefined || (product.price !== null && Number(product.price) <= maxPrice));
-  return res.status(200).json({ status: "success", data: data.slice(0, 3) });
+  })).filter((product) => maxPrice === undefined || (product.price !== null && Number(product.price) <= maxPrice)).slice(0, 3);
+  });
+  return res.status(200).json({ status: "success", data });
 });
 
 export const getCatalogProducts = asyncHandler(

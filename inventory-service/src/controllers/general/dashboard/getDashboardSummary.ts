@@ -74,31 +74,25 @@ export const getDashboardSummary = asyncHandler(
         },
       });
 
+      const warehousesPromise = prisma.warehouse.findMany({
+        select: { id: true, name: true },
+      });
+
       const [
         totalProducts,
         reorderStatusCounts,
         inventories,
         stockPerWarehouse,
         recentReorders,
+        warehouses,
       ] = await Promise.all([
         totalProductsPromise,
         reorderStatusCountsPromise,
         inventoriesPromise,
         stockPerWarehousePromise,
         recentReordersPromise,
+        warehousesPromise,
       ]);
-
-      const warehouseIds = stockPerWarehouse.map((w: any) => w.warehouseId);
-
-      const warehouses = await prisma.warehouse.findMany({
-        where: {
-          id: { in: warehouseIds },
-        },
-        select: {
-          id: true,
-          name: true,
-        },
-      });
 
       const warehouseMap = new Map(warehouses.map((w: any) => [w.id, w.name]));
 
