@@ -3,6 +3,7 @@ import { createProduct } from "../controllers/product/createProductController";
 import { deleteProduct } from "../controllers/product/deleteProductController";
 import {
   getAllProducts,
+  getAssistantCategoryProducts,
   getCatalogProducts,
   getPagedUserCatalog,
   getProduct,
@@ -21,6 +22,7 @@ router.post("/", createProduct);
 router.get("/products", getAllProducts);
 router.get("/catalog", getCatalogProducts);
 router.get("/user-catalog", requireCustomerAccess, getPagedUserCatalog);
+router.get("/assistant/category", requireCustomerAccess, getAssistantCategoryProducts);
 router.get("/search", searchProducts);
 router.get("/user-dashboard", requireCustomerAccess, getUserDashboardProducts);
 router.get("/:productId", getProduct);

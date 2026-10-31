@@ -16,7 +16,7 @@ def _customerKey(token: str, conversationId: str | None = None) -> str:
 
 def isExplicitOrderConfirmation(text: str) -> bool:
     normalized = " ".join(text.strip().lower().split()).strip(".! ")
-    return normalized in {"yes", "yes, place the order", "confirm", "confirm the order", "place the order", "proceed with this order", "i confirm this order"}
+    return normalized in {"yes", "yes, place the order", "confirm", "confirm the order", "confirm and place this order", "place the order", "proceed with this order", "i confirm this order"}
 
 def storePendingQuote(token: str, addressId: str, quote: dict[str, Any], conversationId: str | None = None):
     data = quote.get("data", {})
@@ -44,6 +44,21 @@ async def confirmAndSubmit(token: str, conversationId: str | None = None):
         raise PermissionError("Prepare a fresh checkout summary before confirming an order.")
     result = await submitOrder(token, pending["addressId"], pending["quoteToken"], confirmationProof(token, pending), pending["idempotencyKey"])
     _pending.pop(key, None)
+    if result.get("status") == "success":
+        quote = pending.get("quote", {})
+        result["checkoutDetails"] = {
+            "lines": [
+                {
+                    "productId": line.get("productId"), "name": line.get("name"),
+                    "sku": line.get("sku"), "category": line.get("category"),
+                    "quantity": line.get("quantity"), "unitPrice": str(line.get("unitPrice")),
+                    "lineTotal": f"{line.get('lineTotalMinor', 0) / 100:.2f}",
+                    "currency": line.get("currency"),
+                }
+                for line in quote.get("lines", [])
+            ],
+            "total": quote.get("total"), "currency": quote.get("currency"),
+        }
     return result
 
 
@@ -103,19 +118,34 @@ async def clearCart(accessToken: str):
     return await _call(accessToken, "DELETE", "/api/cart/")
 
 async def listAddresses(accessToken: str):
-    return await _call(accessToken, "GET", "/api/addresses/")
+    response = await _call(accessToken, "GET", "/api/addresses/")
+    # The model needs only an address handle and lightweight choice cues.
+    # Names, street lines, postal codes, phone numbers, and country stay backend-side.
+    addresses = response.get("data", [])
+    return {"status": response.get("status"), "data": [{key: item.get(key) for key in ("id", "isDefault", "city", "region")} for item in addresses]}
+
+async def getAddressesForDisplay(accessToken: str):
+    """Fetch exact saved address fields for a customer who explicitly asks to see them."""
+    response = await _call(accessToken, "GET", "/api/addresses/")
+    fields = ("id", "name", "phone", "address1", "address2", "city", "region", "postalCode", "country", "isDefault")
+    return {"status": response.get("status"), "data": [{key: item.get(key) for key in fields} for item in response.get("data", [])]}
 
 async def createAddress(accessToken: str, address: dict[str, Any]):
-    return await _call(accessToken, "POST", "/api/addresses/", body=address)
+    response = await _call(accessToken, "POST", "/api/addresses/", body=address)
+    item = response.get("data", {})
+    return {"status": response.get("status"), "data": {key: item.get(key) for key in ("id", "isDefault", "city", "region")}}
 
 async def updateAddress(accessToken: str, addressId: str, address: dict[str, Any]):
-    return await _call(accessToken, "PUT", f"/api/addresses/{addressId}", body=address)
+    response = await _call(accessToken, "PUT", f"/api/addresses/{addressId}", body=address)
+    item = response.get("data", {})
+    return {"status": response.get("status"), "data": {key: item.get(key) for key in ("id", "isDefault", "city", "region")}}
 
 async def deleteAddress(accessToken: str, addressId: str):
     return await _call(accessToken, "DELETE", f"/api/addresses/{addressId}")
 
-async def prepareCheckout(accessToken: str, addressId: str):
-    return await _call(accessToken, "POST", "/api/orders/quote", body={"addressId": addressId})
+async def prepareCheckout(accessToken: str, addressId: str | None = None):
+    body = {"addressId": addressId} if addressId else {}
+    return await _call(accessToken, "POST", "/api/orders/quote", body=body)
 
 async def submitOrder(accessToken: str, addressId: str, quoteToken: str, confirmationProof: str, idempotencyKey: str):
     if not confirmationProof: raise PermissionError("Explicit confirmation for this checkout is required.")

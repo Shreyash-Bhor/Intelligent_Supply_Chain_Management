@@ -22,6 +22,6 @@
   "scripts": {
     "dev": "nodemon --exec ts-node src/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types tests/money.test.ts"
+    "test": "node --experimental-strip-types --test tests/money.test.ts tests/address.test.ts tests/assistant.test.ts"
   }
 }

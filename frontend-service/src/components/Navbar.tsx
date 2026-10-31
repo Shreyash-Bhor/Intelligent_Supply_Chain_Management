@@ -19,7 +19,7 @@ import { cacheServerCart, cartEventName, readCart } from "@/lib/cart";
 import { fetchCustomerCart } from "@/lib/api";
 
 const MANAGER_LINKS = [
-  { href: "/", label: "Manager Dashboard" },
+  { href: "/manager", label: "Manager Dashboard" },
   { href: "/warehouse", label: "Warehouses" },
   { href: "/product", label: "Products" },
   { href: "/inventory", label: "Inventory" },
@@ -45,12 +45,26 @@ export function Navbar() {
     return () => { window.removeEventListener(cartEventName, sync); window.removeEventListener("storage", sync); };
   }, [session?.email, session?.role, session?.token]);
 
+  const isLandingAccess = pathname === "/" && !session;
+  const isAuthPage = pathname.startsWith("/login/") || pathname.startsWith("/signup/");
   const navLinks =
-    session?.role === "user"
+    isAuthPage
+      ? []
+      : isLandingAccess
+      ? [
+          { href: "/signup/user", label: "Shopper" },
+          { href: "/login/manager", label: "Manager" },
+        ]
+      : session?.role === "user"
       ? USER_LINKS
       : session?.role === "warehouse_manager"
         ? MANAGER_LINKS
-        : [{ href: "/", label: "Access Portal" }];
+      : [
+          { href: "/login/user", label: "Shopper sign in" },
+          { href: "/signup/user", label: "Shopper sign up" },
+          { href: "/login/manager", label: "Manager sign in" },
+          { href: "/signup/manager", label: "Manager access" },
+        ];
 
   const showLogout = Boolean(session);
 
@@ -74,18 +88,18 @@ export function Navbar() {
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-5">
           <Link
-            href={session?.role === "user" ? "/user" : "/"}
+            href={session?.role === "user" ? "/user" : session?.role === "warehouse_manager" ? "/manager" : "/"}
             className="group flex items-center gap-2"
             aria-label="SupplySync home"
           >
-            <span className="bg-primary text-primary-foreground grid size-8 place-items-center rounded-lg text-sm font-bold shadow-sm transition-transform group-hover:scale-105">
+            <span className="forest-gradient grid size-8 place-items-center rounded-lg text-sm font-bold shadow-sm transition-transform group-hover:scale-105">
               S
             </span>
             <span className="hidden text-sm font-semibold tracking-tight sm:inline">
               SupplySync
             </span>
           </Link>
-          <nav className="hidden items-center gap-1 md:flex">
+          {navLinks.length > 0 && <nav aria-label="Primary navigation" className={`${isLandingAccess ? "flex" : "hidden md:flex"} items-center gap-1 sm:gap-2 ${isLandingAccess ? "rounded-full border border-border bg-card/85 p-1 shadow-sm" : ""}`}>
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
@@ -93,17 +107,23 @@ export function Navbar() {
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    "rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary/15 text-primary"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    isLandingAccess
+                      ? "rounded-full px-2.5 py-2 text-xs font-semibold transition-all hover:-translate-y-0.5 hover:shadow-sm sm:px-4 sm:text-sm"
+                      : "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    isLandingAccess && link.href === "/signup/user"
+                      ? "bg-secondary text-secondary-foreground hover:brightness-105"
+                      : isLandingAccess
+                        ? "forest-gradient"
+                        : isActive
+                          ? "bg-primary/15 text-primary"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
                   {link.label}
                 </Link>
               );
             })}
-          </nav>
+          </nav>}
         </div>
 
         {session?.role === "user" && <form onSubmit={submitSearch} role="search" className="mx-4 hidden max-w-xl flex-1 md:flex">
@@ -117,7 +137,7 @@ export function Navbar() {
             <Link href="/cart" aria-label={`Shopping cart, ${cartCount} items`} className="relative inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"><ShoppingCart className="size-4" /><span className="hidden sm:inline">Cart</span>{cartCount > 0 && <span className="bg-primary text-primary-foreground absolute -right-2 -top-2 grid size-5 place-items-center rounded-full text-[11px] font-semibold">{cartCount > 99 ? "99+" : cartCount}</span>}</Link>
           </>}
           <DropdownMenu>
-            <DropdownMenuTrigger asChild className="md:hidden">
+            <DropdownMenuTrigger asChild className={`md:hidden ${isLandingAccess || isAuthPage ? "hidden" : ""}`}>
               <Button
                 variant="outline"
                 size="icon"
@@ -151,3 +171,4 @@ export function Navbar() {
     </header>
   );
 }
+

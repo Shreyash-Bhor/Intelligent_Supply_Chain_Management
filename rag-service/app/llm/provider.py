@@ -10,6 +10,9 @@ class GroqProvider(LLMProvider):
         self.client = AsyncOpenAI(
             api_key = settings.groqApiKey,
             base_url = settings.groqBaseUrl,
+            # Keep a stalled provider from holding a chat request indefinitely.
+            timeout = 45.0,
+            max_retries = 1,
         )
 
     async def generate(self, prompt: str, instructions: str | None = None) -> str:

@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Navbar } from "@/components/Navbar";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { RagChatbot } from "@/components/RagChatbot";
+import { AppShell } from "@/components/AppShell";
 
 export const metadata: Metadata = {
-  title: "Intelligent Supply Chain Dashboard",
-  description:
-    "Production-grade control tower for AI-driven inventory and reordering operations.",
+  title: "SupplySync — A smarter supply chain starts here",
+  description: "One connected workspace for warehouse managers and shoppers. Track inventory, manage fulfillment, and shop with confidence.",
 };
 
 export default function RootLayout({
@@ -24,9 +22,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Navbar />
-          {children}
-          <RagChatbot />
+          <AppShell>{children}</AppShell>
         </ThemeProvider>
       </body>
     </html>

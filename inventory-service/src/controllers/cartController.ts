@@ -43,6 +43,13 @@ export const setCartItem = asyncHandler(async (req: Request, res: Response) => {
   const userId = res.locals.customer.sub as string;
   const product = await prisma.product.findFirst({ where: { id: input.productId, isActive: true }, select: { id: true } });
   if (!product) return res.status(404).json({ status: "error", message: "Active product not found" });
+  const stock = await prisma.inventory.aggregate({
+    where: { productId: input.productId, warehouse: { isActive: true } },
+    _sum: { availableQty: true },
+  });
+  const availableQty = stock._sum.availableQty ?? 0;
+  if (input.quantity > availableQty)
+    return res.status(409).json({ status: "error", message: `Only ${availableQty} units are currently available.` });
   const cart = await prisma.cart.upsert({ where: { userId }, create: { userId }, update: {} });
   await prisma.cartItem.upsert({
     where: { cartId_productId: { cartId: cart.id, productId: input.productId } },

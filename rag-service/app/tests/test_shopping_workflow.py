@@ -15,9 +15,21 @@ os.environ.update({
 })
 
 from app.tools import shoppingTools
+from app.structuredActions import productAction
 
 
 class ShoppingConfirmationTests(unittest.TestCase):
+    def test_product_action_contains_only_allowlisted_authoritative_fields(self):
+        action = productAction({
+            "id": "product-1", "name": "Widget", "sku": "W-1",
+            "category": "Electronics", "imageUrl": None, "price": 12.5,
+            "currency": "USD", "availableQty": 0, "internalCost": 4,
+        })
+        self.assertEqual(action["type"], "product_detail")
+        self.assertEqual(action["price"], "12.5")
+        self.assertEqual(action["availableQty"], 0)
+        self.assertNotIn("internalCost", action)
+
     def test_only_unambiguous_affirmatives_match(self):
         for phrase in ("yes", "Confirm the order", "Place the order", "I confirm this order"):
             self.assertTrue(shoppingTools.isExplicitOrderConfirmation(phrase))

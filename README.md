@@ -297,6 +297,12 @@ This project directly aligns with roles such as:
 
 ---
 
+## Database and local development settings
+
+The inventory and pricing services use bounded PostgreSQL connection pools. Tune `DB_POOL_MAX`, `DB_POOL_MIN`, `DB_POOL_IDLE_TIMEOUT_MS`, `DB_POOL_CONNECTION_TIMEOUT_MS`, and `DB_POOL_MAX_LIFETIME_SECONDS` for the database capacity available to each service. Inventory service defaults to 10 connections and pricing defaults to 5.
+
+Set `REDIS_URL` in the inventory service environment to enable the short lived inventory list cache. Cache failures fall back to PostgreSQL, and inventory writes invalidate cached pages. The backend and website do not require the RAG service to start; assistant requests return a service unavailable response while RAG is offline.
+
 ## Conclusion
 
 This platform demonstrates a **real-world, enterprise-grade microservices architecture** that combines **AI intelligence**, **event-driven workflows**, and **scalable backend systems** to solve complex supply chain and customer engagement problems.

@@ -142,6 +142,7 @@ export type StockReorder = {
   status: ReorderStatus;
   createdAt: string;
   updatedAt: string;
+  inventory: { id: string; product: { name: string; sku: string }; warehouse: { name: string } };
 };
 
 const API_BASE_URL =
@@ -155,13 +156,21 @@ type RequestOptions = {
   body?: unknown;
   idempotencyKey?: string;
   confirmationProof?: string;
+  timeoutMs?: number;
 };
 
-async function fetchApi<T>(
+export async function fetchApi<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const method = options.method ?? "GET";
+  const attempts = method === "GET" ? 2 : 1;
+  let response: Response | undefined;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 10_000);
+    try {
+      response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? "GET",
     headers: {
       "Content-Type": "application/json",
@@ -178,7 +187,16 @@ async function fetchApi<T>(
       ...(options.confirmationProof ? { "X-Chat-Confirmation": options.confirmationProof } : {}),
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
-  });
+        signal: controller.signal,
+      });
+      if (response.ok || response.status < 500 || attempt === attempts - 1) break;
+    } catch (error) {
+      if (attempt === attempts - 1) throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  if (!response) throw new Error("API request failed");
 
   if (response.status === 204) return null as T;
 
@@ -203,7 +221,14 @@ export function fetchDashboardSummary(managerSession: ManagerSession) {
 }
 
 export function fetchInventory(managerSession: ManagerSession) {
-  return fetchApi<InventoryItem[]>("/api/inventory", { managerSession });
+  return fetchInventoryPage(managerSession, 1, 50).then((result) => result.items);
+}
+export type InventoryPage = { items: InventoryItem[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } };
+export function fetchInventoryPage(managerSession: ManagerSession, page: number, pageSize = 50, filters: { warehouseId?: string; stockStatus?: "all" | "healthy" | "low" } = {}) {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (filters.warehouseId && filters.warehouseId !== "all") params.set("warehouseId", filters.warehouseId);
+  if (filters.stockStatus && filters.stockStatus !== "all") params.set("stockStatus", filters.stockStatus);
+  return fetchApi<InventoryPage>(`/api/inventory?${params}`, { managerSession });
 }
 
 export function createInventory(
@@ -285,13 +310,17 @@ export type ServerCartLine = {
 };
 export type ServerCart = { id: string | null; items: ServerCartLine[] };
 export function fetchCustomerCart(customerToken: string) { return fetchApi<ServerCart>("/api/cart", { customerToken }); }
+export function fetchCustomerProductAvailability(customerToken: string, productId: string) { return fetchApi<{ productId: string; availableQty: number }>(`/api/inventory/product/${encodeURIComponent(productId)}`, { customerToken }); }
 export function setCustomerCartItem(customerToken: string, productId: string, quantity: number) { return fetchApi<ServerCart>("/api/cart/items", { customerToken, method: "PUT", body: { productId, quantity } }); }
 export function removeCustomerCartItem(customerToken: string, productId: string) { return fetchApi<ServerCart>(`/api/cart/items/${productId}`, { customerToken, method: "DELETE" }); }
 export function clearCustomerCart(customerToken: string) { return fetchApi<ServerCart>("/api/cart", { customerToken, method: "DELETE" }); }
-export type ShippingAddress = { id: string; name: string; phone: string; address1: string; address2: string | null; city: string; region: string; postalCode: string; country?: string | null };
+export type ShippingAddress = { id: string; name: string; phone: string; address1: string; address2: string | null; city: string; region: string; postalCode: string; country?: string | null; isDefault: boolean };
+export type CustomerProfile = { id: string; name: string; email: string };
+export function fetchCustomerProfile(customerToken: string) { return fetchApi<CustomerProfile>("/api/auth/me", { customerToken }); }
 export function fetchCustomerAddresses(customerToken: string) { return fetchApi<ShippingAddress[]>("/api/addresses", { customerToken }); }
-export function createCustomerAddress(customerToken: string, body: Omit<ShippingAddress, "id">) { return fetchApi<ShippingAddress>("/api/addresses", { customerToken, method: "POST", body }); }
-export function updateCustomerAddress(customerToken: string, addressId: string, body: Omit<ShippingAddress, "id">) { return fetchApi<ShippingAddress>(`/api/addresses/${addressId}`, { customerToken, method: "PUT", body }); }
+export function createCustomerAddress(customerToken: string, body: Omit<ShippingAddress, "id" | "isDefault"> & { isDefault?: boolean }, idempotencyKey?: string) { return fetchApi<ShippingAddress>("/api/addresses", { customerToken, method: "POST", body, idempotencyKey }); }
+export function updateCustomerAddress(customerToken: string, addressId: string, body: Omit<ShippingAddress, "id" | "isDefault">) { return fetchApi<ShippingAddress>(`/api/addresses/${addressId}`, { customerToken, method: "PUT", body }); }
+export function setCustomerDefaultAddress(customerToken: string, addressId: string) { return fetchApi<ShippingAddress>(`/api/addresses/${addressId}/default`, { customerToken, method: "PUT" }); }
 export function deleteCustomerAddress(customerToken: string, addressId: string) { return fetchApi<null>(`/api/addresses/${addressId}`, { customerToken, method: "DELETE" }); }
 export type CheckoutQuote = { lines: Array<{ productId: string; name: string; sku: string; imageUrl: string | null; quantity: number; unitPrice: string; currency: string; availableQty: number; lineTotal: string }>; currency: string; subtotal: string; shippingTotal: string | null; taxTotal: string | null; total: string; expiresAt: string; quoteToken: string; address: ShippingAddress; calculation: { shippingAndTax: "not_configured" } };
 export function fetchCheckoutQuote(customerToken: string, addressId: string) { return fetchApi<CheckoutQuote>("/api/orders/quote", { customerToken, method: "POST", body: { addressId } }); }
@@ -340,8 +369,9 @@ export function createCustomerOrder(
   });
 }
 
-export function fetchCustomerOrders(customerToken: string) {
-  return fetchApi<CustomerOrder[]>("/api/orders", { customerToken });
+export type CustomerOrderPage = { items: CustomerOrder[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } };
+export function fetchCustomerOrders(customerToken: string, page = 1, pageSize = 20) {
+  return fetchApi<CustomerOrderPage>(`/api/orders?page=${page}&pageSize=${pageSize}`, { customerToken });
 }
 export function fetchCustomerOrder(customerToken: string, orderId: string) {
   return fetchApi<CustomerOrder>(`/api/orders/${orderId}`, { customerToken });

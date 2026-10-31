@@ -35,7 +35,7 @@ export default function CartPage() {
       const [cart, saved] = await Promise.all([syncCart(token, userKey), fetchCustomerAddresses(token)]);
       setLines(cart);
       setAddresses(saved);
-      setAddressId((current) => saved.some((item) => item.id === current) ? current : saved[0]?.id || "");
+      setAddressId((current) => saved.some((item) => item.id === current) ? current : (saved.find((item) => item.isDefault) ?? saved[0])?.id || "");
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to load your cart"); }
     finally { setLoading(false); }
   }, [token, userKey]);
@@ -73,8 +73,10 @@ export default function CartPage() {
     setBusy(true); setError("");
     try {
       await deleteCustomerAddress(token, addressId);
-      const remaining = addresses.filter((item) => item.id !== addressId);
-      setAddresses(remaining); setAddressId(remaining[0]?.id ?? ""); setQuote(null);
+      const removed = addresses.find((item) => item.id === addressId);
+      let remaining = addresses.filter((item) => item.id !== addressId);
+      if (removed?.isDefault && remaining.length) remaining = remaining.map((item, index) => ({ ...item, isDefault: index === 0 }));
+      setAddresses(remaining); setAddressId((remaining.find((item) => item.isDefault) ?? remaining[0])?.id ?? ""); setQuote(null);
       setNotice("Shipping address deleted.");
       if (editingAddress) { setEditingAddress(false); setAddress(emptyAddress); }
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to delete this address"); }
@@ -114,7 +116,7 @@ export default function CartPage() {
   }
 
   if (!hydrated) return null;
-  if (session?.role !== "user") return <main className="mx-auto max-w-3xl px-4 py-12"><h1 className="text-2xl font-semibold">Sign in to view your cart</h1><Link className="text-primary mt-4 inline-block underline" href="/">Go to sign in</Link></main>;
+  if (session?.role !== "user") return <main className="mx-auto max-w-3xl px-4 py-12"><h1 className="text-2xl font-semibold">Sign in to view your cart</h1><Link className="text-primary mt-4 inline-block underline" href="/manager">Go to sign in</Link></main>;
   const count = lines.reduce((sum, line) => sum + line.quantity, 0);
   return <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
     <Link href="/user" className="text-muted-foreground inline-flex items-center gap-2 text-sm hover:text-foreground"><ArrowLeft className="size-4"/> Continue shopping</Link>
@@ -128,7 +130,7 @@ export default function CartPage() {
         <div className="flex items-center gap-2"><Button variant="outline" size="icon" aria-label={`Decrease ${product.name} quantity`} onClick={() => void changeQuantity(product.id, quantity - 1)}><Minus className="size-4"/></Button><span className="w-8 text-center">{quantity}</span><Button variant="outline" size="icon" aria-label={`Increase ${product.name} quantity`} onClick={() => void changeQuantity(product.id, quantity + 1)}><Plus className="size-4"/></Button><Button variant="ghost" size="icon" aria-label={`Remove ${product.name}`} onClick={() => void changeQuantity(product.id, 0)}><Trash2 className="size-4"/></Button></div>
       </article>)}</div>
       <aside className="h-fit rounded-xl border bg-card p-5"><h2 className="font-semibold">Checkout</h2>
-        {loading ? <p role="status" className="text-muted-foreground mt-3 text-sm">Loading saved addresses…</p> : <><label className="mt-3 block text-sm">Saved address<select aria-label="Saved shipping address" className="mt-1 h-10 w-full rounded-md border bg-background px-2" value={addressId} onChange={(e) => { setAddressId(e.target.value); setQuote(null); }}><option value="">Choose an address</option>{addresses.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.address1}, {item.city}</option>)}</select>{addresses.length === 0 && <span className="text-muted-foreground mt-1 block">No saved addresses yet. Add one below.</span>}</label>{!!addressId && <div className="mt-2 flex gap-2"><Button type="button" variant="outline" size="sm" disabled={busy} onClick={editSelectedAddress}>Edit selected</Button><Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void removeSelectedAddress()}>Delete selected</Button></div>}</>}
+        {loading ? <p role="status" className="text-muted-foreground mt-3 text-sm">Loading saved addresses…</p> : <><label className="mt-3 block text-sm">Saved address<select aria-label="Saved shipping address" className="mt-1 h-10 w-full rounded-md border bg-background px-2" value={addressId} onChange={(e) => { setAddressId(e.target.value); setQuote(null); }}><option value="">Choose an address</option>{addresses.map((item) => <option key={item.id} value={item.id}>{item.isDefault ? "Default · " : ""}{item.name} · {item.address1}, {item.city}</option>)}</select>{addresses.length === 0 && <span className="text-muted-foreground mt-1 block">No saved addresses yet. Add one below.</span>}</label>{!!addressId && <div className="mt-2 flex gap-2"><Button type="button" variant="outline" size="sm" disabled={busy} onClick={editSelectedAddress}>Edit selected</Button><Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void removeSelectedAddress()}>Delete selected</Button></div>}</>}
         <details className="mt-3" open={editingAddress}><summary className="cursor-pointer text-sm underline">{editingAddress ? "Edit shipping address" : "Add a shipping address"}</summary><form onSubmit={saveAddress} className="mt-3 space-y-2">{(["name", "phone", "address1", "address2", "city", "region", "postalCode"] as const).map((field) => <input key={field} required={field !== "address2"} className="h-10 w-full rounded-md border bg-background px-3 text-sm" placeholder={field} value={address[field]} onChange={(e) => setAddress({ ...address, [field]: e.target.value })}/>)}<Button type="submit" variant="outline" className="w-full" disabled={busy}>{editingAddress ? "Update address" : "Save address"}</Button>{editingAddress && <Button type="button" variant="ghost" className="w-full" disabled={busy} onClick={() => { setEditingAddress(false); setAddress(emptyAddress); }}>Cancel edit</Button>}</form></details>
         <Button className="mt-4 w-full" variant="outline" disabled={busy || !addressId || lines.some((line) => line.unavailable)} onClick={() => void getQuote()}>{busy && !quote ? "Calculating…" : "Calculate checkout total"}</Button>
         {quote && <div className="mt-4 space-y-2 border-t pt-4 text-sm"><p className="font-medium">Order summary</p>{quote.lines.map((line) => <div key={line.productId} className="flex justify-between"><span>{line.name} × {line.quantity}</span><span>{formatCurrency(Number(line.lineTotal), quote.currency)}</span></div>)}<div className="flex justify-between"><span>Items subtotal</span><span>{formatCurrency(Number(quote.subtotal), quote.currency)}</span></div><p className="text-muted-foreground text-xs">Shipping and tax are not calculated. No payment is collected in this checkout.</p><div className="flex justify-between border-t pt-2 text-base font-semibold"><span>Order total</span><span>{formatCurrency(Number(quote.total), quote.currency)}</span></div><p className="text-muted-foreground text-xs">Quote expires {new Date(quote.expiresAt).toLocaleTimeString()}.</p><Button className="w-full" disabled={busy || Date.parse(quote.expiresAt) <= Date.now()} onClick={() => void checkout()}>{busy ? "Placing order…" : "Place order"}</Button></div>}
