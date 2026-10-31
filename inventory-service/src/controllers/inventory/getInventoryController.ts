@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../../lib/prisma";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { getOrLoad } from "../../lib/cache";
 
 export const getInventoryDetails = asyncHandler(
   async (req: Request, res: Response) => {
@@ -34,26 +35,45 @@ export const getInventoryDetails = asyncHandler(
 export const getAllInventory = asyncHandler(
   async (req: Request, res: Response) => {
     try {
-      const inventories = await prisma.inventory.findMany({
-        include: {
-          product: {
+      const page = Number(req.query.page ?? 1);
+      const pageSize = Number(req.query.pageSize ?? 50);
+      if (!Number.isInteger(page) || page < 1 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 50) {
+        return res.status(400).json({ status: "error", message: "Invalid pagination parameters" });
+      }
+      const warehouseId = typeof req.query.warehouseId === "string" && req.query.warehouseId !== "all"
+        ? req.query.warehouseId
+        : undefined;
+      const stockStatus = typeof req.query.stockStatus === "string" ? req.query.stockStatus : "all";
+      if (!(["all", "healthy", "low"] as const).includes(stockStatus as "all" | "healthy" | "low")) {
+        return res.status(400).json({ status: "error", message: "Invalid stock status filter" });
+      }
+      const where = {
+        ...(warehouseId ? { warehouseId } : {}),
+        ...(stockStatus === "low" ? { availableQty: { lte: prisma.inventory.fields.reorderQty } } : {}),
+        ...(stockStatus === "healthy" ? { availableQty: { gt: prisma.inventory.fields.reorderQty } } : {}),
+      };
+      const cacheKey = `p${page}:s${pageSize}:w${warehouseId ?? "all"}:stock${stockStatus}`;
+      const data = await getOrLoad(cacheKey, "inventory", 20, async () => {
+        const [total, inventories] = await Promise.all([
+          prisma.inventory.count({ where }),
+          prisma.inventory.findMany({
+            where, skip: (page - 1) * pageSize, take: pageSize,
+            orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
             select: {
-              name: true,
-              sku: true,
+              id: true, productId: true, warehouseId: true, availableQty: true,
+              reservedQty: true, reorderQty: true, isReorderPending: true,
+              createdAt: true, updatedAt: true,
+              product: { select: { name: true, sku: true } },
+              warehouse: { select: { name: true } },
             },
-          },
-          warehouse: {
-            select: {
-              name: true,
-            },
-          },
-        },
+          }),
+        ]);
+        return { items: inventories, pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) } };
       });
-
       return res.status(200).json({
         status: "success",
         message: "Inventories fetched successfully",
-        data: inventories,
+        data,
       });
     } catch (error) {
       return res.status(503).json({

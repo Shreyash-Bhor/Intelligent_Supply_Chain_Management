@@ -5,6 +5,7 @@ import {
 import prisma from "../../lib/prisma";
 import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { invalidateCache } from "../../lib/cache";
 
 export const updateProduct = asyncHandler(
   async (req: Request, res: Response) => {
@@ -14,6 +15,7 @@ export const updateProduct = asyncHandler(
       where: { id: productId },
       data,
     });
+    await invalidateCache("products", "inventory", "catalog", "dashboard", "warehouses");
     return res.status(200).json({
       status: "success",
       message: "Product updated successfully",
@@ -33,6 +35,7 @@ export const updateProductStatus = asyncHandler(
         isActive,
       },
     });
+    await invalidateCache("products", "inventory", "catalog", "dashboard", "warehouses");
     return res.status(200).json({
       status: "success",
       message: "Product status updated successfully",

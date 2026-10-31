@@ -2,6 +2,7 @@ import prisma from "../../lib/prisma";
 import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { deletedProductHistorySchema } from "../../schemas/deletedProductHistorySchema";
+import { invalidateCache } from "../../lib/cache";
 
 export const deleteProduct = asyncHandler(
   async (req: Request, res: Response) => {
@@ -39,6 +40,7 @@ export const deleteProduct = asyncHandler(
         .status(404)
         .json({ status: "error", message: "Product not found" });
     }
+    await invalidateCache("products", "inventory", "catalog", "dashboard", "warehouses");
 
     return res.status(200).json({
       status: "success",

@@ -2,6 +2,7 @@ import { createProductSchema } from "../../schemas/productSchema";
 import prisma from "../../lib/prisma";
 import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { invalidateCache } from "../../lib/cache";
 
 export const createProduct = asyncHandler(
   async (req: Request, res: Response) => {
@@ -28,6 +29,7 @@ export const createProduct = asyncHandler(
         .status(409)
         .json({ status: "conflict", message: "Product already exists" });
     }
+    await invalidateCache("products", "inventory", "catalog", "dashboard", "warehouses");
 
     return res.status(201).json({
       status: "success",

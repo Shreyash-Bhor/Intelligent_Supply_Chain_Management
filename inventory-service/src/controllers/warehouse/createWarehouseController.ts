@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { createWarehouseSchema } from "../../schemas/warehouseSchema";
 import prisma from "../../lib/prisma";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { invalidateCache } from "../../lib/cache";
 
 export const createWarehouse = asyncHandler(
   async (req: Request, res: Response) => {
@@ -24,6 +25,7 @@ export const createWarehouse = asyncHandler(
         pincode,
       },
     });
+    await invalidateCache("warehouses", "inventory", "catalog", "dashboard");
     return res.status(201).json({
       status: "success",
       message: "Warehouse created successfully",

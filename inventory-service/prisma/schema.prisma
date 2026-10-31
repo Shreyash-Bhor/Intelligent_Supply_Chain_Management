@@ -64,6 +64,8 @@ model Inventory {
   @@unique([productId, warehouseId])
   @@index([productId])
   @@index([isReorderPending])
+  @@index([updatedAt(sort: Desc), id(sort: Asc)])
+  @@index([warehouseId, updatedAt(sort: Desc), id(sort: Asc)])
 }
 
 model StockReorder {
@@ -84,6 +86,7 @@ model StockReorder {
 
   @@index([inventoryId])
   @@index([status])
+  @@index([status, createdAt(sort: Desc), id(sort: Desc)])
 }
 
 enum ReorderStatus {
@@ -93,14 +96,14 @@ enum ReorderStatus {
 }
 
 enum Category {
-  Electronics
-  Grocery
-  Beverages
-  Fashion
-  Fitness
-  Stationery
-  Sports
-  Toys
+Appliances
+Beauty
+Electronics
+Fashion
+Home_and_Kitchen
+Mobiles
+Sports
+Toys
 }
 
 model Product {

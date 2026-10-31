@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
+import { getOrLoad } from "../lib/cache";
 import {
   historyQuerySchema,
   productParamsSchema,
@@ -43,13 +44,15 @@ export const getProductPrices = asyncHandler(
       });
     }
 
-    const prices = await prisma.productPrice.findMany({
+    const key = [...new Set(productIds)].sort().join(",");
+    const prices = await getOrLoad(key, "prices", 20, () => prisma.productPrice.findMany({
       where: {
         productId: {
-          in: productIds,
+          in: [...new Set(productIds)],
         },
       },
-    });
+      select: { productId: true, price: true, currency: true },
+    }));
 
     return res.status(200).json({
       status: "success",

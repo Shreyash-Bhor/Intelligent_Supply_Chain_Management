@@ -4,6 +4,7 @@ import { checkoutQuoteSchema, checkoutSchema } from "../schemas/checkoutSchema";
 import { createQuote, getSignedQuoteDigest, verifyQuoteToken } from "../services/checkoutPricing";
 import { asyncHandler } from "../utils/asyncHandler";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { invalidateCache } from "../lib/cache";
 
 function validChatConfirmation(value: string | undefined, userId: string, quoteToken: string) {
   if (!value || !process.env.AUTH_TOKEN_SECRET) return false;
@@ -114,6 +115,7 @@ export const createCartOrder = asyncHandler(async (req: Request, res: Response) 
       await tx.cartItem.deleteMany({ where: { cartId: quote.snapshot.cartId } });
       return tx.order.findUnique({ where: { id: created.id }, include: { ...orderInclude } });
     }, { isolationLevel: "Serializable" });
+    await invalidateCache("inventory", "catalog", "dashboard", "warehouses");
     return res.status(201).json({ status: "success", message: "Order placed. Inventory has been reserved; no payment was collected.", data: order });
   } catch (error) {
     if ((error as { code?: string }).code === "P2034") {
