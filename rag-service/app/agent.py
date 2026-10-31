@@ -98,7 +98,10 @@ General requests customers can ask include: “Show me products in Electronics�
    - maximum price
    For an explicit category browse, use searchCategoryProducts instead. Make
    one targeted search per request and report a clear no-results response;
-   do not fan out to broader searches unless the customer asks.
+   do not fan out to broader searches unless the customer asks. For signed-in
+   customers, results already include the live price and available quantity for
+   the product cards; do not make separate price, stock, or detail calls for
+   those same results.
 
 3. getProductDetails
    Use for requests to show or describe one specific product. This tool also
@@ -126,7 +129,7 @@ General requests customers can ask include: “Show me products in Electronics�
 Important rules:
 - Minimize tool rounds. In each response, request every independent tool result needed next so they run in one round; do not split independent lookups across responses.
 - Reuse results already returned in this turn. Never repeat a search or lookup unless new user input changes what is needed.
-- For a product request, use one search to identify candidates, then request details for all relevant product IDs together. getProductDetails already includes current price and availability.
+- Use one targeted search to show product cards. Call getProductDetails only when the customer asks for extra details about a specific product that the search card does not contain.
 - For checkout with no customer-specified address, prepare one quote directly; the backend uses the customer's saved default and fetches cart, address, prices, products, and stock together. List addresses only when the customer asks to choose a different one. Never repeat a successful quote unless cart or address details change.
 - Never invent product, price, or availability information.
 - Use backend tools for real-time data.
@@ -417,6 +420,7 @@ async def runAgent(
     boundedHistory = compactHistory(history or [])
     inputItems = [*boundedHistory, userInput]
     pendingQuoteForDisplay: dict[str, Any] | None = None
+    checkoutPreparationMessage: str | None = None
     productActions: list[dict[str, Any]] = []
     addedProductIds: list[str] = []
     formActions: list[dict[str, Any]] = []
@@ -461,6 +465,14 @@ async def runAgent(
                 actions = [_checkoutAction(quote)]
                 return {"answer": answer, "actions": actions, "suggestions": await _suggestedReplies(llm, query, history or [], answer, actions)}
             uniqueProducts = list({item["productId"]: item for item in productActions}.values())
+            if addedProductIds:
+                addedProducts = [item for item in uniqueProducts if item.get("productId") in addedProductIds]
+                names = ", ".join(dict.fromkeys(item.get("name", "the requested product") for item in addedProducts)) or "the requested product"
+                answer = f"Added {names} to your cart."
+                if checkoutPreparationMessage:
+                    answer += f" {checkoutPreparationMessage}"
+                actions = addedProducts[:4]
+                return {"answer": answer, "actions": actions, "suggestions": ["View my cart", "Continue to checkout"]}
             actions = uniqueProducts[:4]
             if len(uniqueProducts) > 1 and any(word in query.lower() for word in ("compare", "comparison", "versus", " vs ")):
                 actions = [productComparisonAction([{
@@ -485,6 +497,7 @@ async def runAgent(
         nextInput = list(response.output)
 
         async def executeToolCall(call: Any) -> dict[str, Any]:
+            nonlocal pendingQuoteForDisplay, checkoutPreparationMessage
             tool = toolMap.get(call.name)
 
             if tool is None:
@@ -542,14 +555,21 @@ async def runAgent(
                                     searchCache[searchKey] = result
                             if isinstance(result, dict) and result.get("status") == "success":
                                 candidates = [item for item in result.get("data", []) if isinstance(item, dict) and item.get("id")][:4]
-                                details = await asyncio.gather(
-                                    *(toolMap["getProductDetails"](accessToken=accessToken, productId=item["id"]) for item in candidates),
-                                    return_exceptions=True,
-                                )
-                                productActions.extend(
-                                    productAction(item) for item in details
-                                    if isinstance(item, dict) and item.get("id")
-                                )
+                                # Authenticated assistant search already returns the
+                                # complete card payload (including live price/stock).
+                                # Only use per-product lookups for the public fallback.
+                                completeCards = all("availableQty" in item and "price" in item for item in candidates)
+                                if completeCards:
+                                    productActions.extend(productAction(item) for item in candidates)
+                                else:
+                                    details = await asyncio.gather(
+                                        *(toolMap["getProductDetails"](accessToken=accessToken, productId=item["id"]) for item in candidates),
+                                        return_exceptions=True,
+                                    )
+                                    productActions.extend(
+                                        productAction(item) for item in details
+                                        if isinstance(item, dict) and item.get("id")
+                                    )
                     elif call.name == "searchCategoryProducts":
                         result = await tool(accessToken=accessToken, **arguments)
                         if result.get("status") == "success":
@@ -573,6 +593,20 @@ async def runAgent(
                                         productActions.append(productAction(details))
                                 except Exception:
                                     pass
+                            if requestsCheckout and accessToken and not any(item.name == "prepareCheckout" for item in functionCalls):
+                                try:
+                                    quoteResult = await shoppingTools.prepareCheckout(accessToken)
+                                    if quoteResult.get("status") == "success":
+                                        quote = quoteResult.get("data", {})
+                                        addressId = quote.get("address", {}).get("id")
+                                        if addressId:
+                                            pendingQuoteForDisplay = {"addressId": addressId, "result": quoteResult}
+                                        else:
+                                            checkoutPreparationMessage = "Your cart is ready, but checkout needs a saved delivery address. Add or select one to continue."
+                                    else:
+                                        checkoutPreparationMessage = str(quoteResult.get("message") or "I couldn’t prepare the checkout summary yet. Your product is in the cart.")
+                                except Exception:
+                                    checkoutPreparationMessage = "Your product is in the cart, but I couldn’t prepare checkout just now. Try checkout again."
                         if call.name == "prepareCheckout" and accessToken and result.get("status") == "success":
                             pendingQuoteForDisplay = {"addressId": arguments.get("addressId") or result.get("data", {}).get("address", {}).get("id"), "result": result}
                             resultForModel = {"status": "success", "message": "An authoritative checkout quote is ready. The server will display its exact contents for explicit customer review."}

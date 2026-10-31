@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import { ZodError } from "zod";
 import prisma from "./lib/prisma";
-import priceRouter from "./routes/priceRoutes";
+import priceRouter from "./routes/pricing/priceRoutes";
 
 dotenv.config();
 

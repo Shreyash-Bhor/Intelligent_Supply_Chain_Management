@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.router import router
+from app.routes.rag.router import router
 
 app = FastAPI(
     title="Supply Chain RAG Service",

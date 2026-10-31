@@ -54,11 +54,7 @@ async def searchProducts(
     if (query is not None and len(query.strip()) > 200) or (category is not None and len(category.strip()) > 200):
         raise ValueError("query and category must be 200 characters or fewer.")
     inventoryClient = BackendClient(baseUrl=settings.inventoryServiceUrl, accessToken=accessToken)
-
-    pricingClient = BackendClient(
-        baseUrl=settings.pricingServiceUrl,
-        accessToken=accessToken,
-    )
+    pricingClient = BackendClient(baseUrl=settings.pricingServiceUrl, accessToken=accessToken)
 
     try:
         requestedCategory = (category or "").strip()
@@ -67,15 +63,18 @@ async def searchProducts(
         if validCategory:
             params["category"] = validCategory
         if accessToken:
-            catalogParams: dict[str, Any] = {"page": page, "pageSize": min(pageSize, 3), "inStock": str(inStock).lower(), **params}
-            productResponse = await inventoryClient.get("/api/product/user-catalog", params=catalogParams)
-            catalog = productResponse.get("data", {})
-            products = catalog.get("data", [])
-            pagination = catalog.get("pagination")
+            assistantParams = {**params, "inStock": str(inStock).lower()}
+            if maxPrice is not None:
+                assistantParams["maxPrice"] = maxPrice
+            productResponse = await inventoryClient.get("/api/product/assistant/search", params=assistantParams)
+            products = productResponse.get("data", [])
+            pagination = None
         else:
             productResponse = await inventoryClient.get("/api/product/search", params=params or None)
             products = productResponse.get("data", [])
             pagination = None
+            priceResponse = await pricingClient.get("/api/prices", params={"productIds": ",".join(item["id"] for item in products)}) if products else {"data": []}
+            prices = {item["productId"]: item for item in priceResponse.get("data", [])}
 
         if not products:
             return {
@@ -87,27 +86,12 @@ async def searchProducts(
             }
 
         products = products[:3]
-        productIds = [product["id"] for product in products]
-
-        priceResponse = await pricingClient.get(
-            "/api/prices",
-            params={
-                "productIds": ",".join(productIds),
-            },
-        )
-
-        prices = {
-            item["productId"]: item
-            for item in priceResponse.get("data", [])
-        }
-
         results = []
 
         for product in products:
-            priceData = prices.get(product["id"])
-
+            priceData = product if accessToken else prices.get(product["id"])
             if maxPrice is not None:
-                if not priceData or priceData["price"] > maxPrice:
+                if not priceData or priceData.get("price") is None or float(priceData["price"]) > maxPrice:
                     continue
 
             results.append({
@@ -116,8 +100,11 @@ async def searchProducts(
                 "sku": product.get("sku"),
                 "category": product.get("category"),
                 "imageUrl": product.get("imageUrl"),
-                "price": priceData["price"] if priceData else None,
-                "currency": priceData["currency"] if priceData else None,
+                "price": priceData.get("price") if priceData else None,
+                "currency": priceData.get("currency") if priceData else None,
+                "availableQty": product.get("availableQty") if accessToken else None,
+                "description": product.get("description") if accessToken else None,
+                "attributes": product.get("attributes", {}) if accessToken else {},
             })
 
         return {
@@ -165,8 +152,9 @@ async def getProductDetails(
         data = response.get("data", {})
         if data.get("isActive") is False:
             raise ValueError("This product is not available in the customer catalog.")
-        priceTask = getProductPrice(accessToken, productId.strip())
-        stockTask = getProductAvailability(accessToken, productId.strip())
+        resolvedProductId = str(data.get("id") or "")
+        priceTask = getProductPrice(accessToken, resolvedProductId)
+        stockTask = getProductAvailability(accessToken, resolvedProductId)
         priceResult, stockResult = await asyncio.gather(priceTask, stockTask, return_exceptions=True)
         priceData = priceResult.get("data", {}) if isinstance(priceResult, dict) else {}
         stockData = stockResult.get("data", {}) if isinstance(stockResult, dict) else {}
