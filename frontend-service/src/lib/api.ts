@@ -142,7 +142,7 @@ export type StockReorder = {
   status: ReorderStatus;
   createdAt: string;
   updatedAt: string;
-  inventory: { id: string; product: { name: string; sku: string }; warehouse: { name: string } };
+  inventory: { id: string; product: { name: string; sku: string }; warehouse: { id: string; name: string } };
 };
 
 const API_BASE_URL =
@@ -168,7 +168,17 @@ export async function fetchApi<T>(
   let response: Response | undefined;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 10_000);
+    const timeoutMs = options.timeoutMs ?? 30_000;
+    const timeout = setTimeout(
+      () =>
+        controller.abort(
+          new DOMException(
+            `API request timed out after ${timeoutMs}ms`,
+            "TimeoutError",
+          ),
+        ),
+      timeoutMs,
+    );
     try {
       response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? "GET",
@@ -224,10 +234,11 @@ export function fetchInventory(managerSession: ManagerSession) {
   return fetchInventoryPage(managerSession, 1, 50).then((result) => result.items);
 }
 export type InventoryPage = { items: InventoryItem[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } };
-export function fetchInventoryPage(managerSession: ManagerSession, page: number, pageSize = 50, filters: { warehouseId?: string; stockStatus?: "all" | "healthy" | "low" } = {}) {
+export function fetchInventoryPage(managerSession: ManagerSession, page: number, pageSize = 50, filters: { warehouseId?: string; stockStatus?: "all" | "healthy" | "low"; productQuery?: string } = {}) {
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
   if (filters.warehouseId && filters.warehouseId !== "all") params.set("warehouseId", filters.warehouseId);
   if (filters.stockStatus && filters.stockStatus !== "all") params.set("stockStatus", filters.stockStatus);
+  if (filters.productQuery?.trim()) params.set("productQuery", filters.productQuery.trim());
   return fetchApi<InventoryPage>(`/api/inventory?${params}`, { managerSession });
 }
 
@@ -276,15 +287,17 @@ export function createInventoryReorder(
   });
 }
 
-export function fetchReorders(mode: "current" | "history" = "current") {
-  return fetchApi<StockReorder[]>(`/api/reorder?mode=${mode}`);
+export function fetchReorders(managerSession: ManagerSession, mode: "current" | "history" = "current") {
+  return fetchApi<StockReorder[]>(`/api/reorder?mode=${mode}`, { managerSession });
 }
 
 export function updateReorderStatus(
+  managerSession: ManagerSession,
   reorderId: string,
   status: "COMPLETED" | "CANCELLED",
 ) {
   return fetchApi<null>(`/api/reorder/${reorderId}/status`, {
+    managerSession,
     method: "PATCH",
     body: { status },
   });
@@ -292,6 +305,11 @@ export function updateReorderStatus(
 
 export function fetchProducts(status: StatusFilter = "active") {
   return fetchApi<Product[]>(`/api/product/products?status=${status}`);
+}
+
+export function searchProducts(query: string) {
+  const params = new URLSearchParams({ query });
+  return fetchApi<Array<Pick<Product, "id" | "name" | "sku">>>(`/api/product/search?${params}`);
 }
 
 export function fetchCatalogProducts() {

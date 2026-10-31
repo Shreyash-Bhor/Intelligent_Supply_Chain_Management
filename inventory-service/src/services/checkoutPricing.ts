@@ -40,7 +40,9 @@ export async function createQuote(userId: string, addressId?: string) {
   // explicitly uncalculated until an approved market policy is configured.
   const amounts = calculateAmounts(subtotalMinor, 0, 0);
   const expiresAt = Date.now() + 3 * 60 * 1000;
-  const digest = JSON.stringify({ userId, addressId, address: { name: address.name, phone: address.phone, address1: address.address1, address2: address.address2, city: address.city, region: address.region, postalCode: address.postalCode, country: address.country }, cartId: cart.id, lines: lines.map(({ productId, name, sku, quantity, unitPrice, currency }) => ({ productId, name, sku, quantity, unitPrice, currency })) });
+  // Bind the quote to the resolved address, regardless of whether the caller
+  // selected it explicitly or relied on the customer's default address.
+  const digest = JSON.stringify({ userId, addressId: address.id, address: { name: address.name, phone: address.phone, address1: address.address1, address2: address.address2, city: address.city, region: address.region, postalCode: address.postalCode, country: address.country }, cartId: cart.id, lines: lines.map(({ productId, name, sku, quantity, unitPrice, currency }) => ({ productId, name, sku, quantity, unitPrice, currency })) });
   const payload = Buffer.from(JSON.stringify({ expiresAt, digest })).toString("base64url");
   const signature = createHmac("sha256", secret()).update(payload).digest("base64url");
   return { address, lines, currency: lines[0]!.currency, subtotal: fromMinor(amounts.subtotalMinor), shippingTotal: null, taxTotal: null, total: fromMinor(amounts.totalMinor), quoteToken: `${payload}.${signature}`, expiresAt: new Date(expiresAt).toISOString(), snapshot: { cartId: cart.id, ...amounts, digest } };

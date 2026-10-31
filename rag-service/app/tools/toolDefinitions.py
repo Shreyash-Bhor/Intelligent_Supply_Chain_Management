@@ -6,7 +6,8 @@ toolDefinitions = [
         "name": "searchProducts",
         "description": (
             "Search active products by name, SKU, category, and optionally "
-            "maximum price. Use this for product discovery."
+            "maximum price. For signed-in customers, each result includes the "
+            "current price and available quantity for a product card."
         ),
         "parameters": {
             "type": "object",
