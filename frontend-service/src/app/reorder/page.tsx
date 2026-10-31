@@ -59,7 +59,7 @@ export default function ReorderPage() {
 
     try {
       setLoading(true);
-      const reorderData = await fetchReorders(reorderView);
+      const reorderData = await fetchReorders(session, reorderView);
       setReorders(reorderData);
       setError(null);
     } catch (err) {
@@ -79,7 +79,8 @@ export default function ReorderPage() {
   ) => {
     try {
       setLoading(true);
-      await updateReorderStatus(reorderId, status);
+      if (!session) return;
+      await updateReorderStatus(session, reorderId, status);
       await loadData();
     } catch (err) {
       setError(
@@ -101,7 +102,7 @@ export default function ReorderPage() {
     const warehouseMap = new Map<string, string>();
 
     reorders.forEach((reorder) => {
-      warehouseMap.set(reorder.inventory.warehouse.name, reorder.inventory.warehouse.name);
+      warehouseMap.set(reorder.inventory.warehouse.id, reorder.inventory.warehouse.name);
     });
 
     return Array.from(warehouseMap.entries()).sort((a, b) =>
@@ -115,7 +116,7 @@ export default function ReorderPage() {
         const warehouseMatches =
           warehouseFilter === "all"
             ? true
-            : reorder.inventory.warehouse.name === warehouseFilter;
+            : reorder.inventory.warehouse.id === warehouseFilter;
         if (!warehouseMatches) return false;
 
         if (reorderView === "history" && historyStatusFilter !== "all") {

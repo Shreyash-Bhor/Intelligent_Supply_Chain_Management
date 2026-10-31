@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -14,7 +15,7 @@ import {
   createInventoryReorder,
   fetchInventoryPage,
   updateInventory,
-  fetchProducts,
+  searchProducts,
   fetchWarehouses,
   type InventoryItem,
   type ManagerSession,
@@ -43,7 +44,7 @@ export default function InventoryPage() {
   const [session, setSession] = useState<ManagerSession | null>(null);
   const [inventories, setInventories] = useState<InventoryItem[]>([]);
   const [inventoryTotal, setInventoryTotal] = useState(0);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Array<Pick<Product, "id" | "name" | "sku">>>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +52,7 @@ export default function InventoryPage() {
   const [productId, setProductId] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
   const [productQuery, setProductQuery] = useState("");
+  const [debouncedCreateProductQuery, setDebouncedCreateProductQuery] = useState("");
   const [warehouseQuery, setWarehouseQuery] = useState("");
   const [availableQty, setAvailableQty] = useState("0");
   const [reservedQty, setReservedQty] = useState("0");
@@ -63,7 +65,25 @@ export default function InventoryPage() {
   const [stockStatusFilter, setStockStatusFilter] = useState<
     "all" | "healthy" | "low"
   >("all");
+  const [productSearch, setProductSearch] = useState("");
+  const [debouncedProductSearch, setDebouncedProductSearch] = useState("");
   const [page, setPage] = useState(1);
+  const inventoryRequestSequence = useRef(0);
+  const productLookupSequence = useRef(0);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedProductSearch(productSearch.trim());
+    }, 350);
+    return () => window.clearTimeout(timeout);
+  }, [productSearch]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedCreateProductQuery(productQuery.trim());
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [productQuery]);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(SESSION_KEY);
@@ -81,6 +101,7 @@ export default function InventoryPage() {
 
   const loadData = useCallback(async () => {
     if (!session) return;
+    const requestSequence = ++inventoryRequestSequence.current;
 
     try {
       setLoading(true);
@@ -88,34 +109,49 @@ export default function InventoryPage() {
         session,
         page,
         INVENTORY_PAGE_SIZE,
-        { warehouseId: warehouseFilter },
+        { warehouseId: warehouseFilter, productQuery: debouncedProductSearch },
       );
 
+      if (requestSequence !== inventoryRequestSequence.current) return;
       setInventories(inventoryPage.items);
       setInventoryTotal(inventoryPage.pagination.total);
       setError(null);
     } catch (err) {
+      if (requestSequence !== inventoryRequestSequence.current) return;
       setError(
         err instanceof Error ? err.message : "Failed to load inventory data",
       );
     } finally {
-      setLoading(false);
+      if (requestSequence === inventoryRequestSequence.current) setLoading(false);
     }
-  }, [session, page, warehouseFilter]);
+  }, [session, page, warehouseFilter, debouncedProductSearch]);
 
   const loadReferenceData = useCallback(async () => {
     if (!session) return;
     try {
-      const [productData, warehouseData] = await Promise.all([
-        fetchProducts("active"),
-        fetchWarehouses("active"),
-      ]);
-      setProducts(productData);
+      const warehouseData = await fetchWarehouses("active");
       setWarehouses(warehouseData);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load options");
     }
   }, [session]);
+
+  useEffect(() => {
+    const requestSequence = ++productLookupSequence.current;
+    if (!session || !debouncedCreateProductQuery) {
+      setProducts([]);
+      return;
+    }
+    void searchProducts(debouncedCreateProductQuery)
+      .then((matches) => {
+        if (requestSequence === productLookupSequence.current) setProducts(matches);
+      })
+      .catch((err: unknown) => {
+        if (requestSequence === productLookupSequence.current) {
+          setError(err instanceof Error ? err.message : "Failed to search products");
+        }
+      });
+  }, [session, debouncedCreateProductQuery]);
 
   useEffect(() => {
     void loadData();
@@ -302,9 +338,11 @@ export default function InventoryPage() {
           <CardTitle>Create Inventory Record</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleCreate} className="grid gap-3 md:grid-cols-8">
-            <div className="md:col-span-2">
+          <form onSubmit={handleCreate} className="grid gap-3 md:grid-cols-4">
+            <div className="flex flex-col gap-1.5 md:col-span-2">
+              <label htmlFor="inventory-product" className="text-sm font-medium">Existing product</label>
               <input
+                id="inventory-product"
                 className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
                 list="inventory-product-options"
                 value={productQuery}
@@ -313,7 +351,7 @@ export default function InventoryPage() {
                   setProductQuery(nextLabel);
                   setProductId(productOptionMap[nextLabel] ?? "");
                 }}
-                placeholder="Search product by name or SKU"
+                placeholder="Choose existing product by name or SKU"
                 required
               />
               <datalist id="inventory-product-options">
@@ -323,8 +361,10 @@ export default function InventoryPage() {
                 })}
               </datalist>
             </div>
-            <div className="md:col-span-2">
+            <div className="flex flex-col gap-1.5 md:col-span-2">
+              <label htmlFor="inventory-warehouse" className="text-sm font-medium">Warehouse</label>
               <input
+                id="inventory-warehouse"
                 className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
                 list="inventory-warehouse-options"
                 value={warehouseQuery}
@@ -343,37 +383,54 @@ export default function InventoryPage() {
                 })}
               </datalist>
             </div>
-            <input
-              className="border-input bg-background rounded-md border px-3 py-2 text-sm"
-              type="number"
-              min={0}
-              value={availableQty}
-              onChange={(event) => setAvailableQty(event.target.value)}
-              placeholder="Available"
-              required
-            />
-            <input
-              className="border-input bg-background rounded-md border px-3 py-2 text-sm"
-              type="number"
-              min={0}
-              value={reservedQty}
-              onChange={(event) => setReservedQty(event.target.value)}
-              placeholder="Reserved"
-              required
-            />
-            <input
-              className="border-input bg-background rounded-md border px-3 py-2 text-sm"
-              type="number"
-              min={0}
-              value={reorderQty}
-              onChange={(event) => setReorderQty(event.target.value)}
-              placeholder="Reorder threshold"
-              required
-            />
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="inventory-available" className="text-sm font-medium">Available quantity</label>
+              <input id="inventory-available" className="border-input bg-background rounded-md border px-3 py-2 text-sm" type="number" min={0} value={availableQty} onChange={(event) => setAvailableQty(event.target.value)} required />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="inventory-reserved" className="text-sm font-medium">Reserved quantity</label>
+              <input id="inventory-reserved" className="border-input bg-background rounded-md border px-3 py-2 text-sm" type="number" min={0} value={reservedQty} onChange={(event) => setReservedQty(event.target.value)} required />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="inventory-reorder" className="text-sm font-medium">Reorder threshold</label>
+              <input id="inventory-reorder" className="border-input bg-background rounded-md border px-3 py-2 text-sm" type="number" min={0} value={reorderQty} onChange={(event) => setReorderQty(event.target.value)} required />
+            </div>
             <Button type="submit" disabled={loading}>
               {loading ? "Saving..." : "Create"}
             </Button>{" "}
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Search Product Inventory</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              type="search"
+              aria-label="Search inventory by product name or SKU"
+              placeholder="Enter a product name or SKU"
+              className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm sm:max-w-md"
+              value={productSearch}
+              onChange={(event) => {
+                setPage(1);
+                setProductSearch(event.target.value);
+              }}
+            />
+            {productSearch ? (
+              <Button type="button" variant="outline" onClick={() => {
+                setPage(1);
+                setProductSearch("");
+              }}>
+                Clear search
+              </Button>
+            ) : null}
+          </div>
+          <p className="text-muted-foreground mt-2 text-sm">
+            Search is separate from creating inventory records. Results show inventory for matching products.
+          </p>
         </CardContent>
       </Card>
 

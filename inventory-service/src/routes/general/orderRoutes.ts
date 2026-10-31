@@ -1,0 +1,14 @@
+import { Router } from "express";
+import { createOrder } from "../../controllers/general/order/createOrderController";
+import { getCustomerOrder, getCustomerOrders } from "../../controllers/general/order/getOrderController";
+import { confirmCheckout, createCartOrder, getCheckoutQuote } from "../../controllers/general/checkoutController";
+import { cancelCustomerOrder } from "../../controllers/general/order/cancelOrderController";
+const router = Router();
+router.post("/quote", getCheckoutQuote);
+router.post("/confirmation", confirmCheckout);
+router.post("/checkout", createCartOrder);
+router.post("/:orderId/cancel", cancelCustomerOrder);
+router.get("/:orderId", getCustomerOrder);
+router.post("/", createOrder);
+router.get("/", getCustomerOrders);
+export default router;
