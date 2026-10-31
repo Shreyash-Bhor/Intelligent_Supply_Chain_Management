@@ -15,14 +15,16 @@ app.use(cors());
 app.use((req, res, next) => {
   const startedAt = process.hrtime.bigint();
   res.on("finish", () => {
-    console.info(JSON.stringify({
-      event: "http_request_complete",
-      service: "pricing",
-      method: req.method,
-      route: req.route?.path ?? req.path,
-      status: res.statusCode,
-      durationMs: Number(process.hrtime.bigint() - startedAt) / 1_000_000,
-    }));
+    console.info(
+      JSON.stringify({
+        event: "http_request_complete",
+        service: "pricing",
+        method: req.method,
+        route: req.route?.path ?? req.path,
+        status: res.statusCode,
+        durationMs: Number(process.hrtime.bigint() - startedAt) / 1_000_000,
+      }),
+    );
   });
   next();
 });
@@ -75,11 +77,17 @@ async function startServer() {
     process.exitCode = 1;
   });
 
-  void prisma.$connect().then(() => {
-    console.log("Database Connected");
-  }).catch((error) => {
-    console.warn("Database is unavailable; pricing service remains online and will connect on demand.", error instanceof Error ? error.message : error);
-  });
+  void prisma
+    .$connect()
+    .then(() => {
+      console.log("Database Connected");
+    })
+    .catch((error) => {
+      console.warn(
+        "Database is unavailable; pricing service remains online and will connect on demand.",
+        error instanceof Error ? error.message : error,
+      );
+    });
 }
 
 startServer();
