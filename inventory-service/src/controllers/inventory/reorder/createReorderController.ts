@@ -50,7 +50,7 @@ export const createReorder = asyncHandler(
 
       return created;
     });
-    await invalidateCache("inventory", "catalog", "dashboard", "warehouses");
+    await invalidateCache("inventory", "catalog", "dashboard", "warehouses", "reorders");
 
     return res.status(201).json({
       status: "success",

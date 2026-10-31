@@ -50,8 +50,8 @@ export function useDashboardData(managerSession: ManagerSession | null) {
           setLoading(true);
         }
 
-        await verifyManagerAccess(managerSession);
-        const [summaryData, inventoryData] = await Promise.all([
+        const [, summaryData, inventoryData] = await Promise.all([
+          verifyManagerAccess(managerSession),
           fetchDashboardSummary(managerSession),
           fetchInventory(managerSession),
         ]);
