@@ -9,7 +9,7 @@ def getRequiredEnv(name: str) -> str:
     value = os.getenv(name)
 
     if not value:
-        return RuntimeError(f"Required environment variable '{name}' is not set.")
+        raise RuntimeError(f"Required environment variable '{name}' is not set.")
 
     return value
 
@@ -41,5 +41,6 @@ class Settings:
     #Backend Client
     inventoryServiceUrl: str = getRequiredEnv("INVENTORY_SERVICE_URL")
     pricingServiceUrl: str = getRequiredEnv("PRICING_SERVICE_URL")
+    authTokenSecret: str = getRequiredEnv("AUTH_TOKEN_SECRET")
 
 settings = Settings()

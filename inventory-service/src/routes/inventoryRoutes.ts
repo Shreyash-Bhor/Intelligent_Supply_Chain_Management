@@ -10,13 +10,17 @@ import {
   updateInventoryStatus,
 } from "../controllers/inventory/updateInventoryController";
 import { getProductAvailability } from "../controllers/inventory/getInventoryController";
+import { requireWarehouseManagerAccess } from "../middleware/warehouseManagerAccess";
 
 const router = Router();
 
 // Inventory CRUD
+// Product availability is safe to expose to the customer assistant; keep
+// inventory administration routes restricted to warehouse managers.
+router.get("/product/:productId", getProductAvailability);
+router.use(requireWarehouseManagerAccess);
 router.post("/", createInventory);
 router.get("/", getAllInventory);
-router.get("/product/:productId", getProductAvailability);
 router.get("/:inventoryId", getInventoryDetails);
 router.patch("/:inventoryId", updateInventory);
 

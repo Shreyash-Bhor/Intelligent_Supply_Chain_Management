@@ -3,6 +3,7 @@ import prisma from "../../lib/prisma";
 import { createOrderSchema } from "../../schemas/orderSchema";
 import { getCurrentProductPrice } from "../../services/pricingService";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { fromMinor, toMinor } from "../../services/money";
 
 const serializeOrder = (order: any) => ({
   ...order,
@@ -11,6 +12,9 @@ const serializeOrder = (order: any) => ({
 });
 
 export const createOrder = asyncHandler(async (req: Request, res: Response) => {
+  return res.status(403).json({ status: "error", message: "Orders must use confirmed cart checkout." });
+  /* Legacy direct-order implementation retained below for historical reference;
+     customer orders now require a quote-bound confirmation proof. */
   const { productId, quantity } = createOrderSchema.parse(req.body);
   const customerId = res.locals.customer.sub as string;
   const [product, pricing] = await Promise.all([
@@ -47,7 +51,7 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
         allocatedQty,
         shortageQty,
         unitPrice: pricing.price,
-        totalPrice: Number((pricing.price * quantity).toFixed(2)),
+        totalPrice: fromMinor(toMinor(pricing.price) * quantity),
         currency: pricing.currency,
         status: shortageQty > 0 ? "BACKORDERED" : "CONFIRMED",
       },

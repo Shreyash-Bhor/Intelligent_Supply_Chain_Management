@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Header, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.agent import runAgent
+from app.memory import getHistory, saveTurn
 
 router = APIRouter()
 
 
 class AgentRequest(BaseModel):
-    query: str
+    query: str = Field(min_length=1, max_length=4000)
+    conversationId: str | None = Field(default=None, min_length=1, max_length=128)
 
 
 @router.post("/chat")
@@ -34,10 +36,14 @@ async def chat(
 
         accessToken = token
 
+    history = getHistory(request.conversationId, accessToken)
     response = await runAgent(
         query=request.query,
         accessToken=accessToken,
+        history=history,
+        conversationId=request.conversationId,
     )
+    saveTurn(request.conversationId, accessToken, request.query.strip(), response)
 
     return {
         "status": "success",

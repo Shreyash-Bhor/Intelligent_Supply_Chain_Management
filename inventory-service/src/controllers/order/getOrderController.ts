@@ -17,6 +17,8 @@ export const getCustomerOrders = asyncHandler(
           select: { id: true, name: true, sku: true, imageUrl: true },
         },
         stockReorder: true,
+        items: { include: { product: { select: { id: true, name: true, sku: true, imageUrl: true } } } },
+        shipments: true,
       },
       orderBy: { createdAt: "desc" },
     });
@@ -25,3 +27,12 @@ export const getCustomerOrders = asyncHandler(
       .json({ status: "success", data: orders.map(serializeOrder) });
   },
 );
+
+export const getCustomerOrder = asyncHandler(async (req: Request, res: Response) => {
+  const order = await prisma.order.findFirst({
+    where: { id: req.params.orderId, userId: res.locals.customer.sub },
+    include: { product: { select: { id: true, name: true, sku: true, imageUrl: true } }, stockReorder: true, items: { include: { product: { select: { id: true, name: true, sku: true, imageUrl: true } } } }, shipments: true },
+  });
+  if (!order) return res.status(404).json({ status: "error", message: "Order not found" });
+  return res.status(200).json({ status: "success", data: serializeOrder(order) });
+});

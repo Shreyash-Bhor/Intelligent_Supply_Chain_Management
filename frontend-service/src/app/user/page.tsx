@@ -2,55 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Store } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { BadgeCheck, Store, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  fetchUserDashboardProducts,
-  type UserInventoryProduct,
-} from "@/lib/api";
 import { ProductGrid } from "@/components/user/ProductGrid";
 import { clearAuthSession } from "@/lib/auth";
 import { useAuthSession } from "@/hooks/useAuthSession";
-import { useUserProductCatalog } from "@/hooks/useUserProductCatalog";
 
 export default function UserDashboardPage() {
   const router = useRouter();
   const { session, hydrated } = useAuthSession();
-  const [products, setProducts] = useState<UserInventoryProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { products: catalogProducts, loadingPrices } =
-    useUserProductCatalog(products);
+  const [productId, setProductId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!hydrated || session?.role !== "user") return;
+    const timer = window.setTimeout(() => setProductId(new URLSearchParams(window.location.search).get("product")), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
-    const loadProducts = async () => {
-      try {
-        setLoading(true);
-        if (!session.token)
-          throw new Error("Your session is invalid. Please login again.");
-        const data = await fetchUserDashboardProducts(session.token);
-        setProducts(data);
-        setError(null);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load products",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void loadProducts();
-  }, [hydrated, session]);
 
   if (!hydrated) {
     return null;
@@ -106,42 +75,22 @@ export default function UserDashboardPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8">
-      <Card className="border-border/70 bg-gradient-to-r from-primary/5 via-background to-background">
-        <CardHeader className="space-y-3">
-          <div className="text-primary flex items-center gap-2 text-sm font-medium">
-            <Store className="size-4" />
-            <span>User Storefront</span>
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:py-10">
+      <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+        <div className="grid gap-6 bg-[linear-gradient(115deg,color-mix(in_oklch,var(--primary)_10%,var(--card)),var(--card)_62%)] px-6 py-9 sm:px-10 sm:py-12 md:grid-cols-[1fr_auto] md:items-center">
+          <div className="max-w-2xl space-y-4">
+            <div className="text-primary flex items-center gap-2 text-sm font-medium"><Store className="size-4" /><span>SupplySync Store</span></div>
+            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Everyday essentials, in one place.</h1>
+            <p className="text-muted-foreground max-w-xl">Explore products currently available in our supply network. Live stock and prices come from SupplySync.</p>
+            <Link href="#products" className="bg-primary text-primary-foreground inline-flex min-h-10 items-center gap-2 rounded-md px-4 text-sm font-medium">Browse products <ArrowRight className="size-4" /></Link>
           </div>
-          <CardTitle className="text-2xl">
-            Discover Available Products
-          </CardTitle>
-          <p className="text-muted-foreground text-sm">
-            Browse in-stock products with pricing and quick details in a modern
-            shopping layout.
-          </p>
-        </CardHeader>
-        <CardContent>
-          {error ? <p className="text-destructive text-sm">{error}</p> : null}
-          {loading ? (
-            <p className="text-muted-foreground text-sm">Loading products...</p>
-          ) : (
-            <div className="space-y-4">
-              <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                <BadgeCheck className="size-4 text-emerald-500" />
-                <span>
-                  {catalogProducts.length} products available to explore
-                </span>
-              </div>
-              <ProductGrid
-                products={catalogProducts}
-                loadingPrices={loadingPrices}
-                customerToken={session.token ?? ""}
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          <div className="hidden rounded-xl border bg-card/80 p-5 text-sm shadow-sm md:block"><BadgeCheck className="text-emerald-600 mb-3 size-6" /><p className="font-medium">Inventory-backed availability</p><p className="text-muted-foreground mt-1">Order requests are checked against live stock.</p></div>
+        </div>
+      </section>
+      <section id="products" className="space-y-5">
+        <div><p className="text-primary text-sm font-medium">The catalog</p><h2 className="mt-1 text-2xl font-semibold tracking-tight">Find your next favorite</h2></div>
+        <ProductGrid customerToken={session.token ?? ""} customerKey={session.email} focusProductId={productId} />
+      </section>
     </main>
   );
 }
