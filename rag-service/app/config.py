@@ -17,12 +17,20 @@ class Settings:
     #Qdrant
     qdrantUrl: str = getRequiredEnv("QDRANT_URL")
     qdrantApiKey: str | None = os.getenv("QDRANT_API_KEY")
-    collectionName: str = getRequiredEnv("COLLECTION_NAME")
+    # Keep provider-specific vectors isolated from collections created with local models.
+    collectionName: str = os.getenv(
+        "COLLECTION_NAME", "supply-chain-knowledge-cloudflare-bge-small-en-v1-5"
+    )
 
     #Embeddings
-    embeddingModel: str = getRequiredEnv("EMBEDDING_MODEL")
-    embeddingDimension: int = int(getRequiredEnv("EMBEDDING_DIMENSION"))
-    embeddingDevice: str = os.getenv("EMBEDDING_DEVICE","cpu")
+    embeddingProvider: str = os.getenv("EMBEDDING_PROVIDER", "cloudflare")
+    embeddingModel: str = os.getenv(
+        "EMBEDDING_MODEL", "@cf/baai/bge-small-en-v1.5"
+    )
+    embeddingDimension: int = int(os.getenv("EMBEDDING_DIMENSION", "384"))
+    cloudflareAccountId: str = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
+    cloudflareApiToken: str = os.getenv("CLOUDFLARE_API_TOKEN", "")
+    embeddingBatchSize: int = int(os.getenv("EMBEDDING_BATCH_SIZE", "100"))
 
     #LLM
     llmProvider: str = os.getenv("LLM_PROVIDER","groq")
@@ -45,3 +53,20 @@ class Settings:
     authTokenSecret: str = getRequiredEnv("AUTH_TOKEN_SECRET")
 
 settings = Settings()
+if settings.embeddingProvider != "cloudflare":
+    raise RuntimeError("EMBEDDING_PROVIDER must be 'cloudflare'.")
+if settings.embeddingModel != "@cf/baai/bge-small-en-v1.5":
+    raise RuntimeError("EMBEDDING_MODEL must be '@cf/baai/bge-small-en-v1.5'.")
+if settings.embeddingDimension != 384:
+    raise RuntimeError("EMBEDDING_DIMENSION must be 384 for the configured model.")
+if not settings.cloudflareAccountId:
+    raise RuntimeError("Required environment variable 'CLOUDFLARE_ACCOUNT_ID' is not set.")
+if not settings.cloudflareApiToken:
+    raise RuntimeError("Required environment variable 'CLOUDFLARE_API_TOKEN' is not set.")
+if settings.embeddingBatchSize <= 0:
+    raise RuntimeError("EMBEDDING_BATCH_SIZE must be greater than 0.")
+if not settings.collectionName.endswith("-cloudflare-bge-small-en-v1-5"):
+    raise RuntimeError(
+        "COLLECTION_NAME must identify a Cloudflare BGE collection and end with "
+        "'-cloudflare-bge-small-en-v1-5' to prevent mixing embedding providers."
+    )

@@ -5,8 +5,11 @@ from unittest.mock import AsyncMock, patch
 
 os.environ.setdefault("QDRANT_URL", "http://localhost:6333")
 os.environ.setdefault("COLLECTION_NAME", "test")
-os.environ.setdefault("EMBEDDING_MODEL", "test")
-os.environ.setdefault("EMBEDDING_DIMENSION", "1")
+os.environ.setdefault("EMBEDDING_PROVIDER", "cloudflare")
+os.environ.setdefault("EMBEDDING_MODEL", "@cf/baai/bge-small-en-v1.5")
+os.environ.setdefault("EMBEDDING_DIMENSION", "384")
+os.environ.setdefault("CLOUDFLARE_ACCOUNT_ID", "test")
+os.environ.setdefault("CLOUDFLARE_API_TOKEN", "test")
 os.environ.setdefault("GROQ_API_KEY", "test")
 os.environ.setdefault("GROQ_MODEL", "test")
 os.environ.setdefault("INVENTORY_SERVICE_URL", "http://localhost:5000")

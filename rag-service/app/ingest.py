@@ -31,7 +31,11 @@ def ingest():
 
     points = [
         PointStruct(
-            id = str(uuid.uuid4()),
+            # Stable IDs make re-ingestion an upsert instead of duplicating chunks.
+            id = str(uuid.uuid5(
+                uuid.NAMESPACE_URL,
+                f"{chunk['filePath']}::{chunk['chunkIndex']}::{chunk['text']}",
+            )),
             vector = vector,
             payload = {
                 "text": chunk["text"],

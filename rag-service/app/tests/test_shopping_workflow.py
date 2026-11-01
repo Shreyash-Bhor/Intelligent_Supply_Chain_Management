@@ -7,7 +7,9 @@ import unittest
 
 os.environ.update({
     "QDRANT_URL": "http://localhost:6333", "COLLECTION_NAME": "test",
-    "EMBEDDING_MODEL": "test", "EMBEDDING_DIMENSION": "1",
+    "EMBEDDING_PROVIDER": "cloudflare",
+    "EMBEDDING_MODEL": "@cf/baai/bge-small-en-v1.5", "EMBEDDING_DIMENSION": "384",
+    "CLOUDFLARE_ACCOUNT_ID": "test", "CLOUDFLARE_API_TOKEN": "test",
     "GROQ_API_KEY": "test", "GROQ_MODEL": "test",
     "INVENTORY_SERVICE_URL": "http://localhost:5000",
     "PRICING_SERVICE_URL": "http://localhost:5555",
