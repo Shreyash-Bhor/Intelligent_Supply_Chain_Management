@@ -14,9 +14,14 @@ AVAILABLE_CATEGORIES = (
 )
 
 
+def _normalizeCategory(category: str) -> str | None:
+    normalized = category.strip().replace("-", "_").replace(" ", "_").casefold()
+    return next((item for item in AVAILABLE_CATEGORIES if item.casefold() == normalized), None)
+
+
 async def searchCategoryProducts(accessToken: str | None = None, category: str = "") -> dict[str, Any]:
     """Fetch at most three complete products through the assistant catalog route."""
-    normalized = next((item for item in AVAILABLE_CATEGORIES if item.casefold() == category.strip().casefold()), None)
+    normalized = _normalizeCategory(category)
     if not normalized:
         raise ValueError("Choose a supported product category: " + ", ".join(AVAILABLE_CATEGORIES) + ".")
     client = BackendClient(baseUrl=settings.inventoryServiceUrl, accessToken=accessToken)
@@ -58,7 +63,7 @@ async def searchProducts(
 
     try:
         requestedCategory = (category or "").strip()
-        validCategory = next((item for item in AVAILABLE_CATEGORIES if item.casefold() == requestedCategory.casefold()), None)
+        validCategory = _normalizeCategory(requestedCategory)
         params: dict[str, Any] = {"query": query.strip()} if query and query.strip() else {}
         if validCategory:
             params["category"] = validCategory

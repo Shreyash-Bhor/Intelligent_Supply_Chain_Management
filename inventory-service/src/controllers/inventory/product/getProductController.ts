@@ -22,6 +22,22 @@ type CatalogProduct = {
   updatedAt: Date;
 };
 
+function resolveCategory(rawCategory: string): Category | undefined {
+  const normalized = rawCategory.trim().replace(/[\s-]+/g, "_").toLowerCase();
+  return Object.values(Category).find((value) => value.toLowerCase() === normalized);
+}
+
+async function getAssistantPrices(productIds: string[], maxPrice?: number) {
+  try {
+    return await getCurrentProductPrices(productIds);
+  } catch (error) {
+    // Product discovery should still work when pricing is temporarily down.
+    // A max-price filter cannot be applied without authoritative prices.
+    if (maxPrice !== undefined) throw error;
+    return new Map<string, { price: string; currency: string }>();
+  }
+}
+
 export const getProduct = asyncHandler(async (req: Request, res: Response) => {
   const productId = req.params.productId ?? "";
 
@@ -104,7 +120,7 @@ export const getPagedUserCatalog = asyncHandler(async (req: Request, res: Respon
   const pageSize = Number(req.query.pageSize ?? 12);
   const query = typeof req.query.query === "string" ? req.query.query.trim() : "";
   const rawCategory = typeof req.query.category === "string" ? req.query.category : "";
-  const category = Object.values(Category).find((value) => value.toLowerCase() === rawCategory.toLowerCase());
+  const category = resolveCategory(rawCategory);
   const inStock = req.query.inStock === "true";
   const sort = req.query.sort ?? "name";
   if (!Number.isInteger(page) || page < 1 || page > 100000 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100 || query.length > 200 || (req.query.inStock !== undefined && !["true", "false"].includes(String(req.query.inStock))) || (rawCategory && !category) || !["name", "newest", "price-asc", "price-desc", "stock"].includes(String(sort))) {
@@ -174,7 +190,7 @@ export const getAssistantCategoryProducts = asyncHandler(async (req: Request, re
     orderBy: { name: "asc" },
     take: 3,
   });
-  const prices = await getCurrentProductPrices(products.map(({ id }) => id));
+  const prices = await getAssistantPrices(products.map(({ id }) => id));
   return products.map(({ inventories, ...product }) => ({
     ...product,
     availableQty: inventories.reduce((sum: number, item: { availableQty: number }) => sum + item.availableQty, 0),
@@ -190,7 +206,7 @@ export const searchAssistantProducts = asyncHandler(async (req: Request, res: Re
   const rawCategory = typeof req.query.category === "string" ? req.query.category.trim() : "";
   const rawMaxPrice = req.query.maxPrice;
   const inStock = req.query.inStock === "true";
-  const category = rawCategory ? Object.values(Category).find((value) => value.toLowerCase() === rawCategory.toLowerCase()) : undefined;
+  const category = rawCategory ? resolveCategory(rawCategory) : undefined;
   const maxPrice = rawMaxPrice === undefined ? undefined : Number(rawMaxPrice);
   if (query.length > 200 || (rawCategory && !category) || (rawMaxPrice !== undefined && (!Number.isFinite(maxPrice) || maxPrice! < 0)) || (req.query.inStock !== undefined && !["true", "false"].includes(String(req.query.inStock)))) {
     return res.status(400).json({ status: "error", message: "Invalid assistant product search parameters" });
@@ -211,7 +227,7 @@ export const searchAssistantProducts = asyncHandler(async (req: Request, res: Re
     orderBy: { name: "asc" },
     take: 30,
   });
-  const prices = await getCurrentProductPrices(products.map(({ id }) => id));
+  const prices = await getAssistantPrices(products.map(({ id }) => id), maxPrice);
   return products.map(({ inventories, ...product }) => ({
     ...product, description: null, attributes: {},
     availableQty: inventories.reduce((sum: number, item: { availableQty: number }) => sum + item.availableQty, 0),
