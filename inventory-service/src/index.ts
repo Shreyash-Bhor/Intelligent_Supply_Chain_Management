@@ -22,7 +22,29 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
-app.use(cors());
+if (process.env.NODE_ENV === "production") {
+  const corsOrigins = new Set(
+    (process.env.CORS_ORIGINS ?? "")
+      .split(",")
+      .map((origin) => origin.trim().replace(/\/$/, ""))
+      .filter(Boolean),
+  );
+
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        // Requests without an Origin header are server-to-server or same-origin.
+        if (!origin || corsOrigins.has(origin.replace(/\/$/, ""))) {
+          return callback(null, true);
+        }
+        return callback(null, false);
+      },
+    }),
+  );
+} else {
+  // Keep the existing development behavior.
+  app.use(cors());
+}
 app.use((req, res, next) => {
   const startedAt = process.hrtime.bigint();
   res.on("finish", () => {
