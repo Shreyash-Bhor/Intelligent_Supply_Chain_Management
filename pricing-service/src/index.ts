@@ -9,9 +9,29 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5555;
+const configuredCorsOrigins = (process.env.CORS_ORIGIN ?? "")
+  .split(",")
+  .map((origin) => origin.trim().replace(/\/$/, ""))
+  .filter(Boolean);
+const corsOrigins = new Set(
+  configuredCorsOrigins.length > 0
+    ? configuredCorsOrigins
+    : process.env.NODE_ENV === "production"
+      ? []
+      : ["http://localhost:3000"],
+);
 
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || corsOrigins.has(origin.replace(/\/$/, ""))) {
+        return callback(null, true);
+      }
+      return callback(null, false);
+    },
+  }),
+);
 app.use((req, res, next) => {
   const startedAt = process.hrtime.bigint();
   res.on("finish", () => {
