@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
 from app.routes.rag.router import router
 
@@ -8,3 +9,8 @@ app = FastAPI(
 )
 
 app.include_router(router, prefix="/api")
+
+
+@app.get("/health", include_in_schema=False)
+async def health():
+    return JSONResponse({"status": "ok"})
