@@ -415,6 +415,15 @@ async def runAgent(
         except PermissionError:
             # Without an active quote, a bare affirmative must not create an order.
             pass
+        except Exception:
+            # A backend rejection or temporary checkout failure should stay a
+            # normal chat response instead of escaping as an HTTP 503.
+            logger.exception("checkout_confirmation_failed")
+            return {
+                "answer": "I couldn’t place the order because the checkout confirmation could not be verified. Please review or prepare the checkout quote again.",
+                "actions": [],
+                "suggestions": ["Continue to checkout", "View my cart"],
+            }
 
     llm = getLLM()
 

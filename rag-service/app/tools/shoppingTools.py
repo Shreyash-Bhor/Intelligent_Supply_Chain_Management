@@ -1,7 +1,5 @@
 """Customer shopping actions backed exclusively by the inventory/pricing APIs."""
 import hashlib
-import hmac
-import json
 import secrets
 import time
 import uuid
@@ -23,18 +21,23 @@ def storePendingQuote(token: str, addressId: str, quote: dict[str, Any], convers
     if data.get("quoteToken"):
         _pending[_customerKey(token, conversationId)] = {"addressId": addressId, "quoteToken": data["quoteToken"], "quote": data, "idempotencyKey": secrets.token_urlsafe(24), "created": time.time()}
 
-def confirmationProof(token: str, pending: dict[str, Any]) -> str:
-    quoteHash = hmac.new(b"quote", pending["quoteToken"].encode(), hashlib.sha256).hexdigest()
-    payload = {"purpose": "chat-checkout-confirmation", "userId": "", "quoteHash": quoteHash, "expiresAt": int((time.time() + 90) * 1000)}
-    # Backend binds this proof to the verified subject. Resolve that subject from the signed customer token.
-    try:
-        import base64
-        payload["userId"] = json.loads(base64.urlsafe_b64decode(token.split(".")[0] + "==")).get("sub", "")
-    except Exception:
-        raise PermissionError("Customer authentication is required.")
-    encoded = __import__("base64").urlsafe_b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode().rstrip("=")
-    signature = hmac.new(settings.authTokenSecret.encode(), encoded.encode(), hashlib.sha256).digest()
-    return encoded + "." + __import__("base64").urlsafe_b64encode(signature).decode().rstrip("=")
+async def requestConfirmationProof(token: str, pending: dict[str, Any]) -> str:
+    # Let inventory bind the proof to its authenticated customer subject and
+    # verify the quote against the current cart before issuing it.
+    response = await _call(
+        token,
+        "POST",
+        "/api/orders/confirmation",
+        body={
+            "addressId": pending["addressId"],
+            "quoteToken": pending["quoteToken"],
+            "confirmation": "I confirm this order",
+        },
+    )
+    proof = response.get("data", {}).get("confirmationProof")
+    if not isinstance(proof, str) or not proof:
+        raise RuntimeError("The checkout confirmation could not be verified. Please review the quote again.")
+    return proof
 
 async def confirmAndSubmit(token: str, conversationId: str | None = None):
     key = _customerKey(token, conversationId)
@@ -42,7 +45,8 @@ async def confirmAndSubmit(token: str, conversationId: str | None = None):
     if not pending or time.time() - pending["created"] > 180:
         _pending.pop(key, None)
         raise PermissionError("Prepare a fresh checkout summary before confirming an order.")
-    result = await submitOrder(token, pending["addressId"], pending["quoteToken"], confirmationProof(token, pending), pending["idempotencyKey"])
+    proof = await requestConfirmationProof(token, pending)
+    result = await submitOrder(token, pending["addressId"], pending["quoteToken"], proof, pending["idempotencyKey"])
     _pending.pop(key, None)
     if result.get("status") == "success":
         quote = pending.get("quote", {})

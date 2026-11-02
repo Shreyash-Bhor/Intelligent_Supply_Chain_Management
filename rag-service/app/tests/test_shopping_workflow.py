@@ -1,9 +1,7 @@
-import base64
-import hashlib
-import hmac
-import json
+import asyncio
 import os
 import unittest
+from unittest.mock import AsyncMock, patch
 
 os.environ.update({
     "QDRANT_URL": "http://localhost:6333", "COLLECTION_NAME": "test",
@@ -45,17 +43,26 @@ class ShoppingConfirmationTests(unittest.TestCase):
         self.assertIn(shoppingTools._customerKey(token, "conversation-one"), shoppingTools._pending)
         self.assertNotIn(shoppingTools._customerKey(token, "conversation-two"), shoppingTools._pending)
 
-    def test_confirmation_proof_is_bound_to_customer_and_quote(self):
-        customer_payload = base64.urlsafe_b64encode(json.dumps({"sub": "customer-1"}).encode()).decode().rstrip("=")
-        pending = {"quoteToken": "current-quote"}
-        proof = shoppingTools.confirmationProof(customer_payload + ".not-verified-here", pending)
-        payload, signature = proof.split(".")
-        expected = hmac.new(b"unit-test-secret", payload.encode(), hashlib.sha256).digest()
-        self.assertTrue(hmac.compare_digest(base64.urlsafe_b64decode(signature + "=="), expected))
-        claims = json.loads(base64.urlsafe_b64decode(payload + "=="))
-        self.assertEqual(claims["purpose"], "chat-checkout-confirmation")
-        self.assertEqual(claims["userId"], "customer-1")
-        self.assertEqual(claims["quoteHash"], hmac.new(b"quote", b"current-quote", hashlib.sha256).hexdigest())
+    def test_confirmation_proof_is_issued_by_inventory_for_the_pending_quote(self):
+        pending = {"addressId": "address-1", "quoteToken": "current-quote"}
+        inventoryResponse = {"data": {"confirmationProof": "inventory-issued-proof"}}
+
+        async def verify():
+            with patch.object(shoppingTools, "_call", new=AsyncMock(return_value=inventoryResponse)) as call:
+                proof = await shoppingTools.requestConfirmationProof("customer-token", pending)
+            self.assertEqual(proof, "inventory-issued-proof")
+            call.assert_awaited_once_with(
+                "customer-token",
+                "POST",
+                "/api/orders/confirmation",
+                body={
+                    "addressId": "address-1",
+                    "quoteToken": "current-quote",
+                    "confirmation": "I confirm this order",
+                },
+            )
+
+        self.assertEqual(asyncio.run(verify()), None)
 
 
 if __name__ == "__main__":
