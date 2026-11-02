@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { Navbar } from "@/components/Navbar";
 import { RagChatbot } from "@/components/RagChatbot";
+import { ServiceWakeup } from "@/components/ServiceWakeup";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -54,6 +55,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [email, hydrated, role, router]);
 
   return <>
+    <ServiceWakeup />
     {!assistantPage && <Navbar />}
     {children}
     {!assistantPage && canUseAssistant && <RagChatbot />}
