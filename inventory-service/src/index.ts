@@ -47,14 +47,24 @@ if (process.env.NODE_ENV === "production") {
 }
 app.use((req, res, next) => {
   const startedAt = process.hrtime.bigint();
+  const heapAtStart = process.memoryUsage().heapUsed;
   res.on("finish", () => {
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+    const memory = process.memoryUsage();
     console.info(JSON.stringify({
       event: "http_request_complete",
       service: "inventory",
       method: req.method,
       route: req.route?.path ?? req.path,
       status: res.statusCode,
-      durationMs: Number(process.hrtime.bigint() - startedAt) / 1_000_000,
+      durationMs,
+      ...(durationMs >= 1_000 || memory.heapUsed >= 256 * 1024 * 1024 ? {
+        memory: {
+          heapUsedMb: Math.round(memory.heapUsed / 1024 / 1024),
+          heapDeltaMb: Math.round((memory.heapUsed - heapAtStart) / 1024 / 1024),
+          rssMb: Math.round(memory.rss / 1024 / 1024),
+        },
+      } : {}),
     }));
   });
   next();

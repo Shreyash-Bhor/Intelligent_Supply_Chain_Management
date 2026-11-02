@@ -35,6 +35,11 @@ export const getWarehouseData = asyncHandler(
 export const getWarehouses = asyncHandler(
   async (req: Request, res: Response) => {
     const statusFilter = req.query.status;
+    const page = Number(req.query.page ?? 1);
+    const pageSize = Number(req.query.pageSize ?? 100);
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) {
+      return res.status(400).json({ status: "error", message: "Invalid pagination parameters" });
+    }
 
     const whereClause =
       statusFilter === "inactive"
@@ -43,15 +48,19 @@ export const getWarehouses = asyncHandler(
           ? {}
           : { isActive: true };
 
-    const warehouses = await getOrLoad(String(statusFilter ?? "active"), "warehouses", 30, () => prisma.warehouse.findMany({
-      where: whereClause,
-      orderBy: { createdAt: "desc" },
-    }));
+    const result = await getOrLoad(`${String(statusFilter ?? "active")}:p${page}:s${pageSize}`, "warehouses", 30, async () => {
+      const [total, warehouses] = await Promise.all([
+        prisma.warehouse.count({ where: whereClause }),
+        prisma.warehouse.findMany({ where: whereClause, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (page - 1) * pageSize, take: pageSize }),
+      ]);
+      return { warehouses, pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) } };
+    });
 
     return res.status(200).json({
       status: "success",
       message: "Warehouse data fetch successfully",
-      data: warehouses,
+      data: result.warehouses,
+      pagination: result.pagination,
     });
   },
 );

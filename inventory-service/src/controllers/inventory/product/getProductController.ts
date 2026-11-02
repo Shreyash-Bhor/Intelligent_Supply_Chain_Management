@@ -58,6 +58,11 @@ export const getProduct = asyncHandler(async (req: Request, res: Response) => {
 
 export const getAllProducts = asyncHandler(
   async (req: Request, res: Response) => {
+    const page = Number(req.query.page ?? 1);
+    const pageSize = Number(req.query.pageSize ?? 100);
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) {
+      return res.status(400).json({ status: "error", message: "Invalid pagination parameters" });
+    }
     const statusFilter = req.query.status;
 
     const whereClause =
@@ -67,12 +72,19 @@ export const getAllProducts = asyncHandler(
           ? {}
           : { isActive: true };
 
-    const products = await getOrLoad(String(statusFilter ?? "active"), "products", 30, () => prisma.product.findMany({ where: whereClause, orderBy: { createdAt: "desc" } }));
+    const products = await getOrLoad(`${String(statusFilter ?? "active")}:p${page}:s${pageSize}`, "products", 30, async () => {
+      const [total, products] = await Promise.all([
+        prisma.product.count({ where: whereClause }),
+        prisma.product.findMany({ where: whereClause, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (page - 1) * pageSize, take: pageSize }),
+      ]);
+      return { products, pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) } };
+    });
 
     return res.status(200).json({
       status: "success",
       message: "Products fetched successfully",
-      data: products,
+      data: products.products,
+      pagination: products.pagination,
     });
   },
 );
@@ -123,7 +135,7 @@ export const getPagedUserCatalog = asyncHandler(async (req: Request, res: Respon
   const category = resolveCategory(rawCategory);
   const inStock = req.query.inStock === "true";
   const sort = req.query.sort ?? "name";
-  if (!Number.isInteger(page) || page < 1 || page > 100000 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100 || query.length > 200 || (req.query.inStock !== undefined && !["true", "false"].includes(String(req.query.inStock))) || (rawCategory && !category) || !["name", "newest", "price-asc", "price-desc", "stock"].includes(String(sort))) {
+  if (!Number.isInteger(page) || page < 1 || page > 100000 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100 || query.length > 200 || (req.query.inStock !== undefined && !["true", "false"].includes(String(req.query.inStock))) || (rawCategory && !category) || !["name", "newest", "price-asc", "price-desc", "stock"].includes(String(sort)) || (page > 1000 && ["price-asc", "price-desc", "stock"].includes(String(sort)))) {
     return res.status(400).json({ status: "error", message: "Invalid catalog query parameters" });
   }
   const where: any = {
@@ -137,23 +149,35 @@ export const getPagedUserCatalog = asyncHandler(async (req: Request, res: Respon
   const total = await prisma.product.count({ where });
   let orderedIds: string[] | undefined;
   if (sort === "price-asc" || sort === "price-desc") {
-    const all = await prisma.product.findMany({ where, select: { id: true } });
-    const priceMap = new Map<string, { price: string; currency: string }>();
-    for (let offset = 0; offset < all.length; offset += 100) {
-      const prices = await getCurrentProductPrices(all.slice(offset, offset + 100).map((item) => item.id));
-      prices.forEach((value, id) => priceMap.set(id, value));
-    }
-    orderedIds = all.sort((a, b) => {
-      const left = priceMap.get(a.id)?.price;
-      const right = priceMap.get(b.id)?.price;
-      const diff = left == null ? (right == null ? 0 : 1) : right == null ? -1 : Math.round(Number(left) * 100) - Math.round(Number(right) * 100);
+    const keep = page * pageSize;
+    const ranked: Array<{ id: string; price: number | null }> = [];
+    const compare = (a: { id: string; price: number | null }, b: { id: string; price: number | null }) => {
+      const diff = a.price == null ? (b.price == null ? 0 : 1) : b.price == null ? -1 : a.price - b.price;
       return (sort === "price-asc" ? diff : -diff) || a.id.localeCompare(b.id);
-    }).map((item) => item.id);
+    };
+    for (let offset = 0; offset < total; offset += 100) {
+      const batch = await prisma.product.findMany({ where, select: { id: true }, orderBy: { id: "asc" }, skip: offset, take: 100 });
+      const prices = await getCurrentProductPrices(batch.map(({ id }) => id));
+      for (const { id } of batch) {
+        const price = prices.get(id)?.price;
+        ranked.push({ id, price: price == null ? null : Math.round(Number(price) * 100) });
+      }
+      ranked.sort(compare);
+      if (ranked.length > keep) ranked.length = keep;
+    }
+    orderedIds = ranked.slice((page - 1) * pageSize).map(({ id }) => id);
   } else if (sort === "stock") {
-    const all = await prisma.product.findMany({ where, select: { id: true } });
-    const stock = await prisma.inventory.groupBy({ by: ["productId"], where: { productId: { in: all.map((item) => item.id) }, warehouse: { isActive: true } }, _sum: { availableQty: true } });
-    const totals = new Map(stock.map((item) => [item.productId, item._sum.availableQty ?? 0]));
-    orderedIds = all.sort((a, b) => (totals.get(b.id) ?? 0) - (totals.get(a.id) ?? 0) || a.id.localeCompare(b.id)).map((item) => item.id);
+    const keep = page * pageSize;
+    const ranked: Array<{ id: string; stock: number }> = [];
+    for (let offset = 0; offset < total; offset += 500) {
+      const batch = await prisma.product.findMany({ where, select: { id: true }, orderBy: { id: "asc" }, skip: offset, take: 500 });
+      const stock = await prisma.inventory.groupBy({ by: ["productId"], where: { productId: { in: batch.map((item) => item.id) }, warehouse: { isActive: true } }, _sum: { availableQty: true } });
+      const totals = new Map(stock.map((item) => [item.productId, item._sum.availableQty ?? 0]));
+      ranked.push(...batch.map(({ id }) => ({ id, stock: totals.get(id) ?? 0 })));
+      ranked.sort((a, b) => b.stock - a.stock || a.id.localeCompare(b.id));
+      if (ranked.length > keep) ranked.length = keep;
+    }
+    orderedIds = ranked.slice((page - 1) * pageSize).map(({ id }) => id);
   }
   const idsForPage = orderedIds?.slice((page - 1) * pageSize, page * pageSize);
   const products = await prisma.product.findMany({
@@ -239,59 +263,63 @@ export const searchAssistantProducts = asyncHandler(async (req: Request, res: Re
 
 export const getCatalogProducts = asyncHandler(
   async (_req: Request, res: Response) => {
-    const catalog = await getOrLoad("available", "catalog", 15, async () => {
-    const inventoryItems = await prisma.inventory.findMany({
+    const catalog = await (async () => {
+    const inventoryItems = await prisma.inventory.groupBy({
+      by: ["productId", "warehouseId"],
       where: {
         availableQty: { gt: 0 },
         product: { isActive: true },
         warehouse: { isActive: true },
       },
-      include: {
-        product: true,
-        warehouse: {
-          select: {
-            name: true,
-          },
-        },
-      },
-      orderBy: { updatedAt: "desc" },
+      _sum: { availableQty: true, reservedQty: true },
+      _max: { updatedAt: true },
     });
-
+    const productIds = [...new Set(inventoryItems.map((item) => item.productId))];
+    const warehouseIds = [...new Set(inventoryItems.map((item) => item.warehouseId))];
+    const [products, warehouses] = await Promise.all([
+      prisma.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true, sku: true, imageUrl: true } }),
+      prisma.warehouse.findMany({ where: { id: { in: warehouseIds } }, select: { id: true, name: true } }),
+    ]);
+    const productById = new Map(products.map((product) => [product.id, product]));
+    const warehouseById = new Map(warehouses.map((warehouse) => [warehouse.id, warehouse.name]));
     const catalog = new Map<string, CatalogProduct>();
 
     for (const item of inventoryItems) {
+      const product = productById.get(item.productId);
+      const warehouseName = warehouseById.get(item.warehouseId);
+      if (!product || !warehouseName) continue;
       const current = catalog.get(item.productId);
 
       if (!current) {
         catalog.set(item.productId, {
-          id: item.product.id,
-          name: item.product.name,
-          sku: item.product.sku,
-          imageUrl: item.product.imageUrl,
-          availableQty: item.availableQty,
-          reservedQty: item.reservedQty,
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          imageUrl: product.imageUrl,
+          availableQty: item._sum.availableQty ?? 0,
+          reservedQty: item._sum.reservedQty ?? 0,
           warehouseCount: 1,
-          warehouses: [item.warehouse.name],
-          updatedAt: item.updatedAt,
+          warehouses: [warehouseName],
+          updatedAt: item._max.updatedAt ?? new Date(0),
         });
         continue;
       }
 
-      current.availableQty += item.availableQty;
-      current.reservedQty += item.reservedQty;
+      current.availableQty += item._sum.availableQty ?? 0;
+      current.reservedQty += item._sum.reservedQty ?? 0;
       current.warehouseCount += 1;
 
-      if (!current.warehouses.includes(item.warehouse.name)) {
-        current.warehouses.push(item.warehouse.name);
+      if (!current.warehouses.includes(warehouseName)) {
+        current.warehouses.push(warehouseName);
       }
 
-      if (item.updatedAt > current.updatedAt) {
-        current.updatedAt = item.updatedAt;
+      if ((item._max.updatedAt ?? new Date(0)) > current.updatedAt) {
+        current.updatedAt = item._max.updatedAt ?? new Date(0);
       }
     }
 
     return Array.from(catalog.values()).sort((a, b) => b.availableQty - a.availableQty || a.name.localeCompare(b.name));
-    });
+    })();
 
     return res.status(200).json({
       status: "success",
