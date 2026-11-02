@@ -18,9 +18,14 @@ function isTransientStatus(status: number) {
 
 async function requestPricing(path: string): Promise<unknown> {
   const baseUrl = process.env.PRICING_SERVICE_URL;
-  if (!baseUrl) throw Object.assign(new Error("PRICING_SERVICE_URL is not configured"), { statusCode: 503 });
+  if (!baseUrl) {
+    const error = new Error("PRICING_SERVICE_URL is not configured on the inventory service");
+    console.error(JSON.stringify({ event: "pricing_request_failed", service: "inventory", stage: "configuration", error: error.message, attempts: 0 }));
+    throw Object.assign(error, { statusCode: 503 });
+  }
   const url = `${baseUrl.replace(/\/$/, "")}${path}`;
   const startedAt = Date.now();
+  console.info(JSON.stringify({ event: "pricing_request_started", service: "inventory", method: "GET", target: new URL(url).host, path: new URL(url).pathname, timeoutMs }));
   let lastError: unknown;
 
   // Pricing GETs are safe to retry once on transient transport/server failures.
@@ -58,21 +63,27 @@ async function requestPricing(path: string): Promise<unknown> {
         continue;
       }
       console.warn(JSON.stringify({ event: "pricing_request_failed", service: "inventory", statusCode: statusCode ?? null, errorType: isTimeout ? "timeout" : error instanceof Error ? error.name : "unknown", attempt, durationMs: Date.now() - startedAt }));
-      throw Object.assign(new Error("Product pricing is temporarily unavailable"), { statusCode: 503 });
+      const message = error instanceof Error ? error.message : "Unknown pricing service error";
+      throw Object.assign(new Error(`Pricing request failed: ${message}`), { statusCode: 503, cause: error });
     }
   }
   console.warn(JSON.stringify({ event: "pricing_request_failed", service: "inventory", attempt: 2, durationMs: Date.now() - startedAt }));
-  throw Object.assign(new Error("Product pricing is temporarily unavailable"), { statusCode: 503, cause: lastError });
+  const message = lastError instanceof Error ? lastError.message : "Unknown pricing service error";
+  throw Object.assign(new Error(`Pricing request failed after retries: ${message}`), { statusCode: 503, cause: lastError });
 }
 
 export async function getCurrentProductPrices(productIds: string[]) {
   if (!productIds.length) return new Map<string, { price: string; currency: string }>();
   const payload = await requestPricing(`/api/prices?productIds=${encodeURIComponent([...new Set(productIds)].join(","))}`) as PricesResponse;
   if (!payload || payload.status !== "success" || !Array.isArray(payload.data)) {
-    throw Object.assign(new Error("Pricing service returned an invalid response"), { statusCode: 503 });
+    const message = "Pricing service returned an invalid response";
+    console.error(JSON.stringify({ event: "pricing_response_invalid", service: "inventory", reason: "missing_success_or_data_array" }));
+    throw Object.assign(new Error(message), { statusCode: 503 });
   }
   if (payload.data.some((item) => !item || typeof item.productId !== "string" || typeof item.price !== "number" || !Number.isFinite(item.price) || typeof item.currency !== "string")) {
-    throw Object.assign(new Error("Pricing service returned an invalid price record"), { statusCode: 503 });
+    const message = "Pricing service returned an invalid price record";
+    console.error(JSON.stringify({ event: "pricing_response_invalid", service: "inventory", reason: "malformed_price_record" }));
+    throw Object.assign(new Error(message), { statusCode: 503 });
   }
   return new Map(payload.data.map((item) => [item.productId, { price: item.price.toFixed(2), currency: item.currency }]));
 }

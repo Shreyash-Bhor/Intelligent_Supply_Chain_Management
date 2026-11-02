@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import re
 from typing import Any
 
@@ -17,6 +18,7 @@ from app.agentLimits import iterationLimit
 from app.memory import compactHistory
 
 MAX_TOOL_RESULT_CHARS = 12_000
+logger = logging.getLogger(__name__)
 
 
 def _toolArguments(call: Any) -> dict[str, Any] | None:
@@ -395,8 +397,10 @@ async def runAgent(
                 return {"answer": _checkoutSummary(quote), "actions": actions, "suggestions": _fallbackSuggestedReplies(actions)}
             message = quoteResult.get("message") or "I couldn’t prepare checkout. Please review your cart and saved delivery address."
             return {"answer": str(message), "actions": [], "suggestions": ["View my cart", "Manage delivery address"]}
-        except Exception:
-            return {"answer": "I couldn’t prepare checkout just now. Please review your cart and saved delivery address, then try again.", "actions": [], "suggestions": ["View my cart", "Try checkout again"]}
+        except Exception as error:
+            logger.exception("checkout_quote_failed")
+            detail = str(error).strip() or "Unknown checkout error"
+            return {"answer": f"I couldn’t prepare checkout: {detail}", "actions": [], "suggestions": ["View my cart", "Manage delivery address", "Try checkout again"]}
 
     if accessToken and shoppingTools.isExplicitOrderConfirmation(query):
         try:

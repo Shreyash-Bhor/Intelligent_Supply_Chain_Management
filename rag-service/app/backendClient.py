@@ -51,7 +51,15 @@ class BackendClient:
         requestHeaders = self._getHeaders()
         requestHeaders.update(headers or {})
         response = await self.client.request(method, path, json=json, params=params, headers=requestHeaders)
-        response.raise_for_status()
+        if response.is_error:
+            message = None
+            try:
+                payload = response.json()
+                message = payload.get("message") if isinstance(payload, dict) else None
+            except ValueError:
+                pass
+            detail = message or response.reason_phrase or "Backend request failed"
+            raise RuntimeError(f"Inventory service returned HTTP {response.status_code}: {detail}")
         return response.json() if response.content else {}
 
     async def close(self) -> None:
