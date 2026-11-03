@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, Search, ShoppingCart, UserRound } from "lucide-react";
+import { Menu, Search, ShoppingCart, UserRound, BadgeCheck, Mail, LogOut } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ModeToggle } from "./ModeToggle";
@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { clearAuthSession } from "@/lib/auth";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { cacheServerCart, cartEventName, readCart } from "@/lib/cart";
-import { fetchCustomerCart } from "@/lib/api";
+import { fetchCustomerCart, fetchCustomerProfile, type CustomerProfile } from "@/lib/api";
 
 const MANAGER_LINKS = [
   { href: "/manager", label: "Manager Dashboard" },
@@ -35,6 +35,16 @@ export function Navbar() {
   const { session, hydrated } = useAuthSession();
   const [cartCount, setCartCount] = useState(0);
   const [search, setSearch] = useState("");
+  const [profile, setProfile] = useState<CustomerProfile | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setProfile(null);
+    if (session?.role === "user" && session.token) {
+      void fetchCustomerProfile(session.token).then((value) => { if (active) setProfile(value); }).catch(() => {});
+    }
+    return () => { active = false; };
+  }, [session?.role, session?.token]);
 
   useEffect(() => {
     const sync = () => setCartCount(readCart(session?.email).reduce((sum, line) => sum + line.quantity, 0));
@@ -136,6 +146,25 @@ export function Navbar() {
             <Link href="/orders" className="hidden items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted sm:flex"><UserRound className="size-4" /> Orders</Link>
             <Link href="/cart" aria-label={`Shopping cart, ${cartCount} items`} className="relative inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"><ShoppingCart className="size-4" /><span className="hidden sm:inline">Cart</span>{cartCount > 0 && <span className="bg-primary text-primary-foreground absolute -right-2 -top-2 grid size-5 place-items-center rounded-full text-[11px] font-semibold">{cartCount > 99 ? "99+" : cartCount}</span>}</Link>
           </>}
+          {session && <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="Open user profile" className="rounded-full">
+                <UserRound className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-72 p-2">
+              <div className="flex items-center gap-3 rounded-lg bg-muted/60 p-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><UserRound className="size-5" /></span>
+                <div className="min-w-0"><p className="truncate text-sm font-semibold">{profile?.name || session.name || (session.role === "warehouse_manager" ? "Warehouse manager" : "SupplySync shopper")}</p><p className="truncate text-xs text-muted-foreground">{profile?.email || session.email}</p></div>
+              </div>
+              <div className="space-y-2 px-3 py-3 text-xs text-muted-foreground">
+                <p className="flex items-center gap-2"><Mail className="size-3.5" />{profile?.email || session.email}</p>
+                <p className="flex items-center gap-2"><BadgeCheck className="size-3.5" />{session.role === "warehouse_manager" ? "Warehouse manager" : "Shopper account"}</p>
+              </div>
+              {session.role === "user" && <DropdownMenuItem asChild><Link href="/orders"><UserRound />Your orders</Link></DropdownMenuItem>}
+              <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive"><LogOut />Sign out</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>}
           <DropdownMenu>
             <DropdownMenuTrigger asChild className={`md:hidden ${isLandingAccess || isAuthPage ? "hidden" : ""}`}>
               <Button
