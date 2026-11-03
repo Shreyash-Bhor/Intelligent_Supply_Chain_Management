@@ -212,14 +212,15 @@
   animation: dashboard-card-in 220ms ease-out both;
 }
 
-.orders-drawer {
-  animation: orders-drawer-in 220ms ease-out both;
-}
+.dialog-overlay[data-state="open"] { animation: dialog-fade-in 180ms ease-out both; }
+.dialog-overlay[data-state="closed"] { animation: dialog-fade-out 160ms ease-in both; }
+.dialog-content[data-state="open"] { animation: dialog-scale-in 200ms cubic-bezier(.2,.8,.2,1) both; }
+.dialog-content[data-state="closed"] { animation: dialog-scale-out 160ms ease-in both; }
 
-@keyframes orders-drawer-in {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
-}
+@keyframes dialog-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dialog-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes dialog-scale-in { from { opacity: 0; scale: .97; } to { opacity: 1; scale: 1; } }
+@keyframes dialog-scale-out { from { opacity: 1; scale: 1; } to { opacity: 0; scale: .98; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
