@@ -21,11 +21,12 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(express.json());
 if (process.env.NODE_ENV === "production") {
   const corsOrigins = new Set(
-    (process.env.CORS_ORIGINS ?? "")
-      .split(",")
+    [
+      "https://supplysync-roan.vercel.app",
+      ...(process.env.CORS_ORIGINS ?? "").split(","),
+    ]
       .map((origin) => origin.trim().replace(/\/$/, ""))
       .filter(Boolean),
   );
@@ -45,27 +46,36 @@ if (process.env.NODE_ENV === "production") {
   // Keep the existing development behavior.
   app.use(cors());
 }
+// CORS must run before body parsing and all authentication/authorization
+// middleware so browser preflight requests are answered without credentials.
+app.use(express.json());
 app.use((req, res, next) => {
   const startedAt = process.hrtime.bigint();
   const heapAtStart = process.memoryUsage().heapUsed;
   res.on("finish", () => {
     const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
     const memory = process.memoryUsage();
-    console.info(JSON.stringify({
-      event: "http_request_complete",
-      service: "inventory",
-      method: req.method,
-      route: req.route?.path ?? req.path,
-      status: res.statusCode,
-      durationMs,
-      ...(durationMs >= 1_000 || memory.heapUsed >= 256 * 1024 * 1024 ? {
-        memory: {
-          heapUsedMb: Math.round(memory.heapUsed / 1024 / 1024),
-          heapDeltaMb: Math.round((memory.heapUsed - heapAtStart) / 1024 / 1024),
-          rssMb: Math.round(memory.rss / 1024 / 1024),
-        },
-      } : {}),
-    }));
+    console.info(
+      JSON.stringify({
+        event: "http_request_complete",
+        service: "inventory",
+        method: req.method,
+        route: req.route?.path ?? req.path,
+        status: res.statusCode,
+        durationMs,
+        ...(durationMs >= 1_000 || memory.heapUsed >= 256 * 1024 * 1024
+          ? {
+              memory: {
+                heapUsedMb: Math.round(memory.heapUsed / 1024 / 1024),
+                heapDeltaMb: Math.round(
+                  (memory.heapUsed - heapAtStart) / 1024 / 1024,
+                ),
+                rssMb: Math.round(memory.rss / 1024 / 1024),
+              },
+            }
+          : {}),
+      }),
+    );
   });
   next();
 });
@@ -73,11 +83,16 @@ app.use("/api/auth", authRoutes);
 app.use("/api/orders", requireCustomerAccess, orderRoutes);
 app.use("/api/cart", requireCustomerAccess, cartRoutes);
 app.use("/api/addresses", requireCustomerAccess, addressRoutes);
-app.post("/api/assistant/rate-limit", (req, res, next) => {
-  const authHeader = req.header("authorization");
-  if (authHeader?.startsWith("Bearer ")) return requireCustomerAccess(req, res, next);
-  return next();
-}, consumeAssistantRateLimit);
+app.post(
+  "/api/assistant/rate-limit",
+  (req, res, next) => {
+    const authHeader = req.header("authorization");
+    if (authHeader?.startsWith("Bearer "))
+      return requireCustomerAccess(req, res, next);
+    return next();
+  },
+  consumeAssistantRateLimit,
+);
 app.use("/api/assistant", requireCustomerAccess, assistantRoutes);
 app.use("/api/product", productRoutes);
 app.use("/api/inventory", inventoryRoutes);
@@ -109,11 +124,17 @@ async function startServer() {
     process.exitCode = 1;
   });
 
-  void prisma.$connect().then(() => {
-    console.log("Database Connected");
-  }).catch((error) => {
-    console.warn("Database is unavailable; inventory service remains online and will connect on demand.", error instanceof Error ? error.message : error);
-  });
+  void prisma
+    .$connect()
+    .then(() => {
+      console.log("Database Connected");
+    })
+    .catch((error) => {
+      console.warn(
+        "Database is unavailable; inventory service remains online and will connect on demand.",
+        error instanceof Error ? error.message : error,
+      );
+    });
 }
 
 startServer();

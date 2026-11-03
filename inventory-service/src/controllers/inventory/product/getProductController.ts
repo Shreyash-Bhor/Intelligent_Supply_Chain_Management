@@ -90,34 +90,21 @@ export const getAllProducts = asyncHandler(
 );
 export const getUserDashboardProducts = asyncHandler(
   async (_req: Request, res: Response) => {
-    const products = await getOrLoad("active-dashboard", "catalog", 15, async () => {
-    const products = await prisma.product.findMany({
-      where: {
-        isActive: true,
-        inventories: { some: { warehouse: { isActive: true } } },
-      },
-      select: {
-        id: true,
-        name: true,
-        sku: true,
-        category: true,
-        createdAt: true,
-        imageUrl: true,
-        inventories: {
-          where: { warehouse: { isActive: true } },
-          select: { availableQty: true },
-        },
-      },
-      orderBy: { name: "asc" },
-    });
-
-    return products.map(
-      ({ inventories, ...product }: { inventories: Array<{ availableQty: number }>; id: string; name: string; sku: string; category: Category; createdAt: Date; imageUrl: string | null }) => ({
-        ...product,
-        availableQty: inventories.reduce((sum, item) => sum + item.availableQty, 0),
-      }),
-    );
-    });
+    // This legacy assistant endpoint returns the full customer catalog. Keep
+    // the aggregation in PostgreSQL, but do not duplicate its full payload in Redis.
+    const products = await prisma.$queryRaw<Array<{
+        id: string; name: string; sku: string; category: Category;
+        createdAt: Date; imageUrl: string | null; availableQty: number;
+      }>>`
+        SELECT p.id, p.name, p.sku, p.category, p."createdAt", p."imageUrl",
+               COALESCE(SUM(i."availableQty"), 0)::int AS "availableQty"
+        FROM "Product" p
+        JOIN "Inventory" i ON i."productId" = p.id
+        JOIN "Warehouse" w ON w.id = i."warehouseId" AND w."isActive" = TRUE
+        WHERE p."isActive" = TRUE
+        GROUP BY p.id
+        ORDER BY p.name ASC
+      `;
 
     return res.status(200).json({
       status: "success",
@@ -263,63 +250,20 @@ export const searchAssistantProducts = asyncHandler(async (req: Request, res: Re
 
 export const getCatalogProducts = asyncHandler(
   async (_req: Request, res: Response) => {
-    const catalog = await (async () => {
-    const inventoryItems = await prisma.inventory.groupBy({
-      by: ["productId", "warehouseId"],
-      where: {
-        availableQty: { gt: 0 },
-        product: { isActive: true },
-        warehouse: { isActive: true },
-      },
-      _sum: { availableQty: true, reservedQty: true },
-      _max: { updatedAt: true },
-    });
-    const productIds = [...new Set(inventoryItems.map((item) => item.productId))];
-    const warehouseIds = [...new Set(inventoryItems.map((item) => item.warehouseId))];
-    const [products, warehouses] = await Promise.all([
-      prisma.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true, sku: true, imageUrl: true } }),
-      prisma.warehouse.findMany({ where: { id: { in: warehouseIds } }, select: { id: true, name: true } }),
-    ]);
-    const productById = new Map(products.map((product) => [product.id, product]));
-    const warehouseById = new Map(warehouses.map((warehouse) => [warehouse.id, warehouse.name]));
-    const catalog = new Map<string, CatalogProduct>();
-
-    for (const item of inventoryItems) {
-      const product = productById.get(item.productId);
-      const warehouseName = warehouseById.get(item.warehouseId);
-      if (!product || !warehouseName) continue;
-      const current = catalog.get(item.productId);
-
-      if (!current) {
-        catalog.set(item.productId, {
-          id: product.id,
-          name: product.name,
-          sku: product.sku,
-          imageUrl: product.imageUrl,
-          availableQty: item._sum.availableQty ?? 0,
-          reservedQty: item._sum.reservedQty ?? 0,
-          warehouseCount: 1,
-          warehouses: [warehouseName],
-          updatedAt: item._max.updatedAt ?? new Date(0),
-        });
-        continue;
-      }
-
-      current.availableQty += item._sum.availableQty ?? 0;
-      current.reservedQty += item._sum.reservedQty ?? 0;
-      current.warehouseCount += 1;
-
-      if (!current.warehouses.includes(warehouseName)) {
-        current.warehouses.push(warehouseName);
-      }
-
-      if ((item._max.updatedAt ?? new Date(0)) > current.updatedAt) {
-        current.updatedAt = item._max.updatedAt ?? new Date(0);
-      }
-    }
-
-    return Array.from(catalog.values()).sort((a, b) => b.availableQty - a.availableQty || a.name.localeCompare(b.name));
-    })();
+    const catalog = await prisma.$queryRaw<CatalogProduct[]>`
+      SELECT p.id, p.name, p.sku, p."imageUrl",
+             SUM(i."availableQty")::int AS "availableQty",
+             SUM(i."reservedQty")::int AS "reservedQty",
+             COUNT(DISTINCT i."warehouseId")::int AS "warehouseCount",
+             ARRAY_AGG(DISTINCT w.name) AS warehouses,
+             MAX(i."updatedAt") AS "updatedAt"
+      FROM "Inventory" i
+      JOIN "Product" p ON p.id = i."productId" AND p."isActive" = TRUE
+      JOIN "Warehouse" w ON w.id = i."warehouseId" AND w."isActive" = TRUE
+      WHERE i."availableQty" > 0
+      GROUP BY p.id
+      ORDER BY SUM(i."availableQty") DESC, p.name ASC
+    `;
 
     return res.status(200).json({
       status: "success",

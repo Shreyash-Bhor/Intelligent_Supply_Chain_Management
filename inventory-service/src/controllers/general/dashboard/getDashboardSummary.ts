@@ -18,25 +18,41 @@ export const getDashboardSummary = asyncHandler(
         },
       });
 
-      const inventoriesPromise = prisma.inventory.findMany({
-        select: {
-          id: true,
-          availableQty: true,
-          reservedQty: true,
-          reorderQty: true,
-          product: {
-            select: {
-              name: true,
-              sku: true,
-            },
-          },
-          warehouse: {
-            select: {
-              name: true,
-            },
-          },
-        },
-      });
+      // Keep full-table stock analytics in PostgreSQL. Loading millions of
+      // Inventory rows here made every cache miss allocate a huge JS object graph.
+      const inventoryMetricsPromise = prisma.$queryRaw<Array<{
+        inventoryCount: bigint;
+        totalUnits: bigint | null;
+        totalReservedUnits: bigint | null;
+        lowStockCount: bigint;
+        criticalStockCount: bigint;
+      }>>`
+        SELECT COUNT(*) AS "inventoryCount",
+               COALESCE(SUM("availableQty"), 0) AS "totalUnits",
+               COALESCE(SUM("reservedQty"), 0) AS "totalReservedUnits",
+               COUNT(*) FILTER (WHERE "availableQty" <= "reorderQty") AS "lowStockCount",
+               COUNT(*) FILTER (WHERE "availableQty" <= CEIL("reorderQty" * 0.5)) AS "criticalStockCount"
+        FROM "Inventory"
+      `;
+      const topRiskPromise = prisma.$queryRaw<Array<{
+        id: string;
+        productName: string;
+        sku: string;
+        warehouseName: string;
+        availableQty: number;
+        reorderQty: number;
+        deficit: number;
+      }>>`
+        SELECT i.id, p.name AS "productName", p.sku,
+               w.name AS "warehouseName", i."availableQty", i."reorderQty",
+               GREATEST(i."reorderQty" - i."availableQty", 0) AS deficit
+        FROM "Inventory" i
+        JOIN "Product" p ON p.id = i."productId"
+        JOIN "Warehouse" w ON w.id = i."warehouseId"
+        WHERE i."availableQty" <= i."reorderQty"
+        ORDER BY deficit DESC, i.id ASC
+        LIMIT 6
+      `;
 
       const stockPerWarehousePromise = prisma.inventory.groupBy({
         by: ["warehouseId"],
@@ -81,14 +97,16 @@ export const getDashboardSummary = asyncHandler(
       const [
         totalProducts,
         reorderStatusCounts,
-        inventories,
+        inventoryMetrics,
+        topRiskItems,
         stockPerWarehouse,
         recentReorders,
         warehouses,
       ] = await Promise.all([
         totalProductsPromise,
         reorderStatusCountsPromise,
-        inventoriesPromise,
+        inventoryMetricsPromise,
+        topRiskPromise,
         stockPerWarehousePromise,
         recentReordersPromise,
         warehousesPromise,
@@ -107,23 +125,12 @@ export const getDashboardSummary = asyncHandler(
         };
       });
 
-      const totalUnits = inventories.reduce(
-        (acc: number, inv: any) => acc + inv.availableQty,
-        0,
-      );
-
-      const totalReservedUnits = inventories.reduce(
-        (acc: number, inv: any) => acc + inv.reservedQty,
-        0,
-      );
-
-      const lowStock = inventories.filter(
-        (inv: any) => inv.availableQty <= inv.reorderQty,
-      );
-
-      const criticalStock = inventories.filter(
-        (inv: any) => inv.availableQty <= Math.ceil(inv.reorderQty * 0.5),
-      );
+      const metrics = inventoryMetrics[0];
+      const inventoryCount = Number(metrics?.inventoryCount ?? 0);
+      const totalUnits = Number(metrics?.totalUnits ?? 0);
+      const totalReservedUnits = Number(metrics?.totalReservedUnits ?? 0);
+      const lowStockCount = Number(metrics?.lowStockCount ?? 0);
+      const criticalStockCount = Number(metrics?.criticalStockCount ?? 0);
 
       const pendingOrders =
         reorderStatusCounts.find((s: any) => s.status === "PENDING")?._count
@@ -144,19 +151,6 @@ export const getDashboardSummary = asyncHandler(
           ? 0
           : Math.round((totalUnits / (totalUnits + totalReservedUnits)) * 100);
 
-      const topRiskItems = lowStock
-        .map((inv: any) => ({
-          id: inv.id,
-          productName: inv.product.name,
-          sku: inv.product.sku,
-          warehouseName: inv.warehouse.name,
-          availableQty: inv.availableQty,
-          reorderQty: inv.reorderQty,
-          deficit: Math.max(inv.reorderQty - inv.availableQty, 0),
-        }))
-        .sort((a: any, b: any) => b.deficit - a.deficit)
-        .slice(0, 6);
-
       return {
         status: "success",
         message: "Dashboard summary fetched successfully",
@@ -167,19 +161,19 @@ export const getDashboardSummary = asyncHandler(
           openOrders: pendingOrders,
           completedOrders,
           cancelledOrders,
-          lowStockCount: lowStock.length,
-          criticalStockCount: criticalStock.length,
+          lowStockCount,
+          criticalStockCount,
           fillRate,
           inventoryHealthBreakdown: [
             {
               name: "Healthy",
-              value: Math.max(inventories.length - lowStock.length, 0),
+              value: Math.max(inventoryCount - lowStockCount, 0),
             },
             {
               name: "Low",
-              value: Math.max(lowStock.length - criticalStock.length, 0),
+              value: Math.max(lowStockCount - criticalStockCount, 0),
             },
-            { name: "Critical", value: criticalStock.length },
+            { name: "Critical", value: criticalStockCount },
           ],
           reorderStatusBreakdown: [
             { name: "Pending", value: pendingOrders },

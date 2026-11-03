@@ -6,17 +6,13 @@ import { getOrLoad } from "../../../lib/cache";
 export const getWarehouseData = asyncHandler(
   async (req: Request, res: Response) => {
     const warehouseId = req.params.warehouseId ?? "";
+    const page = Number(req.query.page ?? 1);
+    const pageSize = Number(req.query.pageSize ?? 100);
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) {
+      return res.status(400).json({ status: "error", message: "Invalid pagination parameters" });
+    }
 
-    const warehouse = await getOrLoad(warehouseId, "warehouses", 20, () => prisma.warehouse.findUnique({
-      where: { id: warehouseId },
-      include: {
-        inventories: {
-          include: {
-            product: true,
-          },
-        },
-      },
-    }));
+    const warehouse = await prisma.warehouse.findUnique({ where: { id: warehouseId } });
 
     if (!warehouse) {
       return res
@@ -24,10 +20,25 @@ export const getWarehouseData = asyncHandler(
         .json({ status: "error", message: "Warehouse not found" });
     }
 
+    const [total, inventories] = await Promise.all([
+      prisma.inventory.count({ where: { warehouseId } }),
+      prisma.inventory.findMany({
+        where: { warehouseId },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+        include: { product: true },
+      }),
+    ]);
+
     return res.status(200).json({
       status: "success",
       message: "Warehouse found successfully",
-      data: warehouse,
+      data: {
+        ...warehouse,
+        inventories,
+        inventoryPagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+      },
     });
   },
 );
