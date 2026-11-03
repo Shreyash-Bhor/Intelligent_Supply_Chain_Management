@@ -1,6 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type StatItem = {
@@ -22,7 +23,8 @@ export function StatsGrid({ stats, loading }: Props) {
       {stats.map((item) => (
         <Card
           key={item.title}
-          className={`transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${item.danger ? "border-destructive/40 bg-destructive/[0.02]" : ""}`}
+          style={{ animationDelay: `${Math.min(stats.indexOf(item), 6) * 55}ms` }}
+          className={`dashboard-card-enter transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${item.danger ? "border-destructive/40 bg-destructive/[0.02]" : ""}`}
         >
           <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-medium">{item.title}</CardTitle>
@@ -35,7 +37,7 @@ export function StatsGrid({ stats, loading }: Props) {
               {loading
                 ? "..."
                 : typeof item.value === "number"
-                  ? item.value.toLocaleString()
+                  ? <CountUp value={item.value} />
                   : item.value}
             </p>
             <p className="text-muted-foreground mt-1 text-xs">
@@ -46,4 +48,27 @@ export function StatsGrid({ stats, loading }: Props) {
       ))}
     </section>
   );
+}
+
+function CountUp({ value }: { value: number }) {
+  const [display, setDisplay] = useState(0);
+  const current = useRef(0);
+  useEffect(() => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) { current.current = value; setDisplay(value); return; }
+    let frame = 0;
+    const started = performance.now();
+    const initial = current.current;
+    const animate = (now: number) => {
+      const progress = Math.min((now - started) / 450, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      const next = Math.round(initial + (value - initial) * eased);
+      current.current = next;
+      setDisplay(next);
+      if (progress < 1) frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [value]);
+  return <>{display.toLocaleString()}</>;
 }

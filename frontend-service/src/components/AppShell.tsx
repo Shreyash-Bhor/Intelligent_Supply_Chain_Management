@@ -21,7 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!hydrated || !role) return;
 
     const routes = role === "warehouse_manager"
-      ? ["/manager", "/inventory", "/reorder", "/warehouse", "/product", "/pricing"]
+      ? ["/manager", "/manager/orders", "/inventory", "/reorder", "/warehouse", "/product", "/pricing"]
       : ["/assistant", "/user", "/cart", "/orders"];
     const [priority, ...deferred] = routes;
     let cancelled = false;
@@ -57,7 +57,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return <>
     <ServiceWakeup />
     {!assistantPage && <Navbar />}
-    {children}
+    <div key={pathname} className="route-enter">{children}</div>
     {!assistantPage && canUseAssistant && <RagChatbot />}
   </>;
 }

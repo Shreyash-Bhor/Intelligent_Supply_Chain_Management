@@ -9,6 +9,34 @@ export type ManagerSession = {
   accessKey: string;
 };
 
+export type ManagerOrder = {
+  id: string; status: string; createdAt: string; updatedAt: string; totalPrice: number; unitPrice: number; quantity: number; allocatedQty: number; shortageQty: number; currency: string;
+  shippingName: string | null; shippingPhone: string | null; shippingAddress1: string | null; shippingAddress2: string | null; shippingCity: string | null; shippingRegion: string | null; shippingPostalCode: string | null; shippingCountry: string | null;
+  user: { id: string; name: string; email: string };
+  product: { id: string; name: string; sku: string };
+  items: Array<{ id: string; quantity: number; unitPrice: number; totalPrice: number; product: { id: string; name: string; sku: string } }>;
+  allocations: Array<{ quantity: number; inventory: { warehouse: { id: string; name: string; city: string; pincode: string } } }>;
+  shipments: Array<{ status: string; shippedAt: string | null; deliveredAt: string | null; createdAt: string; carrier: string | null; trackingNumber: string | null }>;
+};
+export type ManagerOrdersPage = { items: ManagerOrder[]; pagination: { page: number; pageSize: number; total: number; totalPages: number }; warehouses: Array<{ id: string; name: string; city: string }> };
+export type ManagerOrderAnalytics = {
+  totalOrders: number; totalRevenue: number; pendingOrders: number; processingOrders: number; deliveredOrders: number; cancelledOrders: number;
+  statusDistribution: Array<{ name: string; value: number }>;
+  trends: Array<{ date: string; orders: number; revenue: number }>;
+  topProducts: Array<{ name: string; quantity: number }>;
+  warehouses: Array<{ warehouseId: string; name: string; count: number }>;
+};
+
+export function fetchManagerOrders(session: ManagerSession, params: { page: number; pageSize: number; search: string; status: string; warehouseId: string; from: string; to: string; sort: string; direction: string }) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) if (value) query.set(key, String(value));
+  return fetchApi<ManagerOrdersPage>(`/dashboard/orders?${query}`, { managerSession: session });
+}
+export function fetchManagerOrderAnalytics(session: ManagerSession, from: string, to: string) {
+  const query = new URLSearchParams({ from, to });
+  return fetchApi<ManagerOrderAnalytics>(`/dashboard/orders/analytics?${query}`, { managerSession: session });
+}
+
 export type DashboardSummary = {
   totalProducts: number;
   openOrders: number;

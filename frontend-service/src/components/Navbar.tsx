@@ -25,6 +25,7 @@ const MANAGER_LINKS = [
   { href: "/inventory", label: "Inventory" },
   { href: "/pricing", label: "Pricing" },
   { href: "/reorder", label: "Reorders" },
+  { href: "/manager/orders", label: "Orders" },
 ];
 
 const USER_LINKS = [{ href: "/user", label: "Shop" }, { href: "/orders", label: "Orders" }];
@@ -119,7 +120,7 @@ export function Navbar() {
                   className={cn(
                     isLandingAccess
                       ? "rounded-full px-2.5 py-2 text-xs font-semibold transition-all hover:-translate-y-0.5 hover:shadow-sm sm:px-4 sm:text-sm"
-                      : "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                      : "rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-px",
                     isLandingAccess && link.href === "/signup/user"
                       ? "bg-secondary text-secondary-foreground hover:brightness-105"
                       : isLandingAccess

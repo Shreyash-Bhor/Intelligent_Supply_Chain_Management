@@ -198,3 +198,34 @@
     scroll-behavior: auto !important;
   }
 }
+@keyframes dashboard-card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dashboard-card-enter,
+.orders-enter {
+  animation: dashboard-card-in 360ms ease-out both;
+}
+
+.route-enter {
+  animation: dashboard-card-in 220ms ease-out both;
+}
+
+.orders-drawer {
+  animation: orders-drawer-in 220ms ease-out both;
+}
+
+@keyframes orders-drawer-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
