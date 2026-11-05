@@ -42,14 +42,14 @@ The primary engineering objective is to build an AI assistant that does more tha
 SupplySync follows a distributed microservices architecture
 integrating Agentic AI, RAG, and transactional backend services.
 
-![System Architecture](docs/images/system-architecture.png)
+![System Architecture](docs/system-architecture.png)
 
 ### LLM Architecture
 
 The AI shopping assistant uses an LLM-driven tool-calling
 architecture with hybrid retrieval and backend integrations.
 
-![LLM Architecture](docs/images/llm-architecture.png)
+![LLM Architecture](docs/llm-architecture.png)
 
 ## Core Feature: Agentic AI Shopping Assistant
 
