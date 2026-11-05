@@ -37,6 +37,20 @@ The platform combines:
 
 The primary engineering objective is to build an AI assistant that does more than answer questions: it can interact with real application services and perform meaningful business operations.
 
+## System Architecture
+
+SupplySync follows a distributed microservices architecture
+integrating Agentic AI, RAG, and transactional backend services.
+
+![System Architecture](docs/images/system-architecture.png)
+
+### LLM Architecture
+
+The AI shopping assistant uses an LLM-driven tool-calling
+architecture with hybrid retrieval and backend integrations.
+
+![LLM Architecture](docs/images/llm-architecture.png)
+
 ## Core Feature: Agentic AI Shopping Assistant
 
 The AI assistant is the central component of SupplySync.
@@ -64,13 +78,13 @@ The agent supports multi-step workflows in which multiple tools may be required 
 
 The assistant uses specialized tools to interact with the commerce platform.
 
-| Tool | Responsibility |
-|---|---|
-| `searchProducts` | Search the product catalog using relevant search criteria. |
-| `getProductDetails` | Retrieve detailed product information. |
-| `getProductAvailability` | Check product stock and availability. |
-| `getProductPrice` | Retrieve current product pricing. |
-| `searchKnowledgeBase` | Retrieve relevant contextual information from the RAG knowledge base. |
+| Tool                     | Responsibility                                                        |
+| ------------------------ | --------------------------------------------------------------------- |
+| `searchProducts`         | Search the product catalog using relevant search criteria.            |
+| `getProductDetails`      | Retrieve detailed product information.                                |
+| `getProductAvailability` | Check product stock and availability.                                 |
+| `getProductPrice`        | Retrieve current product pricing.                                     |
+| `searchKnowledgeBase`    | Retrieve relevant contextual information from the RAG knowledge base. |
 
 These tools allow the LLM to access authoritative application data instead of relying on potentially outdated information stored in its training data.
 
@@ -163,18 +177,21 @@ The assistant is integrated with actual commerce operations rather than function
 Supported workflows include:
 
 **Product Discovery**
+
 - Natural-language product search.
 - Product filtering and discovery.
 - Product detail retrieval.
 - Price and stock verification.
 
 **Cart Management**
+
 - Add products to cart.
 - Retrieve and update cart contents.
 - Persistent cart management.
 - Context-aware shopping interactions.
 
 **Checkout and Orders**
+
 - Address management and autofill.
 - Checkout quote generation.
 - Quote-bound checkout confirmation.
@@ -254,15 +271,15 @@ flowchart TD
 
 ### Service Responsibilities
 
-| Component | Responsibility | Technology |
-|---|---|---|
-| Frontend | Storefront, assistant UI, customer interactions, dashboard | Next.js, React, TypeScript |
-| Inventory Service | Product catalog, inventory, warehouses, cart, checkout, orders | Express, TypeScript, Prisma |
-| Pricing Service | Product pricing and price history | Express, TypeScript, Prisma |
-| RAG Service | AI agent, retrieval, embeddings, tool orchestration | Python, FastAPI |
-| Vector Database | Semantic document retrieval | Qdrant |
-| Relational Database | Structured and transactional application data | PostgreSQL |
-| Cache | Frequently accessed data and caching workflows | Redis |
+| Component           | Responsibility                                                 | Technology                  |
+| ------------------- | -------------------------------------------------------------- | --------------------------- |
+| Frontend            | Storefront, assistant UI, customer interactions, dashboard     | Next.js, React, TypeScript  |
+| Inventory Service   | Product catalog, inventory, warehouses, cart, checkout, orders | Express, TypeScript, Prisma |
+| Pricing Service     | Product pricing and price history                              | Express, TypeScript, Prisma |
+| RAG Service         | AI agent, retrieval, embeddings, tool orchestration            | Python, FastAPI             |
+| Vector Database     | Semantic document retrieval                                    | Qdrant                      |
+| Relational Database | Structured and transactional application data                  | PostgreSQL                  |
+| Cache               | Frequently accessed data and caching workflows                 | Redis                       |
 
 Each service maintains its own responsibilities and database boundaries, reducing coupling and allowing individual components to evolve independently.
 
@@ -311,6 +328,7 @@ Each service maintains its own responsibilities and database boundaries, reducin
 ## Technology Stack
 
 ### Frontend
+
 - Next.js (App Router)
 - React
 - TypeScript
@@ -318,13 +336,15 @@ Each service maintains its own responsibilities and database boundaries, reducin
 - shadcn/ui
 
 ### Backend
+
 - Node.js
 - Express.js
 - TypeScript
 - Python
 - FastAPI
 
-### AI / Machine Learning
+### AI
+
 - Large Language Models (LLMs)
 - Agentic AI
 - Function Calling / Tool Calling
@@ -335,6 +355,7 @@ Each service maintains its own responsibilities and database boundaries, reducin
 - Groq LLM API
 
 ### Databases and Infrastructure
+
 - PostgreSQL
 - Prisma ORM
 - Qdrant
@@ -342,6 +363,7 @@ Each service maintains its own responsibilities and database boundaries, reducin
 - Docker
 
 ### Development and Deployment
+
 - Git and GitHub
 - Postman
 - Render
@@ -354,6 +376,7 @@ Each service maintains its own responsibilities and database boundaries, reducin
 SupplySync incorporates several engineering practices to improve reliability and scalability.
 
 **Database Optimization**
+
 - Server-side pagination.
 - Selective field retrieval.
 - Database indexing.
@@ -361,11 +384,13 @@ SupplySync incorporates several engineering practices to improve reliability and
 - Reduced unnecessary data loading.
 
 **Caching**
+
 - Redis-based caching.
 - Cache-aware data access.
 - Reduced repeated database operations.
 
 **API and Service Reliability**
+
 - Dedicated service boundaries.
 - Health-check endpoints.
 - Request logging and duration tracking.
@@ -373,12 +398,14 @@ SupplySync incorporates several engineering practices to improve reliability and
 - Rate limiting for assistant requests.
 
 **Transactional Reliability**
+
 - Persistent cart state.
 - Server-generated checkout quotes.
 - Quote-bound checkout confirmation.
 - Idempotency keys for order creation.
 
 **AI Performance**
+
 - Context and token optimization.
 - Reduced retrieval Top-K.
 - Limited tool result sizes.
@@ -422,8 +449,6 @@ SupplySync/
 └── README.md
 ```
 
-*Directory names are representative; refer to the actual repository for the exact structure.*
-
 ---
 
 ## Getting Started
@@ -440,8 +465,7 @@ SupplySync/
 ### 1. Clone the Repository
 
 ```bash
-git clone <YOUR_REPOSITORY_URL>
-cd SupplySync
+git clone https://github.com/Shreyash-Bhor/Intelligent_Supply_Chain_Management.git
 ```
 
 ### 2. Configure Environment Variables
@@ -451,22 +475,26 @@ Each service requires its own environment configuration.
 Typical configuration categories include:
 
 **Frontend**
+
 - Inventory service URL.
 - Pricing service URL.
 - RAG service URL.
 - Application-specific public configuration.
 
 **Inventory Service**
+
 - PostgreSQL connection string.
 - Redis connection configuration.
 - Authentication secrets.
 - Service configuration.
 
 **Pricing Service**
+
 - PostgreSQL connection string.
 - Pricing service configuration.
 
 **RAG Service**
+
 - LLM provider API key.
 - Qdrant URL and API key.
 - Embedding model configuration.
@@ -516,18 +544,18 @@ The application should now be able to communicate with the individual backend se
 
 ## Key Engineering Highlights
 
-| Area | Implementation |
-|---|---|
-| AI Architecture | Agentic LLM with specialized tool calling |
-| Knowledge Retrieval | Hybrid RAG with Qdrant and PostgreSQL |
-| Embeddings | 384-dimensional Sentence Transformer embeddings |
-| Agent Workflows | Multi-step shopping and transactional execution |
-| Conversational Context | Persistent conversation memory |
-| Backend Architecture | Independently structured microservices |
-| Database Layer | PostgreSQL with Prisma ORM |
-| Performance | Redis caching, pagination, query optimization |
-| Transaction Reliability | Quote-bound checkout and idempotency |
-| Security | Authentication middleware and rate limiting |
+| Area                    | Implementation                                  |
+| ----------------------- | ----------------------------------------------- |
+| AI Architecture         | Agentic LLM with specialized tool calling       |
+| Knowledge Retrieval     | Hybrid RAG with Qdrant and PostgreSQL           |
+| Embeddings              | 384-dimensional Sentence Transformer embeddings |
+| Agent Workflows         | Multi-step shopping and transactional execution |
+| Conversational Context  | Persistent conversation memory                  |
+| Backend Architecture    | Independently structured microservices          |
+| Database Layer          | PostgreSQL with Prisma ORM                      |
+| Performance             | Redis caching, pagination, query optimization   |
+| Transaction Reliability | Quote-bound checkout and idempotency            |
+| Security                | Authentication middleware and rate limiting     |
 
 ---
 
