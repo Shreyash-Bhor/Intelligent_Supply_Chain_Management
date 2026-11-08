@@ -56,6 +56,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return <>
     <ServiceWakeup />
+    <div className="motion-ambient" aria-hidden="true"><span /><span /><span /></div>
     {!assistantPage && <Navbar />}
     <div key={pathname} className="route-enter">{children}</div>
     {!assistantPage && canUseAssistant && <RagChatbot />}

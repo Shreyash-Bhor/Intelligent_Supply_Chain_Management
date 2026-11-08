@@ -72,6 +72,7 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
+body { min-height: 100vh; background: var(--background); color: var(--foreground); isolation: isolate; }
 
 :root {
   --radius: 0.75rem;
@@ -220,6 +221,47 @@ select {
 .route-enter {
   animation: dashboard-card-in 220ms ease-out both;
 }
+
+/* Shared motion language across shopper, manager, auth, and assistant routes. */
+.motion-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: .55;
+}
+.motion-ambient span {
+  position: absolute;
+  width: clamp(15rem, 31vw, 32rem);
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  filter: blur(70px);
+  background: color-mix(in oklch, var(--primary) 10%, transparent);
+  animation: ambient-drift 22s ease-in-out infinite alternate;
+}
+.motion-ambient span:nth-child(1) { top: -16rem; right: -7rem; }
+.motion-ambient span:nth-child(2) { bottom: -20rem; left: 12%; background: color-mix(in oklch, var(--secondary) 12%, transparent); animation-delay: -8s; animation-duration: 27s; }
+.motion-ambient span:nth-child(3) { top: 36%; left: -23rem; background: color-mix(in oklch, var(--chart-5) 9%, transparent); animation-delay: -14s; animation-duration: 25s; }
+@keyframes ambient-drift { from { transform: translate3d(-2vw, -1vh, 0) scale(.88); } to { transform: translate3d(3vw, 3vh, 0) scale(1.12); } }
+
+/* Panels arrive with a short stagger; hover motion stays small and reversible. */
+.route-enter [data-slot="card"],
+.route-enter article[class*="bg-card"],
+.route-enter section[class*="bg-card"] {
+  animation: panel-arrive 620ms cubic-bezier(.18,.72,.22,1) both;
+}
+.route-enter [data-slot="card"]:nth-child(2), .route-enter article[class*="bg-card"]:nth-child(2) { animation-delay: 70ms; }
+.route-enter [data-slot="card"]:nth-child(3), .route-enter article[class*="bg-card"]:nth-child(3) { animation-delay: 130ms; }
+.route-enter [data-slot="card"]:nth-child(4), .route-enter article[class*="bg-card"]:nth-child(4) { animation-delay: 190ms; }
+@keyframes panel-arrive { from { opacity: 0; transform: translateY(20px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+[data-slot="card"], article[class*="bg-card"] { transition: transform 320ms cubic-bezier(.2,.75,.25,1), box-shadow 320ms ease, border-color 240ms ease; }
+[data-slot="card"]:hover, article[class*="bg-card"]:hover { transform: translateY(-3px); box-shadow: 0 16px 36px color-mix(in oklch, var(--foreground) 9%, transparent); }
+button[data-slot="button"], a[class*="rounded-md"][class*="border"] { transition: transform 180ms ease, box-shadow 220ms ease, background-color 180ms ease, color 180ms ease; }
+button[data-slot="button"]:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 5px 14px color-mix(in oklch, var(--primary) 17%, transparent); }
+button[data-slot="button"]:not(:disabled):active { transform: translateY(0) scale(.975); box-shadow: none; }
+input:not([type="checkbox"]):not([type="radio"]), textarea, select { transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease; }
+input:not([type="checkbox"]):not([type="radio"]):focus, textarea:focus, select:focus { transform: translateY(-1px); }
 
 .orders-dashboard {
   background:
