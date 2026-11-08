@@ -254,16 +254,16 @@ select {
 .route-enter [data-slot="card"]:nth-child(2), .route-enter article[class*="bg-card"]:nth-child(2) { animation-delay: 70ms; }
 .route-enter [data-slot="card"]:nth-child(3), .route-enter article[class*="bg-card"]:nth-child(3) { animation-delay: 130ms; }
 .route-enter [data-slot="card"]:nth-child(4), .route-enter article[class*="bg-card"]:nth-child(4) { animation-delay: 190ms; }
-@keyframes panel-arrive { from { opacity: 0; transform: translateY(20px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
-[data-slot="card"], article[class*="bg-card"] { transition: background-color 320ms ease, border-color 260ms ease, box-shadow 320ms ease; }
+[data-slot="card"], article[class*="bg-card"] { transition: background-color 420ms ease, border-color 360ms ease, box-shadow 420ms ease, background-position 700ms ease; }
+[data-slot="card"], article[class*="bg-card"] { background-image: radial-gradient(ellipse at 100% 0%, color-mix(in oklch, var(--primary) 0%, transparent), transparent 50%); }
 [data-slot="card"]:hover, article[class*="bg-card"]:hover {
   transform: none;
-  background-color: color-mix(in oklch, var(--card) 91%, var(--primary));
-  border-color: color-mix(in oklch, var(--border) 48%, var(--primary));
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--primary) 9%, transparent);
+  background-image: radial-gradient(ellipse at 100% 0%, color-mix(in oklch, var(--primary) 16%, transparent), transparent 58%);
+  border-color: color-mix(in oklch, var(--border) 38%, var(--primary));
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--primary) 11%, transparent), 0 12px 34px color-mix(in oklch, var(--primary) 10%, transparent);
 }
 button[data-slot="button"], a[class*="rounded-md"][class*="border"] { transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 220ms ease; }
-button[data-slot="button"]:not(:disabled):hover { box-shadow: 0 0 0 3px color-mix(in oklch, var(--secondary) 34%, transparent); }
+button[data-slot="button"]:not(:disabled):hover { box-shadow: 0 0 0 3px color-mix(in oklch, var(--secondary) 34%, transparent); background-image: linear-gradient(110deg, color-mix(in oklch, var(--primary) 12%, transparent), color-mix(in oklch, var(--secondary) 20%, transparent)); }
 button[data-slot="button"][data-variant="outline"]:not(:disabled):hover,
 button[data-slot="button"][data-variant="ghost"]:not(:disabled):hover,
 a[class*="rounded-md"][class*="border"]:hover {
@@ -272,6 +272,17 @@ a[class*="rounded-md"][class*="border"]:hover {
   color: var(--accent-foreground);
 }
 button[data-slot="button"]:not(:disabled):active { transform: none; box-shadow: 0 0 0 1px color-mix(in oklch, var(--primary) 28%, transparent); }
+
+/* Order-dashboard style chart motion, applied wherever charts and status visuals appear. */
+.route-enter .recharts-bar-rectangle,
+.route-enter .recharts-pie-sector { transform-box: fill-box; transform-origin: center bottom; animation: chart-mark-grow 850ms cubic-bezier(.16,1,.3,1) both; }
+.route-enter .recharts-bar-rectangle:nth-child(2n), .route-enter .recharts-pie-sector:nth-child(2n) { animation-delay: 100ms; }
+.route-enter .recharts-line-curve { stroke-dasharray: 1200; stroke-dashoffset: 1200; animation: chart-line-draw 1.4s .18s cubic-bezier(.2,.7,.2,1) forwards; }
+.route-enter .recharts-area-area { animation: chart-area-reveal 950ms ease-out both; transform-origin: bottom; }
+@keyframes chart-mark-grow { from { opacity: .25; scale: 1 .15; } to { opacity: 1; scale: 1 1; } }
+@keyframes chart-line-draw { to { stroke-dashoffset: 0; } }
+@keyframes chart-area-reveal { from { opacity: .15; } to { opacity: 1; } }
+@keyframes panel-arrive { 0% { opacity: 0; transform: translateY(32px) scale(.965); filter: saturate(.75); } 70% { opacity: 1; transform: translateY(-3px) scale(1.006); } 100% { transform: translateY(0) scale(1); filter: saturate(1); } }
 input:not([type="checkbox"]):not([type="radio"]), textarea, select { transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease; }
 input:not([type="checkbox"]):not([type="radio"]):focus, textarea:focus, select:focus { transform: translateY(-1px); }
 
