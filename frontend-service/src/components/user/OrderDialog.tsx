@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PackageCheck, ShoppingCart, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, type UserCatalogProduct } from "@/lib/userCatalog";
+import { QuantitySlider } from "./QuantitySlider";
 
 type Props = {
   product: UserCatalogProduct;
@@ -102,23 +103,8 @@ export function OrderDialog({ product, onAddToCart, onClose }: Props) {
                   </p>
                 </div>
               </div>
-              <div className="mt-6 space-y-2">
-                <label htmlFor="order-quantity" className="text-sm font-medium">
-                  Quantity
-                </label>
-                <input
-                  id="order-quantity"
-                  type="number"
-                  min={1}
-                  max={100000}
-                  value={quantity}
-                  onChange={(event) =>
-                    setQuantity(
-                      Math.max(1, Number.parseInt(event.target.value, 10) || 1),
-                    )
-                  }
-                  className="border-input bg-background w-full rounded-md border px-3 py-3 text-lg"
-                />
+              <div className="mt-6 rounded-xl border bg-card/60 p-4">
+                <QuantitySlider value={quantity} max={product.availableQty} onValueChange={setQuantity} />
               </div>
               {quantity > product.availableQty ? (
                 <div className="mt-3 flex gap-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">

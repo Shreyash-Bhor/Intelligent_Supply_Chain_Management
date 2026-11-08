@@ -7,6 +7,7 @@ import { useAuthSession } from "@/hooks/useAuthSession";
 import { createCustomerAddress, fetchCustomerAddresses, fetchCustomerCart, fetchCustomerProductAvailability, fetchCustomerProfile, fetchProductPrice, setCustomerCartItem, setCustomerDefaultAddress, updateCustomerAddress, type CustomerProfile, type ShippingAddress } from "@/lib/api";
 import type { ChatAction } from "@/components/chat/protocol";
 import { StructuredFormView } from "@/components/chat/StructuredFormView";
+import { QuantitySlider } from "@/components/user/QuantitySlider";
 
 type AddressFormData = { addresses: ShippingAddress[]; profile: CustomerProfile | null; addressError?: string };
 const addressFormCache = new Map<string, Promise<AddressFormData>>();
@@ -27,6 +28,7 @@ export function ChatActionView({ action, onConfirm, busy, onFormSubmit, onAddres
   const [imageFailed, setImageFailed] = useState(false);
   const [cartBusy, setCartBusy] = useState(false);
   const [cartMessage, setCartMessage] = useState("");
+  const [cartQuantity, setCartQuantity] = useState(1);
   const cartSubmitting = useRef(false);
   const { session, hydrated } = useAuthSession();
   const [addresses, setAddresses] = useState<ShippingAddress[]>([]);
@@ -150,10 +152,10 @@ export function ChatActionView({ action, onConfirm, busy, onFormSubmit, onAddres
           setCartMessage("The price changed. Ask for the product details again before adding it."); return;
         }
         const existing = cart.items.find((line) => line.productId === action.productId);
-        const quantity = (existing?.quantity ?? 0) + 1;
+        const quantity = (existing?.quantity ?? 0) + cartQuantity;
         if (availability.availableQty < quantity) { setCartMessage(availability.availableQty > 0 ? `Only ${availability.availableQty} units are currently available.` : "This product is currently out of stock."); return; }
         await setCustomerCartItem(session.token, action.productId, quantity);
-        setCartMessage("Added 1 unit to your cart.");
+        setCartMessage(`Added ${cartQuantity} ${cartQuantity === 1 ? "unit" : "units"} to your cart.`);
       } catch (error) { setCartMessage(error instanceof Error ? error.message : "Could not add this product to your cart. Retry."); }
       finally { cartSubmitting.current = false; setCartBusy(false); }
     };
@@ -171,7 +173,8 @@ export function ChatActionView({ action, onConfirm, busy, onFormSubmit, onAddres
         {action.discount && <p className="w-fit rounded-md bg-emerald-500/10 px-2.5 py-1 text-sm font-medium text-emerald-700 dark:text-emerald-400">{action.discount}</p>}
         {action.description && <p className="whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">{action.description}</p>}
         {Object.keys(action.attributes).length > 0 && <dl className="grid gap-x-5 gap-y-2 border-t border-border/70 pt-3 text-sm sm:grid-cols-2">{Object.entries(action.attributes).map(([key, value]) => <div key={key} className="grid min-w-0 grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-2"><dt className="break-words text-muted-foreground">{key}</dt><dd className="break-words font-medium">{String(value)}</dd></div>)}</dl>}
-        <div className="flex flex-wrap gap-2"><Link href={`/user?product=${encodeURIComponent(action.productId)}&q=${encodeURIComponent(action.sku)}`} className="inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold"><ShoppingBag className="size-3.5"/>View product</Link>{session?.role === "user" && <button type="button" onClick={() => void addToCart()} disabled={cartBusy || action.availableQty === 0} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50">{cartBusy && <LoaderCircle className="size-3.5 animate-spin"/>}{cartBusy ? "Checking…" : "Add 1 to cart"}</button>}</div>
+        {session?.role === "user" && <div className="max-w-sm rounded-xl border bg-background/60 p-3"><QuantitySlider value={cartQuantity} max={action.availableQty ?? 20} disabled={cartBusy || action.availableQty === 0} onValueChange={setCartQuantity} /></div>}
+        <div className="flex flex-wrap gap-2"><Link href={`/user?product=${encodeURIComponent(action.productId)}&q=${encodeURIComponent(action.sku)}#products`} className="inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold"><ShoppingBag className="size-3.5"/>View product</Link>{session?.role === "user" && <button type="button" onClick={() => void addToCart()} disabled={cartBusy || action.availableQty === 0} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50">{cartBusy && <LoaderCircle className="size-3.5 animate-spin"/>}{cartBusy ? "Checking…" : `Add ${cartQuantity} ${cartQuantity === 1 ? "unit" : "units"} to cart`}</button>}</div>
         {cartMessage && <p role="status" className="text-xs text-muted-foreground">{cartMessage}</p>}
       </div>
     </article>;

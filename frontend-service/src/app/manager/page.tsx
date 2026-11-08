@@ -153,7 +153,7 @@ export default function ManagerDashboardPage() {
         <OperationsPulse summary={summary} loading={loading} />
 
         <section className="grid gap-4 xl:grid-cols-3">
-          <Card className="flex h-[390px] flex-col overflow-hidden">
+          <Card className="flex h-[390px] flex-col overflow-hidden transition-colors hover:border-primary/30 dark:hover:border-primary/40">
             <CardHeader className="shrink-0">
               <div className="flex items-start justify-between gap-3">
                 <CardTitle>Inventory Health</CardTitle>
@@ -182,7 +182,7 @@ export default function ManagerDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="flex h-[390px] flex-col overflow-hidden">
+          <Card className="flex h-[390px] flex-col overflow-hidden transition-colors hover:border-primary/30 dark:hover:border-primary/40">
             <CardHeader className="shrink-0">
               <div className="flex items-start justify-between gap-3">
                 <CardTitle>Reorder Status Mix</CardTitle>
@@ -211,7 +211,7 @@ export default function ManagerDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="flex h-[390px] flex-col overflow-hidden">
+          <Card className="flex h-[390px] flex-col overflow-hidden transition-colors hover:border-primary/30 dark:hover:border-primary/40">
             <CardHeader className="shrink-0">
               <div className="flex items-start justify-between gap-3">
                 <CardTitle>Top SKU Risks</CardTitle>
@@ -246,7 +246,7 @@ export default function ManagerDashboardPage() {
         </section>
 
         <section className="grid gap-4 lg:grid-cols-5">
-          <Card className="flex h-[560px] flex-col overflow-hidden lg:col-span-3">
+          <Card className="flex h-[560px] flex-col overflow-hidden transition-colors hover:border-primary/30 dark:hover:border-primary/40 lg:col-span-3">
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <CardTitle>Inventory by SKU</CardTitle>
@@ -295,7 +295,7 @@ export default function ManagerDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="flex h-[560px] flex-col overflow-hidden lg:col-span-2">
+          <Card className="flex h-[560px] flex-col overflow-hidden transition-colors hover:border-primary/30 dark:hover:border-primary/40 lg:col-span-2">
             <CardHeader className="shrink-0">
               <div className="flex items-start justify-between gap-3">
                 <CardTitle>Stock by Warehouse</CardTitle>
@@ -330,7 +330,7 @@ export default function ManagerDashboardPage() {
         </section>
 
         <section className="grid gap-4 xl:grid-cols-2">
-          <Card className="flex h-[460px] flex-col overflow-hidden">
+          <Card className="flex h-[460px] flex-col overflow-hidden transition-colors hover:border-primary/30 dark:hover:border-primary/40">
             <CardHeader className="shrink-0">
               <div className="flex items-start justify-between gap-3">
                 <CardTitle>Warehouse Utilization</CardTitle>
@@ -363,7 +363,7 @@ export default function ManagerDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="flex h-[460px] flex-col overflow-hidden">
+          <Card className="flex h-[460px] flex-col overflow-hidden transition-colors hover:border-primary/30 dark:hover:border-primary/40">
             <CardHeader className="shrink-0">
               <div className="flex items-start justify-between gap-3">
                 <CardTitle>Recent Reorder Activity</CardTitle>

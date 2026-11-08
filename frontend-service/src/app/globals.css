@@ -154,6 +154,15 @@
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Native select menus are rendered by the browser, so tell them which palette to use. */
+select {
+  color-scheme: light;
+}
+
+.dark select {
+  color-scheme: dark;
+}
+
 .dashboard-hero {
   background:
     radial-gradient(circle at 88% 18%, color-mix(in oklch, var(--primary) 17%, transparent), transparent 32%),

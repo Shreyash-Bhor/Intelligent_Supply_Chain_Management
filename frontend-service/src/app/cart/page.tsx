@@ -2,18 +2,20 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Trash2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { cartEventName, readCart, syncCart, updateCartQuantity, type CartLine } from "@/lib/cart";
 import { confirmCheckout, createCartOrder, createCustomerAddress, deleteCustomerAddress, fetchCheckoutQuote, fetchCustomerAddresses, updateCustomerAddress, type CheckoutQuote, type CustomerOrder, type ShippingAddress } from "@/lib/api";
 import { formatCurrency } from "@/lib/userCatalog";
+import { QuantitySlider } from "@/components/user/QuantitySlider";
 
 const emptyAddress = { name: "", phone: "", address1: "", address2: "", city: "", region: "", postalCode: "" };
 
 export default function CartPage() {
   const { session, hydrated } = useAuthSession();
   const [lines, setLines] = useState<CartLine[]>([]);
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<string, number>>({});
   const [addresses, setAddresses] = useState<ShippingAddress[]>([]);
   const [address, setAddress] = useState(emptyAddress);
   const [addressId, setAddressId] = useState("");
@@ -48,6 +50,7 @@ export default function CartPage() {
     setError("");
     try { await updateCartQuantity(token, userKey, productId, quantity); setLines(readCart(userKey)); setQuote(null); }
     catch (e) { setError(e instanceof Error ? e.message : "Unable to update your cart"); }
+    finally { setQuantityDrafts((current) => { const next = { ...current }; delete next[productId]; return next; }); }
   };
   const saveAddress = async (event: React.FormEvent) => {
     event.preventDefault(); setBusy(true); setError(""); setNotice("");
@@ -127,7 +130,7 @@ export default function CartPage() {
     {!lines.length ? <section className="mt-8 rounded-2xl border border-dashed p-12 text-center"><ShoppingBag className="text-muted-foreground mx-auto size-10"/><h2 className="mt-3 text-xl font-semibold">Your cart is empty</h2><p className="text-muted-foreground mt-1 text-sm">Browse the catalog and add something you need.</p><Button asChild className="mt-5"><Link href="/user">Explore products</Link></Button></section> : <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
       <div className="space-y-3">{lines.map(({ product, quantity, unavailable }) => <article key={product.id} className="flex flex-col gap-4 rounded-xl border bg-card p-4 sm:flex-row sm:items-center">
         <div className="min-w-0 flex-1"><p className="text-muted-foreground text-xs">SKU {product.sku}</p><h2 className="font-medium">{product.name}</h2><p className="mt-1 text-sm font-semibold">{formatCurrency(product.price, product.currency)}</p><p className="text-muted-foreground mt-1 text-xs">{unavailable ? "Unavailable; remove this item to continue." : `${product.availableQty} available`}</p></div>
-        <div className="flex items-center gap-2"><Button variant="outline" size="icon" aria-label={`Decrease ${product.name} quantity`} onClick={() => void changeQuantity(product.id, quantity - 1)}><Minus className="size-4"/></Button><span className="w-8 text-center">{quantity}</span><Button variant="outline" size="icon" aria-label={`Increase ${product.name} quantity`} onClick={() => void changeQuantity(product.id, quantity + 1)}><Plus className="size-4"/></Button><Button variant="ghost" size="icon" aria-label={`Remove ${product.name}`} onClick={() => void changeQuantity(product.id, 0)}><Trash2 className="size-4"/></Button></div>
+        <div className="flex w-full items-end gap-4 sm:max-w-xs"><QuantitySlider label={`${product.name} quantity`} value={quantityDrafts[product.id] ?? quantity} max={Math.max(product.availableQty, quantity, 1)} disabled={unavailable} onValueChange={(next) => setQuantityDrafts((current) => ({ ...current, [product.id]: next }))} onValueCommit={(next) => { if (next !== quantity) void changeQuantity(product.id, next); }} /><Button variant="ghost" size="icon" aria-label={`Remove ${product.name}`} onClick={() => void changeQuantity(product.id, 0)}><Trash2 className="size-4"/></Button></div>
       </article>)}</div>
       <aside className="h-fit rounded-xl border bg-card p-5"><h2 className="font-semibold">Checkout</h2>
         {loading ? <p role="status" className="text-muted-foreground mt-3 text-sm">Loading saved addresses…</p> : <><label className="mt-3 block text-sm">Saved address<select aria-label="Saved shipping address" className="mt-1 h-10 w-full rounded-md border bg-background px-2" value={addressId} onChange={(e) => { setAddressId(e.target.value); setQuote(null); }}><option value="">Choose an address</option>{addresses.map((item) => <option key={item.id} value={item.id}>{item.isDefault ? "Default · " : ""}{item.name} · {item.address1}, {item.city}</option>)}</select>{addresses.length === 0 && <span className="text-muted-foreground mt-1 block">No saved addresses yet. Add one below.</span>}</label>{!!addressId && <div className="mt-2 flex gap-2"><Button type="button" variant="outline" size="sm" disabled={busy} onClick={editSelectedAddress}>Edit selected</Button><Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void removeSelectedAddress()}>Delete selected</Button></div>}</>}

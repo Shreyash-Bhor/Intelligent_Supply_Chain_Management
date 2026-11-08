@@ -85,7 +85,7 @@ You are an e-commerce assistant for a supply-chain system.
 
 Use the available tools according to these rules:
 
-General requests customers can ask include: “Show me products in Electronics”, “Find [product or SKU]”, “Show my cart”, “Add [product] to my cart”, “Track my orders”, and “How does ordering work?”. Use the matching catalog, cart, order, or knowledge tool only when needed.
+General requests customers can ask include: “Show me products in Electronics”, “Find [product or SKU]”, “Show my cart”, “Add [quantity] units of [product] to my cart”, “Track my orders”, and “How does ordering work?”. Use the matching catalog, cart, order, or knowledge tool only when needed.
 
 1. searchCategoryProducts
    Use for a category browsing request. It returns exactly up to three complete
@@ -139,6 +139,8 @@ Important rules:
 - Use the knowledge base for static information.
 - You may use multiple tools when necessary.
 - Shopping mutations require an authenticated customer. Never ask for, infer, or pass a customer identifier.
+- When a customer asks to add a product to the cart, honor the exact positive whole-number quantity they requested and pass that number as `quantity` to `addToCart`. The tool adds that amount to any existing cart quantity and checks live availability. If no quantity was stated, add one unit. Do not substitute one unit when the customer specified another amount; if the requested amount exceeds available stock, report the verified stock limit and ask how they would like to proceed.
+- When the product is ambiguous, identify it with a targeted product search and ask the customer to choose before mutating the cart. Once the product is clear, add the requested quantity in the same turn when authenticated.
 - Prefer the marked default address unless the customer specifies otherwise. When the customer asks to see their address, retrieve and display the exact saved address fields from the backend. When they ask to add, edit, correct, or change an address, show the address form with saved fields prefilled; never guess or silently apply address changes.
 - When user asks to show the cart you must retrieve the products and their details along with their price from the cart and ask if user wants to checkout.
 - Everytime user asks for checkout you need to retrieve the quote and show its exact products, quantities, address and payable total then ask the user to confirm the order.
@@ -223,7 +225,7 @@ def _fallbackSuggestedReplies(actions: list[dict[str, Any]]) -> list[str]:
     if any(action.get("type") == "address_form" or (action.get("type") == "structured_form" and action.get("action") == "show_address_form") for action in actions):
         return ["Continue to checkout", "Use a different address"]
     if any(action.get("type") in {"product_detail", "product_comparison"} for action in actions):
-        return ["Add this product to my cart", "View my cart and checkout"]
+        return ["Add 2 units of this product to my cart", "View my cart and checkout"]
     return ["Find a product", "View my cart"]
 
 

@@ -438,7 +438,7 @@ export default function ManagerOrdersPage() {
         className="grid gap-4 xl:grid-cols-2"
         aria-label="Order analytics charts"
       >
-        <Card className="orders-enter">
+        <Card className="orders-enter transition-colors hover:border-primary/30 dark:hover:border-primary/40">
           <CardHeader>
             <CardTitle>Orders and revenue over time</CardTitle>
           </CardHeader>
@@ -524,7 +524,7 @@ export default function ManagerOrdersPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="orders-enter">
+        <Card className="orders-enter transition-colors hover:border-primary/30 dark:hover:border-primary/40">
           <CardHeader>
             <CardTitle>Order status distribution</CardTitle>
           </CardHeader>
@@ -615,7 +615,7 @@ export default function ManagerOrdersPage() {
             )}
           </CardContent>
         </Card>
-        <Card className="orders-enter">
+        <Card className="orders-enter transition-colors hover:border-primary/30 dark:hover:border-primary/40">
           <CardHeader>
             <CardTitle>Top products by quantity</CardTitle>
           </CardHeader>
@@ -673,7 +673,7 @@ export default function ManagerOrdersPage() {
             </p>
           </CardContent>
         </Card>
-        <Card className="orders-enter">
+        <Card className="orders-enter transition-colors hover:border-primary/30 dark:hover:border-primary/40">
           <CardHeader>
             <CardTitle>Orders by warehouse</CardTitle>
           </CardHeader>
