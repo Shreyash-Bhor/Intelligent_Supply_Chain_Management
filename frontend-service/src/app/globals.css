@@ -221,6 +221,39 @@ select {
   animation: dashboard-card-in 220ms ease-out both;
 }
 
+.orders-dashboard {
+  background:
+    radial-gradient(ellipse at 8% 0%, color-mix(in oklch, var(--primary) 8%, transparent), transparent 34%),
+    radial-gradient(ellipse at 96% 14%, color-mix(in oklch, var(--chart-2) 9%, transparent), transparent 26%);
+}
+.orders-metric {
+  background: linear-gradient(145deg, var(--card), color-mix(in oklch, var(--card) 92%, var(--primary)));
+  border-color: color-mix(in oklch, var(--border) 76%, var(--primary));
+  box-shadow: 0 8px 24px color-mix(in oklch, var(--foreground) 5%, transparent);
+}
+.orders-metric-active {
+  border-color: color-mix(in oklch, var(--primary) 52%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--primary) 16%, transparent), 0 12px 30px color-mix(in oklch, var(--primary) 13%, transparent);
+}
+.orders-metric-glow {
+  position: absolute; width: 130px; height: 130px; right: -54px; top: -60px;
+  border-radius: 999px; background: var(--metric-accent); opacity: .08; filter: blur(3px);
+  transition: transform .55s cubic-bezier(.2,.8,.2,1), opacity .3s ease;
+}
+.orders-metric:hover .orders-metric-glow,
+.orders-metric-active .orders-metric-glow { opacity: .17; transform: scale(1.6); }
+.orders-sparkline path:first-child { stroke-dasharray: 110; stroke-dashoffset: 110; animation: orders-draw-line 1.1s .2s cubic-bezier(.2,.7,.2,1) forwards; }
+.orders-metric:hover .orders-sparkline { transform: translateY(-3px) scale(1.08); transition: transform .3s ease; }
+.orders-panel { border-color: color-mix(in oklch, var(--border) 82%, var(--primary)); box-shadow: 0 10px 32px color-mix(in oklch, var(--foreground) 4%, transparent); }
+.orders-filter-bar { background: color-mix(in oklch, var(--card) 88%, transparent); backdrop-filter: blur(14px); }
+@keyframes orders-draw-line { to { stroke-dashoffset: 0; } }
+@keyframes orders-card-arrive { from { opacity: 0; transform: translateY(22px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.orders-metric.orders-enter { animation: orders-card-arrive 650ms cubic-bezier(.16,1,.3,1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .orders-sparkline path:first-child { animation: none; stroke-dashoffset: 0; }
+  .orders-metric.orders-enter { animation: none; }
+}
+
 .dialog-overlay[data-state="open"] { animation: dialog-fade-in 180ms ease-out both; }
 .dialog-overlay[data-state="closed"] { animation: dialog-fade-out 160ms ease-in both; }
 .dialog-content[data-state="open"] { animation: dialog-scale-in 200ms cubic-bezier(.2,.8,.2,1) both; }

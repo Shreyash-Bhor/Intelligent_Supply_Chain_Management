@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownUp,
@@ -97,6 +98,8 @@ function Metric({
   icon: Icon,
   index,
   currency = false,
+  active = false,
+  onSelect,
 }: {
   label: string;
   value: number;
@@ -105,29 +108,50 @@ function Metric({
   icon: typeof ShoppingBag;
   index: number;
   currency?: boolean;
+  active?: boolean;
+  onSelect: () => void;
 }) {
+  const accents = ["#3b8b67", "#d39a35", "#4f8fc8", "#8b70c6", "#36a37a", "#d26767"];
+  const accent = accents[index % accents.length];
   return (
     <Card
       style={{ animationDelay: `${index * 55}ms` }}
-      className="orders-enter border-emerald-900/10 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md dark:border-emerald-100/10"
+      role="button"
+      tabIndex={0}
+      aria-pressed={active}
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+      className={`orders-metric orders-enter group relative cursor-pointer overflow-hidden border shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? "orders-metric-active" : ""}`}
     >
-      <CardContent className="flex min-h-[126px] items-start gap-3 p-4 sm:p-5">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-          <Icon className="size-[18px]" aria-hidden="true" />
-        </span>
+      <span aria-hidden="true" className="orders-metric-glow" style={{ "--metric-accent": accent } as CSSProperties} />
+      <CardContent className="relative flex min-h-[152px] items-start justify-between gap-3 p-4 sm:p-5">
         <div className="min-w-0">
-          <p className="text-muted-foreground text-xs font-medium sm:text-sm">
-            {label}
-          </p>
-          <p className="mt-1 text-xl font-semibold tracking-tight tabular-nums sm:text-2xl">
+          <div className="flex items-center gap-2">
+            <span className="grid size-10 shrink-0 place-items-center rounded-2xl transition-transform duration-300 group-hover:rotate-[-8deg] group-hover:scale-110" style={{ backgroundColor: `${accent}18`, color: accent }}>
+              <Icon className="size-[19px]" aria-hidden="true" />
+            </span>
+            <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.12em] sm:text-[11px]">
+              {label}
+            </p>
+          </div>
+          <p className="mt-4 text-2xl font-semibold tracking-tight tabular-nums sm:text-[30px]">
             {loading ? (
-              <span className="inline-block h-7 w-24 animate-pulse rounded bg-muted" />
+              <span className="inline-block h-8 w-24 animate-pulse rounded-lg bg-muted" />
             ) : (
               <CountUp value={value} currency={currency} />
             )}
           </p>
-          <p className="text-muted-foreground mt-1 text-xs">{detail}</p>
+          <p className="text-muted-foreground mt-1.5 text-xs">{detail}</p>
         </div>
+        <svg className="orders-sparkline mt-auto h-12 w-[72px] shrink-0 overflow-visible" viewBox="0 0 72 36" aria-hidden="true" style={{ color: accent }}>
+          <path d="M2 29 C10 27 10 15 19 19 S30 27 37 18 S48 8 54 14 S64 18 70 5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M2 29 C10 27 10 15 19 19 S30 27 37 18 S48 8 54 14 S64 18 70 5 L70 36 L2 36Z" fill="currentColor" opacity=".08" />
+        </svg>
       </CardContent>
     </Card>
   );
@@ -324,7 +348,7 @@ export default function ManagerOrdersPage() {
   if (!hydrated || !managerHydrated || !managerSession) return null;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-7 sm:px-6 lg:px-8">
+    <main className="orders-dashboard mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-7 sm:px-6 lg:px-8">
       <header className="orders-enter flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-primary text-sm font-medium">
@@ -338,7 +362,7 @@ export default function ManagerOrdersPage() {
             performance.
           </p>
         </div>
-        <div className="flex flex-wrap items-end gap-2 rounded-xl border bg-card p-3">
+        <div className="orders-filter-bar flex flex-wrap items-end gap-3 rounded-2xl border p-3 shadow-sm">
           <CalendarDays className="text-primary mb-2 size-4" />
           <label className="grid gap-1 text-xs font-medium text-muted-foreground">
             From
@@ -390,6 +414,8 @@ export default function ManagerOrdersPage() {
           loading={analyticsLoading}
           icon={ShoppingBag}
           index={0}
+          active={status === "all"}
+          onSelect={() => { setStatus("all"); setPage(1); }}
         />
         <Metric
           label="Order value"
@@ -399,38 +425,48 @@ export default function ManagerOrdersPage() {
           icon={TrendingUp}
           index={1}
           currency
+          active={false}
+          onSelect={() => { setStatus("all"); setPage(1); }}
         />
         <Metric
           label="Pending"
           value={analytics?.pendingOrders ?? 0}
-          detail="Awaiting payment"
+          detail="Click to filter pending orders"
           loading={analyticsLoading}
           icon={Clock3}
           index={2}
+          active={status === "PENDING_PAYMENT"}
+          onSelect={() => { setStatus(status === "PENDING_PAYMENT" ? "all" : "PENDING_PAYMENT"); setPage(1); }}
         />
         <Metric
           label="Processing"
           value={analytics?.processingOrders ?? 0}
-          detail="Confirmed or backordered"
+          detail="Click to view confirmed orders"
           loading={analyticsLoading}
           icon={RotateCcw}
           index={3}
+          active={status === "CONFIRMED"}
+          onSelect={() => { setStatus(status === "CONFIRMED" ? "all" : "CONFIRMED"); setPage(1); }}
         />
         <Metric
           label="Delivered"
           value={analytics?.deliveredOrders ?? 0}
-          detail="Fulfilled orders"
+          detail="Click to filter delivered orders"
           loading={analyticsLoading}
           icon={PackageCheck}
           index={4}
+          active={status === "FULFILLED"}
+          onSelect={() => { setStatus(status === "FULFILLED" ? "all" : "FULFILLED"); setPage(1); }}
         />
         <Metric
           label="Cancelled"
           value={analytics?.cancelledOrders ?? 0}
-          detail="Cancelled orders"
+          detail="Click to filter cancelled orders"
           loading={analyticsLoading}
           icon={XCircle}
           index={5}
+          active={status === "CANCELLED"}
+          onSelect={() => { setStatus(status === "CANCELLED" ? "all" : "CANCELLED"); setPage(1); }}
         />
       </section>
 
@@ -438,7 +474,7 @@ export default function ManagerOrdersPage() {
         className="grid gap-4 xl:grid-cols-2"
         aria-label="Order analytics charts"
       >
-        <Card className="orders-enter transition-colors hover:border-primary/30 dark:hover:border-primary/40">
+        <Card className="orders-panel orders-enter transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 dark:hover:border-primary/40">
           <CardHeader>
             <CardTitle>Orders and revenue over time</CardTitle>
           </CardHeader>
@@ -524,7 +560,7 @@ export default function ManagerOrdersPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="orders-enter transition-colors hover:border-primary/30 dark:hover:border-primary/40">
+        <Card className="orders-panel orders-enter transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 dark:hover:border-primary/40">
           <CardHeader>
             <CardTitle>Order status distribution</CardTitle>
           </CardHeader>
@@ -615,7 +651,7 @@ export default function ManagerOrdersPage() {
             )}
           </CardContent>
         </Card>
-        <Card className="orders-enter transition-colors hover:border-primary/30 dark:hover:border-primary/40">
+        <Card className="orders-panel orders-enter transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 dark:hover:border-primary/40">
           <CardHeader>
             <CardTitle>Top products by quantity</CardTitle>
           </CardHeader>
@@ -673,7 +709,7 @@ export default function ManagerOrdersPage() {
             </p>
           </CardContent>
         </Card>
-        <Card className="orders-enter transition-colors hover:border-primary/30 dark:hover:border-primary/40">
+        <Card className="orders-panel orders-enter transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 dark:hover:border-primary/40">
           <CardHeader>
             <CardTitle>Orders by warehouse</CardTitle>
           </CardHeader>
@@ -730,7 +766,7 @@ export default function ManagerOrdersPage() {
         </Card>
       </section>
 
-      <Card className="orders-enter">
+      <Card className="orders-panel orders-enter">
         <CardHeader>
           <CardTitle>All orders</CardTitle>
         </CardHeader>
