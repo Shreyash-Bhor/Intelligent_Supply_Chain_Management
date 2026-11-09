@@ -14,12 +14,14 @@ import { parseChatPayload, restoreMessages, type ChatAction } from "@/components
 
 type Message = { id: string; role: "assistant" | "user"; text: string; actions?: ChatAction[]; suggestions?: string[]; retryQuery?: string };
 const STARTER_QUESTIONS = ["Show me products in Electronics", "Find a product by name or SKU", "How does ordering work?"];
+const THINKING_PHRASES = ["Checking the catalog", "Looking across live stock", "Finding a good match", "Putting the details together"];
 
 export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
   const { session, hydrated } = useAuthSession();
   const [open, setOpen] = useState(fullPage);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [thinkingPhrase, setThinkingPhrase] = useState(0);
   const conversationId = useRef(crypto.randomUUID());
   const [products, setProducts] = useState<UserInventoryProduct[]>([]);
   const [messages, setMessages] = useState<Message[]>([
@@ -28,6 +30,12 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
   const listRef = useRef<HTMLDivElement>(null);
   const catalogToken = session?.role === "user" ? session.token : undefined;
   const restored = useRef(false);
+
+  useEffect(() => {
+    if (!busy) { setThinkingPhrase(0); return; }
+    const timer = window.setInterval(() => setThinkingPhrase((current) => (current + 1) % THINKING_PHRASES.length), 3000);
+    return () => window.clearInterval(timer);
+  }, [busy]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -145,8 +153,8 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
         <div ref={listRef} className={`scrollbar-hidden flex-1 overflow-y-auto ${fullPage ? "px-4 pb-8 pt-10 sm:px-6" : "space-y-7 px-5 py-6 sm:px-7"}`} aria-live="polite">
           <div className={fullPage ? "mx-auto flex min-h-full w-full max-w-3xl flex-col gap-8" : "space-y-7"}>
           {messages.map((message) => <article key={message.id} className={`mx-auto flex w-full max-w-3xl gap-3 ${message.role === "user" ? (fullPage ? "justify-end" : "justify-end") : "justify-start"}`}>
-            {message.role === "assistant" && !fullPage && <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Sparkles className="size-4" /></span>}
-            <div className={message.role === "user" ? (fullPage ? "max-w-[85%] rounded-3xl bg-muted px-5 py-3 text-[15px] leading-6 text-foreground sm:max-w-[75%]" : "max-w-[88%] rounded-3xl bg-muted px-4 py-2.5 text-sm leading-6 text-foreground") : "min-w-0 flex-1 pt-0.5"}>
+            {message.role === "assistant" && <span className={`mt-1 grid shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-md shadow-primary/15 ${fullPage ? "size-10" : "size-8 rounded-full"}`}><Sparkles className={fullPage ? "size-5" : "size-4"} /></span>}
+            <div className={message.role === "user" ? (fullPage ? "max-w-[85%] rounded-3xl bg-muted px-5 py-3 text-[15px] leading-6 text-foreground sm:max-w-[75%]" : "max-w-[88%] rounded-3xl bg-muted px-4 py-2.5 text-sm leading-6 text-foreground") : `min-w-0 flex-1 rounded-2xl border border-primary/15 bg-card px-4 py-4 shadow-[0_8px_28px_-18px_color-mix(in_oklch,var(--primary)_38%,transparent)] ${fullPage ? "sm:px-6 sm:py-5" : "pt-3"}`}>
               {message.role === "assistant" ? <><AssistantAnswer text={message.text} spacious={fullPage} />{message.actions?.map((action, index) => <ChatActionView key={`${message.id}-${index}`} instanceId={`${message.id}-${index}`} action={action} busy={busy} onConfirm={() => void sendMessage("I confirm this order")} onFormSubmit={submitStructuredForm} onAddressSaved={() => {
                 const ordering = messages.some((item) => item.role === "user" && /\b(order|checkout|buy|purchase|cart)\b/i.test(item.text));
                 void sendMessage(ordering ? "My delivery address has been saved. Continue checkout using this address." : "My delivery address has been saved.");
@@ -154,7 +162,7 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
               {message.role === "assistant" && session?.role !== "user" && message.id !== "welcome" && <Link href="/user" onClick={() => setOpen(false)} className="mt-3 flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">Browse the user store <ChevronRight className="size-3.5" /></Link>}
             </div>
           </article>)}
-          {busy && <div className="mx-auto flex w-full max-w-3xl gap-3"><span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Sparkles className="size-4" /></span><div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin text-primary" /> Finding the right answer…</div></div>}
+          {busy && <div className="mx-auto flex w-full max-w-3xl gap-3" role="status" aria-live="polite"><span className="assistant-thinking-icon mt-1 grid size-10 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-md shadow-primary/20"><Sparkles className="size-5" /></span><div className="assistant-thinking-card flex min-h-14 flex-1 items-center gap-3 rounded-2xl border border-primary/20 bg-card px-4 py-3 text-sm font-medium text-foreground shadow-sm"><LoaderCircle className="size-4 shrink-0 animate-spin text-primary" /><span key={thinkingPhrase} className="assistant-phrase-in">{THINKING_PHRASES[thinkingPhrase]}<span className="assistant-thinking-dots ml-1" aria-hidden="true">…</span></span><span className="ml-auto hidden text-xs font-normal text-muted-foreground sm:inline">Just a moment</span></div></div>}
           {messages.length === 1 && <div className={`mx-auto grid w-full max-w-3xl grid-cols-1 gap-2 ${fullPage ? "sm:grid-cols-3" : "pl-11 sm:grid-cols-3"}`}><p className="col-span-full text-xs font-medium text-muted-foreground">Try asking</p>{STARTER_QUESTIONS.map((question) => <button key={question} onClick={() => void sendMessage(question)} className="flex items-center justify-between gap-2 rounded-2xl border border-border/70 bg-card px-4 py-3 text-left text-sm text-foreground transition hover:border-border hover:bg-muted/50">{question}<ChevronRight className="size-3.5 shrink-0 text-muted-foreground" /></button>)}</div>}
           </div>
         </div>

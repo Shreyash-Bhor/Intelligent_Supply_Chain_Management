@@ -97,7 +97,7 @@ function renderAnswerText(text: string) {
 
 export function AssistantAnswer({ text, spacious = false }: AssistantAnswerProps) {
   return (
-    <div className={`min-w-0 space-y-4 text-foreground [&_h3]:pt-1 [&_li]:leading-7 ${spacious ? "text-[15px] leading-7 [&_h3]:text-lg [&_table]:text-sm [&_pre]:text-sm" : "text-sm leading-7"}`}>
+    <div className={`assistant-answer min-w-0 space-y-4 text-foreground [&_h3]:pt-1 [&_li]:leading-7 ${spacious ? "text-[15px] leading-7 [&_h3]:text-lg [&_table]:text-sm [&_pre]:text-sm" : "text-sm leading-7"}`}>
       <div className="space-y-4">{renderAnswerText(text)}</div>
     </div>
   );

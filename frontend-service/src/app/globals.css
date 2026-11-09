@@ -76,36 +76,36 @@ body { min-height: 100vh; background: var(--background); color: var(--foreground
 
 :root {
   --radius: 0.75rem;
-  --background: oklch(0.975 0.012 94);
+  --background: oklch(0.955 0.025 96);
   --foreground: oklch(0.22 0.035 145);
-  --card: oklch(0.995 0.006 94);
+  --card: oklch(0.985 0.018 94);
   --card-foreground: oklch(0.22 0.035 145);
-  --popover: oklch(0.995 0.006 94);
+  --popover: oklch(0.985 0.018 94);
   --popover-foreground: oklch(0.22 0.035 145);
   --primary: oklch(0.39 0.085 137);
   --primary-foreground: oklch(0.98 0.01 94);
   --secondary: oklch(0.79 0.17 82);
   --secondary-foreground: oklch(0.22 0.055 72);
-  --muted: oklch(0.94 0.018 95);
+  --muted: oklch(0.92 0.03 95);
   --muted-foreground: oklch(0.48 0.025 140);
   --accent: oklch(0.93 0.075 94);
   --accent-foreground: oklch(0.27 0.04 140);
   --destructive: oklch(0.62 0.22 26);
-  --border: oklch(0.84 0.025 105);
-  --input: oklch(0.84 0.025 105);
+  --border: oklch(0.82 0.035 105);
+  --input: oklch(0.82 0.035 105);
   --ring: oklch(0.48 0.09 137);
   --chart-1: oklch(0.46 0.09 137);
   --chart-2: oklch(0.73 0.15 82);
   --chart-3: oklch(0.62 0.08 105);
   --chart-4: oklch(0.58 0.1 48);
   --chart-5: oklch(0.55 0.07 165);
-  --sidebar: oklch(0.95 0.018 95);
+  --sidebar: oklch(0.93 0.03 95);
   --sidebar-foreground: oklch(0.22 0.035 145);
   --sidebar-primary: oklch(0.39 0.085 137);
   --sidebar-primary-foreground: oklch(0.98 0.01 94);
-  --sidebar-accent: oklch(0.91 0.03 100);
+  --sidebar-accent: oklch(0.89 0.045 100);
   --sidebar-accent-foreground: oklch(0.22 0.035 145);
-  --sidebar-border: oklch(0.84 0.025 105);
+  --sidebar-border: oklch(0.82 0.035 105);
   --sidebar-ring: oklch(0.48 0.09 137);
 }
 
@@ -153,7 +153,21 @@ body { min-height: 100vh; background: var(--background); color: var(--foreground
 
 .assistant-chat {
   font-family: Arial, Helvetica, sans-serif;
+  background:
+    radial-gradient(ellipse at 12% 12%, color-mix(in oklch, var(--primary) 8%, transparent), transparent 34%),
+    radial-gradient(ellipse at 92% 75%, color-mix(in oklch, var(--secondary) 8%, transparent), transparent 32%),
+    var(--background);
 }
+.assistant-thinking-icon { animation: assistant-icon-pulse 2.4s ease-in-out infinite; }
+.assistant-thinking-card { animation: assistant-card-in 260ms ease-out both; }
+.assistant-phrase-in { display: inline-block; animation: assistant-phrase-in 340ms cubic-bezier(.2,.75,.25,1) both; }
+.assistant-thinking-dots { display: inline-block; animation: assistant-dots 1.2s steps(4, end) infinite; }
+.assistant-chat article:has(.assistant-answer) { animation: assistant-message-in 420ms cubic-bezier(.2,.75,.25,1) both; }
+@keyframes assistant-icon-pulse { 0%,100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 0%, transparent); } 50% { box-shadow: 0 0 0 7px color-mix(in oklch, var(--primary) 12%, transparent); } }
+@keyframes assistant-card-in { from { opacity: .65; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes assistant-phrase-in { from { opacity: 0; transform: translateY(5px); filter: blur(2px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+@keyframes assistant-dots { 0% { width: 0; } 100% { width: 1.2em; } }
+@keyframes assistant-message-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Native select menus are rendered by the browser, so tell them which palette to use. */
 select {
