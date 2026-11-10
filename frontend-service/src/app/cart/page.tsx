@@ -10,7 +10,6 @@ import { confirmCheckout, createCartOrder, createCustomerAddress, deleteCustomer
 import { formatCurrency } from "@/lib/userCatalog";
 import { QuantitySlider } from "@/components/user/QuantitySlider";
 import { formatCompactNumber } from "@/lib/numberFormat";
-import { formatCompactNumber } from "@/lib/numberFormat";
 
 const emptyAddress = { name: "", phone: "", address1: "", address2: "", city: "", region: "", postalCode: "" };
 
