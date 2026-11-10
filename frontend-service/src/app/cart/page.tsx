@@ -9,6 +9,8 @@ import { cartEventName, readCart, syncCart, updateCartQuantity, type CartLine } 
 import { confirmCheckout, createCartOrder, createCustomerAddress, deleteCustomerAddress, fetchCheckoutQuote, fetchCustomerAddresses, updateCustomerAddress, type CheckoutQuote, type CustomerOrder, type ShippingAddress } from "@/lib/api";
 import { formatCurrency } from "@/lib/userCatalog";
 import { QuantitySlider } from "@/components/user/QuantitySlider";
+import { formatCompactNumber } from "@/lib/numberFormat";
+import { formatCompactNumber } from "@/lib/numberFormat";
 
 const emptyAddress = { name: "", phone: "", address1: "", address2: "", city: "", region: "", postalCode: "" };
 
@@ -123,13 +125,13 @@ export default function CartPage() {
   const count = lines.reduce((sum, line) => sum + line.quantity, 0);
   return <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
     <Link href="/user" className="text-muted-foreground inline-flex items-center gap-2 text-sm hover:text-foreground"><ArrowLeft className="size-4"/> Continue shopping</Link>
-    <h1 className="mt-5 text-3xl font-semibold">Your cart <span className="text-muted-foreground text-lg font-normal">({count} items)</span></h1>
+    <h1 className="mt-5 text-3xl font-semibold">Your cart <span className="text-muted-foreground text-lg font-normal">({formatCompactNumber(count)} items)</span></h1>
     {order && <section role="status" className="mt-5 rounded-xl border border-emerald-600/30 bg-emerald-600/5 p-5"><h2 className="font-semibold">Order placed</h2><p className="mt-1 text-sm">Order {order.id} · {formatCurrency(Number(order.totalPrice), order.currency)} · Inventory reserved. Payment was not collected.</p><Link className="text-primary mt-3 inline-block text-sm underline" href={`/orders/${order.id}`}>View order</Link></section>}
     {error && <p role="alert" className="mt-4 rounded-md border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
     {notice && <p role="status" className="mt-3 text-sm text-emerald-700 dark:text-emerald-400">{notice}</p>}
     {!lines.length ? <section className="mt-8 rounded-2xl border border-dashed p-12 text-center"><ShoppingBag className="text-muted-foreground mx-auto size-10"/><h2 className="mt-3 text-xl font-semibold">Your cart is empty</h2><p className="text-muted-foreground mt-1 text-sm">Browse the catalog and add something you need.</p><Button asChild className="mt-5"><Link href="/user">Explore products</Link></Button></section> : <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
       <div className="space-y-3">{lines.map(({ product, quantity, unavailable }) => <article key={product.id} className="flex flex-col gap-4 rounded-xl border bg-card p-4 sm:flex-row sm:items-center">
-        <div className="min-w-0 flex-1"><p className="text-muted-foreground text-xs">SKU {product.sku}</p><h2 className="font-medium">{product.name}</h2><p className="mt-1 text-sm font-semibold">{formatCurrency(product.price, product.currency)}</p><p className="text-muted-foreground mt-1 text-xs">{unavailable ? "Unavailable; remove this item to continue." : `${product.availableQty} available`}</p></div>
+        <div className="min-w-0 flex-1"><p className="text-muted-foreground text-xs">SKU {product.sku}</p><h2 className="font-medium">{product.name}</h2><p className="mt-1 text-sm font-semibold">{formatCurrency(product.price, product.currency)}</p><p className="text-muted-foreground mt-1 text-xs">{unavailable ? "Unavailable; remove this item to continue." : `${formatCompactNumber(product.availableQty)} available`}</p></div>
         <div className="flex w-full items-end gap-4 sm:max-w-xs"><QuantitySlider label={`${product.name} quantity`} value={quantityDrafts[product.id] ?? quantity} max={Math.max(product.availableQty, quantity, 1)} disabled={unavailable} onValueChange={(next) => setQuantityDrafts((current) => ({ ...current, [product.id]: next }))} onValueCommit={(next) => { if (next !== quantity) void changeQuantity(product.id, next); }} /><Button variant="ghost" size="icon" aria-label={`Remove ${product.name}`} onClick={() => void changeQuantity(product.id, 0)}><Trash2 className="size-4"/></Button></div>
       </article>)}</div>
       <aside className="h-fit rounded-xl border bg-card p-5"><h2 className="font-semibold">Checkout</h2>

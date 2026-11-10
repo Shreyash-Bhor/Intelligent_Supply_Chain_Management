@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PackageCheck, ShoppingCart, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, type UserCatalogProduct } from "@/lib/userCatalog";
+import { formatCompactNumber } from "@/lib/numberFormat";
 import { QuantitySlider } from "./QuantitySlider";
 
 type Props = {
@@ -99,7 +100,7 @@ export function OrderDialog({ product, onAddToCart, onClose }: Props) {
                     Available now
                   </p>
                   <p className="text-lg font-semibold">
-                    {product.availableQty} units
+                    {formatCompactNumber(product.availableQty)} units
                   </p>
                 </div>
               </div>
@@ -110,7 +111,7 @@ export function OrderDialog({ product, onAddToCart, onClose }: Props) {
                 <div className="mt-3 flex gap-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
                   <PackageCheck className="size-5 shrink-0" />
                   <span>
-                    Only {product.availableQty} unit(s) are currently available. Checkout will recheck stock.
+                    Only {formatCompactNumber(product.availableQty)} unit(s) are currently available. Checkout will recheck stock.
                   </span>
                 </div>
               ) : null}

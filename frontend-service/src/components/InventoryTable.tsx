@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { InventoryItem } from "@/lib/api";
+import { formatCompactNumber } from "@/lib/numberFormat";
 
 type InventoryStatusFilter = "all" | "healthy" | "low";
 
@@ -89,7 +90,7 @@ export function InventoryTable({
                   <TableCell className="font-mono text-xs text-muted-foreground">{inventory.product.sku}</TableCell>
                   <TableCell>{inventory.warehouse.name}</TableCell>
                   <TableCell className="text-right">
-                    <div className="font-semibold tabular-nums">{inventory.availableQty}</div>
+                    <div className="font-semibold tabular-nums">{formatCompactNumber(inventory.availableQty)}</div>
                     <div className="bg-muted ml-auto mt-1 h-1.5 w-16 overflow-hidden rounded-full">
                       <div
                         className={isLowStock ? "h-full bg-rose-500" : "h-full bg-emerald-500"}
@@ -100,10 +101,10 @@ export function InventoryTable({
                     </div>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
-                    {inventory.reservedQty}
+                    {formatCompactNumber(inventory.reservedQty)}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
-                    {inventory.reorderQty}
+                    {formatCompactNumber(inventory.reorderQty)}
                   </TableCell>
                   <TableCell className="text-right">
                     {isLowStock ? (

@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { HistoricalPrice } from "@/lib/api";
+import { formatPriceWithCommas } from "@/lib/numberFormat";
 
 type PriceHistoryTableProps = {
   history: HistoricalPrice[];
@@ -56,14 +57,14 @@ export function PriceHistoryTable({ history }: PriceHistoryTableProps) {
                             className="size-3.5"
                             aria-hidden="true"
                           />
-                          {entry.oldPrice.toFixed(2)}
+                          {formatPriceWithCommas(entry.oldPrice)}
                         </span>
                       )}
                     </TableCell>
                     <TableCell>
                       <span className="inline-flex items-center gap-1 font-medium">
                         <IndianRupee className="size-3.5" aria-hidden="true" />
-                        {entry.newPrice.toFixed(2)}
+                        {formatPriceWithCommas(entry.newPrice)}
                       </span>
                     </TableCell>
                     <TableCell>

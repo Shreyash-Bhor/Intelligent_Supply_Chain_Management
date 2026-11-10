@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, Search, ShoppingCart, UserRound, BadgeCheck, Mail, LogOut } from "lucide-react";
+import { Menu, Search, ShoppingCart, UserRound, BadgeCheck, Mail, LogOut, Store, ClipboardList } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ModeToggle } from "./ModeToggle";
@@ -28,7 +28,7 @@ const MANAGER_LINKS = [
   { href: "/manager/orders", label: "Orders" },
 ];
 
-const USER_LINKS = [{ href: "/user", label: "Shop" }, { href: "/orders", label: "Orders" }];
+const USER_LINKS = [{ href: "/user", label: "Shop", icon: Store }];
 
 export function Navbar() {
   const pathname = usePathname();
@@ -76,8 +76,6 @@ export function Navbar() {
           { href: "/login/manager", label: "Manager sign in" },
           { href: "/signup/manager", label: "Manager access" },
         ];
-
-  const showLogout = Boolean(session);
 
   const logout = () => {
     window.localStorage.removeItem("warehouse_manager_session");
@@ -130,6 +128,7 @@ export function Navbar() {
                           : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
+                  {"icon" in link && <link.icon className="mr-1.5 inline size-4 align-[-3px]" aria-hidden="true" />}
                   {link.label}
                 </Link>
               );
@@ -144,13 +143,13 @@ export function Navbar() {
 
         <div className="flex items-center gap-2">
           {session?.role === "user" && <>
-            <Link href="/orders" className="hidden items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted sm:flex"><UserRound className="size-4" /> Orders</Link>
-            <Link href="/cart" aria-label={`Shopping cart, ${cartCount} items`} className="relative inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"><ShoppingCart className="size-4" /><span className="hidden sm:inline">Cart</span>{cartCount > 0 && <span className="bg-primary text-primary-foreground absolute -right-2 -top-2 grid size-5 place-items-center rounded-full text-[11px] font-semibold">{cartCount > 99 ? "99+" : cartCount}</span>}</Link>
+            <Link href="/orders" className="inline-flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"><ClipboardList className="size-4" aria-hidden="true" /><span>Orders</span></Link>
+            <Link href="/cart" aria-label={`Shopping cart, ${cartCount} items`} className="relative inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"><ShoppingCart className="size-4" aria-hidden="true" /><span>Cart</span>{cartCount > 0 && <span className="bg-primary text-primary-foreground absolute -right-2 -top-2 grid size-5 place-items-center rounded-full text-[11px] font-semibold">{cartCount > 99 ? "99+" : cartCount}</span>}</Link>
           </>}
           {session && <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="Open user profile" className="rounded-full">
-                <UserRound className="size-4" />
+              <Button variant="outline" size="sm" aria-label="Open user profile" className="gap-2 rounded-full px-3">
+                <UserRound className="size-4" /><span className="hidden sm:inline">Account</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-72 p-2">
@@ -162,7 +161,6 @@ export function Navbar() {
                 <p className="flex items-center gap-2"><Mail className="size-3.5" />{profile?.email || session.email}</p>
                 <p className="flex items-center gap-2"><BadgeCheck className="size-3.5" />{session.role === "warehouse_manager" ? "Warehouse manager" : "Shopper account"}</p>
               </div>
-              {session.role === "user" && <DropdownMenuItem asChild><Link href="/orders"><UserRound />Your orders</Link></DropdownMenuItem>}
               <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive"><LogOut />Sign out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>}
@@ -180,20 +178,11 @@ export function Navbar() {
             <DropdownMenuContent align="end" className="w-44">
               {navLinks.map((link) => (
                 <DropdownMenuItem key={link.href} asChild>
-                  <Link href={link.href}>{link.label}</Link>
+                  <Link href={link.href}>{"icon" in link && <link.icon className="size-4" aria-hidden="true" />}{link.label}</Link>
                 </DropdownMenuItem>
               ))}
-              {showLogout ? (
-                <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
-              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
-
-          {showLogout ? (
-            <Button variant="outline" size="sm" onClick={logout}>
-              Logout
-            </Button>
-          ) : null}
 
           <ModeToggle />
         </div>

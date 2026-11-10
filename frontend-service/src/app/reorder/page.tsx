@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/Pagination";
 import { Badge } from "@/components/ui/badge";
+import { formatCompactNumber } from "@/lib/numberFormat";
 import {
   Table,
   TableBody,
@@ -177,13 +178,13 @@ export default function ReorderPage() {
                 ? "Open Reorder Tickets"
                 : "History Rows"}
             </p>
-            <p className="text-2xl font-semibold">{totals.totalOrders}</p>
+            <p className="text-2xl font-semibold">{formatCompactNumber(totals.totalOrders)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground text-sm">Requested Units</p>
-            <p className="text-2xl font-semibold">{totals.totalQty}</p>
+            <p className="text-2xl font-semibold">{formatCompactNumber(totals.totalQty)}</p>
           </CardContent>
         </Card>
       </section>
@@ -274,7 +275,7 @@ export default function ReorderPage() {
                           {inventory?.warehouse.name ?? "-"}
                         </TableCell>
 
-                        <TableCell>{reorder.requestedQty}</TableCell>
+                        <TableCell>{formatCompactNumber(reorder.requestedQty)}</TableCell>
 
                         <TableCell>
                           <Badge variant="secondary">{reorder.status}</Badge>

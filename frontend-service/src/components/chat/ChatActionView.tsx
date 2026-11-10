@@ -8,6 +8,7 @@ import { createCustomerAddress, fetchCustomerAddresses, fetchCustomerCart, fetch
 import type { ChatAction } from "@/components/chat/protocol";
 import { StructuredFormView } from "@/components/chat/StructuredFormView";
 import { QuantitySlider } from "@/components/user/QuantitySlider";
+import { formatCompactNumber, formatPriceWithCommas } from "@/lib/numberFormat";
 
 type AddressFormData = { addresses: ShippingAddress[]; profile: CustomerProfile | null; addressError?: string };
 const addressFormCache = new Map<string, Promise<AddressFormData>>();
@@ -169,7 +170,7 @@ export function ChatActionView({ action, onConfirm, busy, onFormSubmit, onAddres
       </div>
       <div className="min-w-0 flex-1 space-y-3 p-4 sm:p-5">
         <div><h3 className="break-words text-lg font-semibold leading-snug">{action.name}</h3><p className="mt-1 break-words text-sm text-muted-foreground">SKU {action.sku}{action.category ? ` · ${action.category}` : ""}</p></div>
-        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1"><p className="text-base font-semibold">{action.price !== null && action.currency ? `${action.price} ${action.currency}` : "Current price unavailable"}</p><p className="text-sm text-muted-foreground">{action.availableQty === null ? "Availability could not be verified" : action.availableQty > 0 ? `${action.availableQty} available` : "Currently out of stock"}</p></div>
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1"><p className="text-base font-semibold">{action.price !== null && action.currency ? `${formatPriceWithCommas(Number(action.price))} ${action.currency}` : "Current price unavailable"}</p><p className="text-sm text-muted-foreground">{action.availableQty === null ? "Availability could not be verified" : action.availableQty > 0 ? `${formatCompactNumber(action.availableQty)} available` : "Currently out of stock"}</p></div>
         {action.discount && <p className="w-fit rounded-md bg-emerald-500/10 px-2.5 py-1 text-sm font-medium text-emerald-700 dark:text-emerald-400">{action.discount}</p>}
         {action.description && <p className="whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">{action.description}</p>}
         {Object.keys(action.attributes).length > 0 && <dl className="grid gap-x-5 gap-y-2 border-t border-border/70 pt-3 text-sm sm:grid-cols-2">{Object.entries(action.attributes).map(([key, value]) => <div key={key} className="grid min-w-0 grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-2"><dt className="break-words text-muted-foreground">{key}</dt><dd className="break-words font-medium">{String(value)}</dd></div>)}</dl>}

@@ -3,6 +3,7 @@ import { Eye, ShoppingCart, ShoppingBag } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, type UserCatalogProduct } from "@/lib/userCatalog";
+import { formatCompactNumber } from "@/lib/numberFormat";
 
 type Props = { product: UserCatalogProduct; onQuickView: () => void; onAdd: () => void };
 
@@ -18,7 +19,7 @@ export function ProductCard({ product, onQuickView, onAdd }: Props) {
           <button type="button" onClick={onQuickView} className="mt-1 text-left font-medium leading-snug hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2">{product.name}</button>
           <p className="mt-2 text-lg font-semibold">{formatCurrency(product.price, product.currency)}</p>
           <p className={`mt-1 text-xs ${product.availableQty ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>
-            {product.availableQty ? `${product.availableQty} available` : "Currently unavailable"}
+            {product.availableQty ? `${formatCompactNumber(product.availableQty)} available` : "Currently unavailable"}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2">

@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/Pagination";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatCompactNumber } from "@/lib/numberFormat";
 import {
   Table,
   TableBody,
@@ -316,7 +317,7 @@ export default function InventoryPage() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground text-sm">Inventory Records</p>
-            <p className="text-2xl font-semibold">{inventoryStats.total}</p>
+            <p className="text-2xl font-semibold">{formatCompactNumber(inventoryStats.total)}</p>
           </CardContent>
         </Card>
         <Card>

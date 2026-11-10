@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { formatCompactNumber } from "@/lib/numberFormat";
 
 type PaginationProps = {
   page: number;
@@ -45,7 +46,7 @@ export function Pagination({
       )}
     >
       <p className="text-muted-foreground text-sm">
-        Showing {start}–{end} of {totalItems}
+        Showing {formatCompactNumber(start)}–{formatCompactNumber(end)} of {formatCompactNumber(totalItems)}
       </p>
       <div className="flex items-center gap-1">
         <Button

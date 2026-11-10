@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowUpRight, CircleCheck, PackageSearch, ShieldAlert } from "lucide-react";
 import type { DashboardSummary } from "@/lib/api";
+import { formatCompactNumber } from "@/lib/numberFormat";
 
 type Props = {
   summary: DashboardSummary | null;
@@ -30,7 +31,7 @@ export function OperationsPulse({ summary, loading = false }: Props) {
     {
       label: "Fulfillment health",
       value: `${summary?.fillRate ?? 0}%`,
-      detail: `${summary?.totalUnits?.toLocaleString() ?? 0} available units`,
+      detail: `${formatCompactNumber(summary?.totalUnits ?? 0)} available units`,
       href: "/inventory",
       icon: CircleCheck,
       tone: "text-emerald-600 bg-emerald-500/10 dark:text-emerald-300",
@@ -53,7 +54,7 @@ export function OperationsPulse({ summary, loading = false }: Props) {
             <div className="min-w-0 flex-1">
               <p className="text-muted-foreground text-xs font-medium">{card.label}</p>
               <p className="mt-0.5 text-xl font-semibold tabular-nums">
-                {loading ? "—" : typeof card.value === "number" ? card.value.toLocaleString() : card.value}
+                {loading ? "—" : typeof card.value === "number" ? formatCompactNumber(card.value) : card.value}
               </p>
               <p className="text-muted-foreground truncate text-xs">{card.detail}</p>
             </div>

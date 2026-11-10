@@ -2,6 +2,7 @@
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { cn } from "@/lib/utils";
+import { formatCompactNumber } from "@/lib/numberFormat";
 
 type BreakdownItem = { name: string; value: number };
 
@@ -67,7 +68,7 @@ export function DonutBreakdownChart({
               dominantBaseline="middle"
               className="fill-foreground text-2xl font-semibold"
             >
-              {total.toLocaleString()}
+              {formatCompactNumber(total)}
             </text>
             <text
               x="50%"
@@ -79,7 +80,7 @@ export function DonutBreakdownChart({
               total
             </text>
             <Tooltip
-              formatter={(value) => [Number(value).toLocaleString(), "Items"]}
+              formatter={(value) => [formatCompactNumber(Number(value)), "Items"]}
               contentStyle={{
                 borderRadius: 12,
                 border: "1px solid var(--border)",
@@ -100,7 +101,7 @@ export function DonutBreakdownChart({
             />
             <span className="text-muted-foreground truncate capitalize">{item.name}</span>
             <span className={cn("ml-auto font-medium tabular-nums", item.value === 0 && "text-muted-foreground")}>
-              {item.value.toLocaleString()}
+              {formatCompactNumber(item.value)}
             </span>
           </div>
         ))}

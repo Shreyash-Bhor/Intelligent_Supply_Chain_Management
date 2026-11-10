@@ -3,6 +3,7 @@ import { IndianRupee, Package2, PencilLine, Save } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { Product, ProductPrice } from "@/lib/api";
+import { formatPriceWithCommas } from "@/lib/numberFormat";
 
 type PriceEditorCardProps = {
   product: Product | null;
@@ -45,7 +46,7 @@ export function PriceEditorCard({
               <p className="mt-2 flex items-center gap-1.5 font-medium">
                 <IndianRupee className="size-4" aria-hidden="true" />
                 Current Price:{" "}
-                {currentPrice ? currentPrice.price.toFixed(2) : "Not set"}
+                {currentPrice ? formatPriceWithCommas(currentPrice.price) : "Not set"}
               </p>
             </div>
             <form

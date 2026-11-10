@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { formatCompactNumber } from "@/lib/numberFormat";
 
 type RiskItem = {
   id: string;
@@ -65,7 +66,7 @@ export function RiskItemsPanel({
           <div className="text-right text-xs">
             <Badge variant="destructive">Deficit {item.deficit}</Badge>
             <p className="text-muted-foreground mt-1 text-xs">
-              {item.availableQty} / {item.reorderQty} target
+              {formatCompactNumber(item.availableQty)} / {formatCompactNumber(item.reorderQty)} target
             </p>
           </div>
         </div>

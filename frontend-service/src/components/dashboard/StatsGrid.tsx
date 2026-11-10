@@ -3,6 +3,7 @@
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCompactNumber } from "@/lib/numberFormat";
 
 type StatItem = {
   title: string;
@@ -70,5 +71,5 @@ function CountUp({ value }: { value: number }) {
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
   }, [value]);
-  return <>{display.toLocaleString()}</>;
+  return <>{formatCompactNumber(display)}</>;
 }

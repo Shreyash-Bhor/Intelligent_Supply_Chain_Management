@@ -52,6 +52,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatINR, formatINRCompact } from "@/lib/currency";
+import { formatCompactNumber } from "@/lib/numberFormat";
 
 const statusNames: Record<string, string> = {
   PENDING_PAYMENT: "Pending",
@@ -190,7 +191,7 @@ function CountUp({
     <>
       {currency
         ? formatINR(display)
-        : Math.round(display).toLocaleString("en-IN")}
+        : formatCompactNumber(Math.round(display))}
     </>
   );
 }
@@ -524,7 +525,7 @@ export default function ManagerOrdersPage() {
                       formatter={(value, name) => [
                         name === "revenue"
                           ? formatINR(Number(value))
-                          : Number(value).toLocaleString("en-IN"),
+                          : formatCompactNumber(Number(value)),
                         name === "revenue" ? "Revenue" : "Orders",
                       ]}
                     />
@@ -597,7 +598,7 @@ export default function ManagerOrdersPage() {
                       <Tooltip
                         contentStyle={tooltipStyle}
                         formatter={(value, name) => [
-                          `${Number(value).toLocaleString("en-IN")} orders`,
+                          `${formatCompactNumber(Number(value))} orders`,
                           name,
                         ]}
                       />
@@ -605,7 +606,7 @@ export default function ManagerOrdersPage() {
                   </ResponsiveContainer>
                   <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-2xl font-semibold tabular-nums">
-                      {(analytics?.totalOrders ?? 0).toLocaleString("en-IN")}
+                      {formatCompactNumber(analytics?.totalOrders ?? 0)}
                     </span>
                     <span className="text-muted-foreground text-[11px]">
                       total orders
@@ -638,7 +639,7 @@ export default function ManagerOrdersPage() {
                         {item.name}
                       </span>
                       <span className="font-medium tabular-nums">
-                        {item.value.toLocaleString("en-IN")}{" "}
+                        {formatCompactNumber(item.value)}{" "}
                         <span className="text-muted-foreground">
                           ({total ? Math.round((item.value / total) * 100) : 0}
                           %)
@@ -688,7 +689,7 @@ export default function ManagerOrdersPage() {
                     <Tooltip
                       contentStyle={tooltipStyle}
                       formatter={(value) => [
-                        `${Number(value).toLocaleString("en-IN")} units`,
+                        `${formatCompactNumber(Number(value))} units`,
                         "Quantity",
                       ]}
                     />
@@ -746,7 +747,7 @@ export default function ManagerOrdersPage() {
                     <Tooltip
                       contentStyle={tooltipStyle}
                       formatter={(value) => [
-                        `${Number(value).toLocaleString("en-IN")} orders`,
+                        `${formatCompactNumber(Number(value))} orders`,
                         "Orders",
                       ]}
                     />
@@ -1039,7 +1040,7 @@ export default function ManagerOrdersPage() {
                   </span>{" "}
                   of{" "}
                   <span className="text-foreground font-medium">
-                    {table.pagination.total.toLocaleString("en-IN")}
+                    {formatCompactNumber(table.pagination.total)}
                   </span>{" "}
                   orders{" "}
                   <span className="hidden sm:inline">
@@ -1170,7 +1171,7 @@ export default function ManagerOrdersPage() {
                           {item.product.name}
                         </p>
                         <p className="text-muted-foreground mt-1 text-xs">
-                          SKU {item.product.sku} · Qty {item.quantity} ·{" "}
+                          SKU {item.product.sku} · Qty {formatCompactNumber(item.quantity)} ·{" "}
                           {formatINR(item.unitPrice)} each
                         </p>
                       </div>
@@ -1204,7 +1205,7 @@ export default function ManagerOrdersPage() {
                           {allocation.inventory.warehouse.pincode}
                         </p>
                         <p className="text-primary mt-2 text-xs font-medium">
-                          {allocation.quantity} units allocated
+                          {formatCompactNumber(allocation.quantity)} units allocated
                         </p>
                       </div>
                     ))

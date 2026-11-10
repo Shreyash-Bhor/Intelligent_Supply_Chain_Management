@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   ArrowUp, Check, ChevronRight, LoaderCircle, PackageSearch,
   RotateCcw, Sparkles, X, ShoppingCart, Store, ClipboardList,
+  Maximize2, Minimize2, Grip,
 } from "lucide-react";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { fetchUserDashboardProducts, type UserInventoryProduct } from "@/lib/api";
@@ -15,10 +16,22 @@ import { parseChatPayload, restoreMessages, type ChatAction } from "@/components
 type Message = { id: string; role: "assistant" | "user"; text: string; actions?: ChatAction[]; suggestions?: string[]; retryQuery?: string };
 const STARTER_QUESTIONS = ["Show me products in Electronics", "Find a product by name or SKU", "How does ordering work?"];
 const THINKING_PHRASES = ["Checking the catalog", "Looking across live stock", "Finding a good match", "Putting the details together"];
+const LAUNCHER_POSITION_KEY = "supplysync-assistant-launcher-position";
+type LauncherPosition = { right: number; bottom: number };
+
+function clampLauncherPosition(position: LauncherPosition, width = 250, height = 64): LauncherPosition {
+  return {
+    right: Math.min(Math.max(position.right, 8), Math.max(8, window.innerWidth - width - 8)),
+    bottom: Math.min(Math.max(position.bottom, 8), Math.max(8, window.innerHeight - height - 8)),
+  };
+}
 
 export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
   const { session, hydrated } = useAuthSession();
   const [open, setOpen] = useState(fullPage);
+  const [expanded, setExpanded] = useState(false);
+  const [launcherPosition, setLauncherPosition] = useState<LauncherPosition>({ right: 20, bottom: 20 });
+  const [launcherPositionReady, setLauncherPositionReady] = useState(false);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [thinkingPhrase, setThinkingPhrase] = useState(0);
@@ -30,6 +43,36 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
   const listRef = useRef<HTMLDivElement>(null);
   const catalogToken = session?.role === "user" ? session.token : undefined;
   const restored = useRef(false);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const launcherDrag = useRef<{ pointerId: number; x: number; y: number; right: number; bottom: number; moved: boolean } | null>(null);
+  const suppressLauncherClick = useRef(false);
+  const isFullscreen = fullPage || expanded;
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(LAUNCHER_POSITION_KEY);
+      if (saved) {
+        const position = JSON.parse(saved) as LauncherPosition;
+        if (Number.isFinite(position.right) && Number.isFinite(position.bottom)) setLauncherPosition(clampLauncherPosition(position));
+      }
+    } catch { /* Use the default launcher position if saved settings are unavailable. */ }
+    setLauncherPositionReady(true);
+    const clampOnResize = () => setLauncherPosition((current) => clampLauncherPosition(current, launcherRef.current?.offsetWidth, launcherRef.current?.offsetHeight));
+    window.addEventListener("resize", clampOnResize);
+    return () => window.removeEventListener("resize", clampOnResize);
+  }, []);
+
+  useEffect(() => {
+    if (!launcherPositionReady) return;
+    try { window.localStorage.setItem(LAUNCHER_POSITION_KEY, JSON.stringify(launcherPosition)); } catch { /* The launcher remains adjustable for this session. */ }
+  }, [launcherPosition, launcherPositionReady]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [expanded]);
 
   useEffect(() => {
     if (!busy) { setThinkingPhrase(0); return; }
@@ -105,6 +148,11 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
     void sendMessage();
   }
 
+  function closeAssistant() {
+    setOpen(false);
+    setExpanded(false);
+  }
+
   async function submitStructuredForm(action: Extract<ChatAction, { type: "structured_form" }>, values: Record<string, string | number | boolean>) {
     if (action.action === "show_product_filters") {
       const filters = Object.fromEntries(Object.entries(values).filter(([key, value]) => {
@@ -122,13 +170,14 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
 
   return (
     <>
-      {!fullPage && !open && <button type="button" onClick={() => setOpen(true)} aria-label="Open shopping assistant" className="fixed bottom-5 right-5 z-[60] flex items-center gap-3 rounded-full bg-primary px-4 py-3 text-primary-foreground shadow-xl shadow-primary/25 transition hover:-translate-y-0.5 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30">
+      {!fullPage && !open && <button ref={launcherRef} type="button" onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); launcherDrag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, ...launcherPosition, moved: false }; }} onPointerMove={(event) => { const drag = launcherDrag.current; if (!drag || drag.pointerId !== event.pointerId) return; const dx = event.clientX - drag.x; const dy = event.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 6) drag.moved = true; if (drag.moved) setLauncherPosition(clampLauncherPosition({ right: drag.right - dx, bottom: drag.bottom + dy }, event.currentTarget.offsetWidth, event.currentTarget.offsetHeight)); }} onPointerUp={(event) => { const drag = launcherDrag.current; if (drag?.pointerId === event.pointerId) { suppressLauncherClick.current = drag.moved; launcherDrag.current = null; } }} onPointerCancel={() => { launcherDrag.current = null; }} onClick={() => { if (suppressLauncherClick.current) { suppressLauncherClick.current = false; return; } setOpen(true); }} aria-label="Open shopping assistant. Drag to reposition." title="Drag to reposition" style={{ right: launcherPosition.right, bottom: launcherPosition.bottom }} className="fixed z-[60] flex touch-none select-none cursor-grab items-center gap-3 rounded-full bg-primary px-4 py-3 text-primary-foreground shadow-xl shadow-primary/25 transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-2xl active:cursor-grabbing focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30">
         <span className="relative grid size-9 place-items-center rounded-full bg-white/15"><Sparkles className="size-4" /><span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-primary bg-emerald-300" /></span>
         <span className="pr-1 text-left"><span className="block text-sm font-semibold">Ask SupplySync</span><span className="block text-[11px] text-primary-foreground/75">Your product assistant</span></span>
+        <Grip className="size-4 text-primary-foreground/65" aria-hidden="true" />
       </button>}
 
-      <aside aria-label="SupplySync shopping assistant" aria-hidden={!open} className={fullPage ? "assistant-chat relative flex h-[100dvh] w-full flex-col bg-background text-foreground" : `fixed inset-y-0 right-0 z-[70] flex w-full flex-col border-l border-border/70 bg-background shadow-2xl transition-transform duration-300 sm:w-[min(760px,calc(100%-2rem))] ${open ? "translate-x-0" : "pointer-events-none translate-x-full"}`}>
-        <header className={fullPage ? "sticky top-0 z-10 flex min-h-16 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur sm:px-6" : "relative overflow-hidden border-b border-border/70 bg-card px-5 pb-5 pt-5"}>
+      <aside aria-label="SupplySync shopping assistant" aria-hidden={!open} className={fullPage ? "assistant-chat relative flex h-[100dvh] w-full flex-col bg-background text-foreground" : expanded ? "assistant-chat fixed inset-0 z-[70] flex h-[100dvh] w-full flex-col text-foreground" : `fixed inset-y-0 right-0 z-[70] flex w-full flex-col border-l border-border/70 bg-background shadow-2xl transition-transform duration-300 sm:w-[min(760px,calc(100%-2rem))] ${open ? "translate-x-0" : "pointer-events-none translate-x-full"}`}>
+        <header className={isFullscreen ? "sticky top-0 z-10 flex min-h-16 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur sm:px-6" : "relative overflow-hidden border-b border-border/70 bg-card px-5 pb-5 pt-5"}>
           {!fullPage && <div className="pointer-events-none absolute -right-10 -top-16 size-44 rounded-full bg-primary/10 blur-3xl" />}
           <div className="relative grid w-full grid-cols-[1fr_auto] items-center gap-x-1 gap-y-2 sm:grid-cols-[1fr_auto_1fr]">
             <div className="flex items-center gap-3">
@@ -144,7 +193,8 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
             </nav>
             <div className="col-start-2 row-start-1 flex items-center justify-end gap-1 sm:col-start-3">
               <button type="button" onClick={() => { conversationId.current = crypto.randomUUID(); setMessages([{ id: crypto.randomUUID(), role: "assistant", text: "Hi there! I’m SupplySync’s shopping assistant. Tell me what you’re looking for, or ask me about products, stock, and ordering." }]); }} aria-label="Start a new conversation" className="grid size-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><RotateCcw className="size-4" /></button>
-              {!fullPage && <button type="button" onClick={() => setOpen(false)} aria-label="Close assistant" className="grid size-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><X className="size-4" /></button>}
+              {!fullPage && <button type="button" onClick={() => setExpanded((current) => !current)} aria-label={expanded ? "Exit fullscreen" : "Switch to fullscreen"} title={expanded ? "Exit fullscreen" : "Switch to fullscreen"} className="grid size-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground">{expanded ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}</button>}
+              {!fullPage && <button type="button" onClick={closeAssistant} aria-label="Close assistant" className="grid size-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><X className="size-4" /></button>}
             </div>
           </div>
           {!fullPage && <div className="relative mt-4 flex items-center gap-2 rounded-xl border border-border/60 bg-background/80 px-3 py-2 text-xs text-muted-foreground"><span className="grid size-6 place-items-center rounded-md bg-primary/10 text-primary"><Check className="size-3.5" /></span>Answers grounded in your supply catalog</div>}
@@ -159,7 +209,7 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
                 const ordering = messages.some((item) => item.role === "user" && /\b(order|checkout|buy|purchase|cart)\b/i.test(item.text));
                 void sendMessage(ordering ? "My delivery address has been saved. Continue checkout using this address." : "My delivery address has been saved.");
               }} />)}{message.suggestions?.length && !message.retryQuery ? <div className="mt-3 flex flex-wrap gap-2" aria-label="Suggested replies">{message.suggestions.map((reply) => <button key={reply} type="button" disabled={busy} onClick={() => void sendMessage(reply)} className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-left text-xs font-medium text-primary transition hover:border-primary/40 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50">{reply}</button>)}</div> : null}{message.retryQuery && <button type="button" disabled={busy} onClick={() => void sendMessage(message.retryQuery)} className="mt-3 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium hover:bg-muted disabled:opacity-50"><RotateCcw className="size-3.5"/>Retry request</button>}</> : <p className="whitespace-pre-wrap">{message.text}</p>}
-              {message.role === "assistant" && session?.role !== "user" && message.id !== "welcome" && <Link href="/user" onClick={() => setOpen(false)} className="mt-3 flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">Browse the user store <ChevronRight className="size-3.5" /></Link>}
+              {message.role === "assistant" && session?.role !== "user" && message.id !== "welcome" && <Link href="/user" onClick={closeAssistant} className="mt-3 flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">Browse the user store <ChevronRight className="size-3.5" /></Link>}
             </div>
           </article>)}
           {busy && <div className="mx-auto flex w-full max-w-3xl gap-3" role="status" aria-live="polite"><span className="assistant-thinking-icon mt-1 grid size-10 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-md shadow-primary/20"><Sparkles className="size-5" /></span><div className="assistant-thinking-card flex min-h-14 flex-1 items-center gap-3 rounded-2xl border border-primary/20 bg-card px-4 py-3 text-sm font-medium text-foreground shadow-sm"><LoaderCircle className="size-4 shrink-0 animate-spin text-primary" /><span key={thinkingPhrase} className="assistant-phrase-in">{THINKING_PHRASES[thinkingPhrase]}<span className="assistant-thinking-dots ml-1" aria-hidden="true">…</span></span><span className="ml-auto hidden text-xs font-normal text-muted-foreground sm:inline">Just a moment</span></div></div>}
@@ -168,7 +218,7 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
         </div>
 
         <footer className={fullPage ? "sticky bottom-0 z-10 shrink-0 bg-background px-4 pb-3 pt-3 sm:px-6 sm:pb-5" : "border-t border-border/70 bg-background px-4 pb-4 pt-3"}>
-          {session?.role === "user" && products.length > 0 && <Link href="/user" onClick={() => setOpen(false)} className="mb-2 flex items-center gap-2 rounded-lg px-1 py-1 text-[11px] text-muted-foreground transition hover:text-primary"><PackageSearch className="size-3.5" />{products.length} products in your store<span className="ml-auto">Browse <ChevronRight className="inline size-3" /></span></Link>}
+          {session?.role === "user" && products.length > 0 && <Link href="/user" onClick={closeAssistant} className="mb-2 flex items-center gap-2 rounded-lg px-1 py-1 text-[11px] text-muted-foreground transition hover:text-primary"><PackageSearch className="size-3.5" />{products.length} products in your store<span className="ml-auto">Browse <ChevronRight className="inline size-3" /></span></Link>}
           <form onSubmit={handleSubmit} className={fullPage ? "mx-auto flex max-w-3xl items-end gap-2 rounded-[28px] border border-secondary/70 bg-card px-3 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition focus-within:border-secondary focus-within:ring-2 focus-within:ring-secondary/30" : "flex items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10"}>
             <label className="sr-only" htmlFor="rag-chat-input">Message the assistant</label><textarea id="rag-chat-input" rows={1} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} placeholder="Message SupplySync" className={fullPage ? "max-h-48 min-h-11 flex-1 resize-none bg-transparent px-3 py-3 text-[15px] leading-6 outline-none placeholder:text-muted-foreground" : "max-h-28 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground"} />
             <button type="submit" disabled={!draft.trim() || busy} aria-label="Send message" className={fullPage ? "mb-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-secondary-foreground transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-30" : "grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"}><ArrowUp className="size-4" /></button>
@@ -176,8 +226,7 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
           <p className="mt-2 text-center text-[10px] text-muted-foreground">AI can make mistakes. Check product details before ordering.</p>
         </footer>
       </aside>
-      {!fullPage && open && <button aria-label="Close assistant panel" onClick={() => setOpen(false)} className="fixed inset-0 z-[65] bg-black/20 backdrop-blur-[1px] sm:bg-transparent sm:backdrop-blur-none" />}
-      {!fullPage && open && <button onClick={() => setOpen(false)} className="fixed bottom-5 right-5 z-[60] grid size-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-xl sm:hidden" aria-label="Close assistant"><X className="size-5" /></button>}
+      {!fullPage && open && <button aria-label="Close assistant panel" onClick={closeAssistant} className="fixed inset-0 z-[65] bg-black/20 backdrop-blur-[1px] sm:bg-transparent sm:backdrop-blur-none" />}
     </>
   );
 }

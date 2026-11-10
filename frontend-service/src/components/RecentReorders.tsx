@@ -1,6 +1,7 @@
 "use client";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { formatCompactNumber } from "@/lib/numberFormat";
 
 type Reorder = {
   id: string;
@@ -79,7 +80,7 @@ export function RecentReorders({
             <div className="ml-auto flex items-center gap-3">
               <div className="text-right text-xs">
                 <p className="text-sm font-semibold">
-                  {item.requestedQty} units
+                  {formatCompactNumber(item.requestedQty)} units
                 </p>
                 <p className="text-muted-foreground">
                   {new Date(item.createdAt).toLocaleDateString()}
