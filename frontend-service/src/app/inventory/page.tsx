@@ -45,7 +45,9 @@ export default function InventoryPage() {
   const [session, setSession] = useState<ManagerSession | null>(null);
   const [inventories, setInventories] = useState<InventoryItem[]>([]);
   const [inventoryTotal, setInventoryTotal] = useState(0);
-  const [products, setProducts] = useState<Array<Pick<Product, "id" | "name" | "sku">>>([]);
+  const [products, setProducts] = useState<
+    Array<Pick<Product, "id" | "name" | "sku">>
+  >([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,8 @@ export default function InventoryPage() {
   const [productId, setProductId] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
   const [productQuery, setProductQuery] = useState("");
-  const [debouncedCreateProductQuery, setDebouncedCreateProductQuery] = useState("");
+  const [debouncedCreateProductQuery, setDebouncedCreateProductQuery] =
+    useState("");
   const [warehouseQuery, setWarehouseQuery] = useState("");
   const [availableQty, setAvailableQty] = useState("0");
   const [reservedQty, setReservedQty] = useState("0");
@@ -123,7 +126,8 @@ export default function InventoryPage() {
         err instanceof Error ? err.message : "Failed to load inventory data",
       );
     } finally {
-      if (requestSequence === inventoryRequestSequence.current) setLoading(false);
+      if (requestSequence === inventoryRequestSequence.current)
+        setLoading(false);
     }
   }, [session, page, warehouseFilter, debouncedProductSearch]);
 
@@ -145,11 +149,14 @@ export default function InventoryPage() {
     }
     void searchProducts(debouncedCreateProductQuery)
       .then((matches) => {
-        if (requestSequence === productLookupSequence.current) setProducts(matches);
+        if (requestSequence === productLookupSequence.current)
+          setProducts(matches);
       })
       .catch((err: unknown) => {
         if (requestSequence === productLookupSequence.current) {
-          setError(err instanceof Error ? err.message : "Failed to search products");
+          setError(
+            err instanceof Error ? err.message : "Failed to search products",
+          );
         }
       });
   }, [session, debouncedCreateProductQuery]);
@@ -176,13 +183,18 @@ export default function InventoryPage() {
   }, [inventories, inventoryTotal]);
 
   const filteredInventories = useMemo(
-    () => inventories
-      .filter((inventory) => warehouseFilter === "all" || inventory.warehouseId === warehouseFilter)
-      .filter((inventory) => {
-        if (stockStatusFilter === "all") return true;
-        const low = inventory.availableQty <= inventory.reorderQty;
-        return stockStatusFilter === "low" ? low : !low;
-      }),
+    () =>
+      inventories
+        .filter(
+          (inventory) =>
+            warehouseFilter === "all" ||
+            inventory.warehouseId === warehouseFilter,
+        )
+        .filter((inventory) => {
+          if (stockStatusFilter === "all") return true;
+          const low = inventory.availableQty <= inventory.reorderQty;
+          return stockStatusFilter === "low" ? low : !low;
+        }),
     [inventories, warehouseFilter, stockStatusFilter],
   );
   const productOptionMap = useMemo(() => {
@@ -317,7 +329,9 @@ export default function InventoryPage() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground text-sm">Inventory Records</p>
-            <p className="text-2xl font-semibold">{formatCompactNumber(inventoryStats.total)}</p>
+            <p className="text-2xl font-semibold">
+              {formatCompactNumber(inventoryStats.total)}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -341,7 +355,12 @@ export default function InventoryPage() {
         <CardContent>
           <form onSubmit={handleCreate} className="grid gap-3 md:grid-cols-4">
             <div className="flex flex-col gap-1.5 md:col-span-2">
-              <label htmlFor="inventory-product" className="text-sm font-medium">Existing product</label>
+              <label
+                htmlFor="inventory-product"
+                className="text-sm font-medium"
+              >
+                Existing product
+              </label>
               <input
                 id="inventory-product"
                 className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
@@ -363,7 +382,12 @@ export default function InventoryPage() {
               </datalist>
             </div>
             <div className="flex flex-col gap-1.5 md:col-span-2">
-              <label htmlFor="inventory-warehouse" className="text-sm font-medium">Warehouse</label>
+              <label
+                htmlFor="inventory-warehouse"
+                className="text-sm font-medium"
+              >
+                Warehouse
+              </label>
               <input
                 id="inventory-warehouse"
                 className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
@@ -385,16 +409,55 @@ export default function InventoryPage() {
               </datalist>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="inventory-available" className="text-sm font-medium">Available quantity</label>
-              <input id="inventory-available" className="border-input bg-background rounded-md border px-3 py-2 text-sm" type="number" min={0} value={availableQty} onChange={(event) => setAvailableQty(event.target.value)} required />
+              <label
+                htmlFor="inventory-available"
+                className="text-sm font-medium"
+              >
+                Available quantity
+              </label>
+              <input
+                id="inventory-available"
+                className="border-input bg-background rounded-md border px-3 py-2 text-sm"
+                type="number"
+                min={0}
+                value={availableQty}
+                onChange={(event) => setAvailableQty(event.target.value)}
+                required
+              />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="inventory-reserved" className="text-sm font-medium">Reserved quantity</label>
-              <input id="inventory-reserved" className="border-input bg-background rounded-md border px-3 py-2 text-sm" type="number" min={0} value={reservedQty} onChange={(event) => setReservedQty(event.target.value)} required />
+              <label
+                htmlFor="inventory-reserved"
+                className="text-sm font-medium"
+              >
+                Reserved quantity
+              </label>
+              <input
+                id="inventory-reserved"
+                className="border-input bg-background rounded-md border px-3 py-2 text-sm"
+                type="number"
+                min={0}
+                value={reservedQty}
+                onChange={(event) => setReservedQty(event.target.value)}
+                required
+              />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="inventory-reorder" className="text-sm font-medium">Reorder threshold</label>
-              <input id="inventory-reorder" className="border-input bg-background rounded-md border px-3 py-2 text-sm" type="number" min={0} value={reorderQty} onChange={(event) => setReorderQty(event.target.value)} required />
+              <label
+                htmlFor="inventory-reorder"
+                className="text-sm font-medium"
+              >
+                Reorder threshold
+              </label>
+              <input
+                id="inventory-reorder"
+                className="border-input bg-background rounded-md border px-3 py-2 text-sm"
+                type="number"
+                min={0}
+                value={reorderQty}
+                onChange={(event) => setReorderQty(event.target.value)}
+                required
+              />
             </div>
             <Button type="submit" disabled={loading}>
               {loading ? "Saving..." : "Create"}
@@ -421,16 +484,21 @@ export default function InventoryPage() {
               }}
             />
             {productSearch ? (
-              <Button type="button" variant="outline" onClick={() => {
-                setPage(1);
-                setProductSearch("");
-              }}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setPage(1);
+                  setProductSearch("");
+                }}
+              >
                 Clear search
               </Button>
             ) : null}
           </div>
           <p className="text-muted-foreground mt-2 text-sm">
-            Search is separate from creating inventory records. Results show inventory for matching products.
+            Search is separate from creating inventory records. Results show
+            inventory for matching products.
           </p>
         </CardContent>
       </Card>
@@ -459,12 +527,12 @@ export default function InventoryPage() {
             <select
               className="border-input bg-background rounded-md border px-3 py-2 text-sm"
               value={stockStatusFilter}
-              onChange={(event) =>
-                {
-                  setPage(1);
-                  setStockStatusFilter(event.target.value as "all" | "healthy" | "low");
-                }
-              }
+              onChange={(event) => {
+                setPage(1);
+                setStockStatusFilter(
+                  event.target.value as "all" | "healthy" | "low",
+                );
+              }}
             >
               <option value="all">All Stock Status</option>
               <option value="healthy">Healthy</option>
@@ -494,157 +562,149 @@ export default function InventoryPage() {
 
               <TableBody>
                 {filteredInventories.map((inventory) => {
-                    const isLow =
-                      inventory.availableQty <= inventory.reorderQty;
-                    const currentQty =
-                      requestQtyByInventory[inventory.id] ?? "0";
-                    const editing = editingId === inventory.id;
+                  const isLow = inventory.availableQty <= inventory.reorderQty;
+                  const currentQty = requestQtyByInventory[inventory.id] ?? "0";
+                  const editing = editingId === inventory.id;
 
-                    return (
-                      <TableRow key={inventory.id}>
-                        <TableCell>
-                          <p className="font-medium">
-                            {inventory.product.name}
-                          </p>
-                          <p className="text-muted-foreground text-xs">
-                            {inventory.product.sku}
-                          </p>
-                        </TableCell>
-                        <TableCell>{inventory.warehouse.name}</TableCell>
-                        <TableCell>
-                          {editing ? (
-                            <input
-                              type="number"
-                              min={0}
-                              className="border-input bg-background w-24 rounded-md border px-2 py-1 text-sm"
-                              value={inventory.availableQty}
-                              onChange={(event) =>
-                                updateLocalInventory(
-                                  inventory.id,
-                                  "availableQty",
-                                  Number(event.target.value),
-                                )
-                              }
-                            />
-                          ) : (
-                            inventory.availableQty
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editing ? (
-                            <input
-                              type="number"
-                              min={0}
-                              className="border-input bg-background w-24 rounded-md border px-2 py-1 text-sm"
-                              value={inventory.reservedQty}
-                              onChange={(event) =>
-                                updateLocalInventory(
-                                  inventory.id,
-                                  "reservedQty",
-                                  Number(event.target.value),
-                                )
-                              }
-                            />
-                          ) : (
-                            inventory.reservedQty
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editing ? (
-                            <input
-                              type="number"
-                              min={0}
-                              className="border-input bg-background w-24 rounded-md border px-2 py-1 text-sm"
-                              value={inventory.reorderQty}
-                              onChange={(event) =>
-                                updateLocalInventory(
-                                  inventory.id,
-                                  "reorderQty",
-                                  Number(event.target.value),
-                                )
-                              }
-                            />
-                          ) : (
-                            inventory.reorderQty
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              inventory.isReorderPending
-                                ? "secondary"
-                                : "outline"
+                  return (
+                    <TableRow key={inventory.id}>
+                      <TableCell>
+                        <p className="font-medium">{inventory.product.name}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {inventory.product.sku}
+                        </p>
+                      </TableCell>
+                      <TableCell>{inventory.warehouse.name}</TableCell>
+                      <TableCell>
+                        {editing ? (
+                          <input
+                            type="number"
+                            min={0}
+                            className="border-input bg-background w-24 rounded-md border px-2 py-1 text-sm"
+                            value={inventory.availableQty}
+                            onChange={(event) =>
+                              updateLocalInventory(
+                                inventory.id,
+                                "availableQty",
+                                Number(event.target.value),
+                              )
                             }
-                          >
-                            {inventory.isReorderPending
-                              ? "Reorder Pending"
-                              : isLow
-                                ? "Low Stock"
-                                : "Healthy"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {editing ? (
-                              <>
-                                <Button
-                                  size="sm"
-                                  onClick={() =>
-                                    void handleInventoryUpdate(inventory)
-                                  }
-                                  disabled={loading}
-                                >
-                                  Save
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setEditingId(null)}
-                                  disabled={loading}
-                                >
-                                  Cancel
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setEditingId(inventory.id)}
-                                  disabled={loading}
-                                >
-                                  Edit
-                                </Button>
-                                <input
-                                  type="number"
-                                  min={1}
-                                  className="border-input bg-background w-24 rounded-md border px-2 py-1 text-sm"
-                                  value={currentQty}
-                                  onChange={(event) =>
-                                    setRequestQtyByInventory((prev) => ({
-                                      ...prev,
-                                      [inventory.id]: event.target.value,
-                                    }))
-                                  }
-                                />
-                                <Button
-                                  size="sm"
-                                  onClick={() =>
-                                    void handleCreateReorder(inventory.id)
-                                  }
-                                  disabled={
-                                    loading || inventory.isReorderPending
-                                  }
-                                >
-                                  Request
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                          />
+                        ) : (
+                          inventory.availableQty
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editing ? (
+                          <input
+                            type="number"
+                            min={0}
+                            className="border-input bg-background w-24 rounded-md border px-2 py-1 text-sm"
+                            value={inventory.reservedQty}
+                            onChange={(event) =>
+                              updateLocalInventory(
+                                inventory.id,
+                                "reservedQty",
+                                Number(event.target.value),
+                              )
+                            }
+                          />
+                        ) : (
+                          inventory.reservedQty
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editing ? (
+                          <input
+                            type="number"
+                            min={0}
+                            className="border-input bg-background w-24 rounded-md border px-2 py-1 text-sm"
+                            value={inventory.reorderQty}
+                            onChange={(event) =>
+                              updateLocalInventory(
+                                inventory.id,
+                                "reorderQty",
+                                Number(event.target.value),
+                              )
+                            }
+                          />
+                        ) : (
+                          inventory.reorderQty
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            inventory.isReorderPending ? "secondary" : "outline"
+                          }
+                        >
+                          {inventory.isReorderPending
+                            ? "Reorder Pending"
+                            : isLow
+                              ? "Low Stock"
+                              : "Healthy"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {editing ? (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  void handleInventoryUpdate(inventory)
+                                }
+                                disabled={loading}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditingId(null)}
+                                disabled={loading}
+                              >
+                                Cancel
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditingId(inventory.id)}
+                                disabled={loading}
+                              >
+                                Edit
+                              </Button>
+                              <input
+                                type="number"
+                                min={1}
+                                className="border-input bg-background w-24 rounded-md border px-2 py-1 text-sm"
+                                value={currentQty}
+                                onChange={(event) =>
+                                  setRequestQtyByInventory((prev) => ({
+                                    ...prev,
+                                    [inventory.id]: event.target.value,
+                                  }))
+                                }
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  void handleCreateReorder(inventory.id)
+                                }
+                                disabled={loading || inventory.isReorderPending}
+                              >
+                                Request
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
 
                 {!filteredInventories.length ? (
                   <TableRow>
@@ -665,7 +725,9 @@ export default function InventoryPage() {
             page={activePage}
             totalItems={inventoryTotal}
             pageSize={INVENTORY_PAGE_SIZE}
-            onPageChange={(nextPage) => { setPage(nextPage); }}
+            onPageChange={(nextPage) => {
+              setPage(nextPage);
+            }}
           />
         </CardContent>
       </Card>

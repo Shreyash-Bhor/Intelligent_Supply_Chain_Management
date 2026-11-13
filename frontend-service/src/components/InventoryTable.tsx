@@ -85,15 +85,25 @@ export function InventoryTable({
                   className={isLowStock ? "bg-destructive/5" : ""}
                 >
                   <TableCell className="font-medium">
-                    <div className="max-w-44 truncate">{inventory.product.name}</div>
+                    <div className="max-w-44 truncate">
+                      {inventory.product.name}
+                    </div>
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">{inventory.product.sku}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {inventory.product.sku}
+                  </TableCell>
                   <TableCell>{inventory.warehouse.name}</TableCell>
                   <TableCell className="text-right">
-                    <div className="font-semibold tabular-nums">{formatCompactNumber(inventory.availableQty)}</div>
+                    <div className="font-semibold tabular-nums">
+                      {formatCompactNumber(inventory.availableQty)}
+                    </div>
                     <div className="bg-muted ml-auto mt-1 h-1.5 w-16 overflow-hidden rounded-full">
                       <div
-                        className={isLowStock ? "h-full bg-rose-500" : "h-full bg-emerald-500"}
+                        className={
+                          isLowStock
+                            ? "h-full bg-rose-500"
+                            : "h-full bg-emerald-500"
+                        }
                         style={{
                           width: `${Math.min(100, Math.round((inventory.availableQty / Math.max(inventory.reorderQty * 2, 1)) * 100))}%`,
                         }}

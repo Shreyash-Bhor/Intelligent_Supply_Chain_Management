@@ -5,7 +5,6 @@ import { useEffect } from "react";
 const services = ["inventory", "pricing", "rag"] as const;
 type ServiceName = (typeof services)[number];
 
-// Keep one startup loop across React Strict Mode's development remounts.
 let wakeupStarted = false;
 
 export function ServiceWakeup() {

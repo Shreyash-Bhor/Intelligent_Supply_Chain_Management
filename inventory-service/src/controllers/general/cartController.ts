@@ -85,12 +85,10 @@ export const setCartItem = asyncHandler(async (req: Request, res: Response) => {
   });
   const availableQty = stock._sum.availableQty ?? 0;
   if (input.quantity > availableQty)
-    return res
-      .status(409)
-      .json({
-        status: "error",
-        message: `Only ${availableQty} units are currently available.`,
-      });
+    return res.status(409).json({
+      status: "error",
+      message: `Only ${availableQty} units are currently available.`,
+    });
   const cart = await prisma.cart.upsert({
     where: { userId },
     create: { userId },

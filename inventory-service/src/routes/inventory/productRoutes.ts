@@ -23,7 +23,11 @@ router.post("/", createProduct);
 router.get("/products", getAllProducts);
 router.get("/catalog", getCatalogProducts);
 router.get("/user-catalog", requireCustomerAccess, getPagedUserCatalog);
-router.get("/assistant/category", requireCustomerAccess, getAssistantCategoryProducts);
+router.get(
+  "/assistant/category",
+  requireCustomerAccess,
+  getAssistantCategoryProducts,
+);
 router.get("/assistant/search", requireCustomerAccess, searchAssistantProducts);
 router.get("/search", searchProducts);
 router.get("/user-dashboard", requireCustomerAccess, getUserDashboardProducts);

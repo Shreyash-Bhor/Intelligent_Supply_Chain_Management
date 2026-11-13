@@ -72,70 +72,78 @@ export function OrderDialog({ product, onAddToCart, onClose }: Props) {
           )}
         </div>
         <div className="flex flex-1 flex-col overflow-y-auto p-6 md:p-10">
-            <div className="flex h-full flex-col">
-              <div className="space-y-3 pr-10">
-                <p className="text-primary text-sm font-medium">
-                  Product details
+          <div className="flex h-full flex-col">
+            <div className="space-y-3 pr-10">
+              <p className="text-primary text-sm font-medium">
+                Product details
+              </p>
+              <h2
+                id="order-title"
+                className="text-3xl font-semibold tracking-tight"
+              >
+                {product.name}
+              </h2>
+              <p className="text-muted-foreground">{product.description}</p>
+              <p className="text-muted-foreground text-sm">
+                SKU {product.sku} · {product.category}
+              </p>
+            </div>
+            <div className="mt-6 grid gap-3 rounded-xl border p-4 sm:grid-cols-2">
+              <div>
+                <p className="text-muted-foreground text-xs uppercase">
+                  Unit price
                 </p>
-                <h2
-                  id="order-title"
-                  className="text-3xl font-semibold tracking-tight"
-                >
-                  {product.name}
-                </h2>
-                <p className="text-muted-foreground">{product.description}</p>
-                <p className="text-muted-foreground text-sm">SKU {product.sku} · {product.category}</p>
+                <p className="text-lg font-semibold">
+                  {formatCurrency(product.price, product.currency)}
+                </p>
               </div>
-              <div className="mt-6 grid gap-3 rounded-xl border p-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-muted-foreground text-xs uppercase">
-                    Unit price
-                  </p>
-                  <p className="text-lg font-semibold">
-                    {formatCurrency(product.price, product.currency)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs uppercase">
-                    Available now
-                  </p>
-                  <p className="text-lg font-semibold">
-                    {formatCompactNumber(product.availableQty)} units
-                  </p>
-                </div>
-              </div>
-              <div className="mt-6 rounded-xl border bg-card/60 p-4">
-                <QuantitySlider value={quantity} max={product.availableQty} onValueChange={setQuantity} />
-              </div>
-              {quantity > product.availableQty ? (
-                <div className="mt-3 flex gap-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
-                  <PackageCheck className="size-5 shrink-0" />
-                  <span>
-                    Only {formatCompactNumber(product.availableQty)} unit(s) are currently available. Checkout will recheck stock.
-                  </span>
-                </div>
-              ) : null}
-              <div className="mt-auto space-y-4 pt-6">
-                <div className="flex items-end justify-between border-t pt-4">
-                  <span className="text-muted-foreground">
-                    Calculated total
-                  </span>
-                  <strong className="text-2xl">
-                    {formatCurrency(total, product.currency)}
-                  </strong>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  className="w-full"
-                  disabled={product.price === null || product.availableQty < 1}
-                  onClick={() => { onAddToCart(quantity); onClose(); }}
-                >
-                  <ShoppingCart className="mr-2 size-4" /> Add to cart
-                </Button>
+              <div>
+                <p className="text-muted-foreground text-xs uppercase">
+                  Available now
+                </p>
+                <p className="text-lg font-semibold">
+                  {formatCompactNumber(product.availableQty)} units
+                </p>
               </div>
             </div>
+            <div className="mt-6 rounded-xl border bg-card/60 p-4">
+              <QuantitySlider
+                value={quantity}
+                max={product.availableQty}
+                onValueChange={setQuantity}
+              />
+            </div>
+            {quantity > product.availableQty ? (
+              <div className="mt-3 flex gap-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
+                <PackageCheck className="size-5 shrink-0" />
+                <span>
+                  Only {formatCompactNumber(product.availableQty)} unit(s) are
+                  currently available. Checkout will recheck stock.
+                </span>
+              </div>
+            ) : null}
+            <div className="mt-auto space-y-4 pt-6">
+              <div className="flex items-end justify-between border-t pt-4">
+                <span className="text-muted-foreground">Calculated total</span>
+                <strong className="text-2xl">
+                  {formatCurrency(total, product.currency)}
+                </strong>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="w-full"
+                disabled={product.price === null || product.availableQty < 1}
+                onClick={() => {
+                  onAddToCart(quantity);
+                  onClose();
+                }}
+              >
+                <ShoppingCart className="mr-2 size-4" /> Add to cart
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
     </div>

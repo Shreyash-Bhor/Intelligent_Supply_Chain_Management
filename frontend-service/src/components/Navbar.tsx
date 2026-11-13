@@ -1,7 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, Search, ShoppingCart, UserRound, BadgeCheck, Mail, LogOut, Store, ClipboardList } from "lucide-react";
+import {
+  Menu,
+  Search,
+  ShoppingCart,
+  UserRound,
+  BadgeCheck,
+  Mail,
+  LogOut,
+  Store,
+  ClipboardList,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ModeToggle } from "./ModeToggle";
@@ -16,7 +27,11 @@ import { cn } from "@/lib/utils";
 import { clearAuthSession } from "@/lib/auth";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { cacheServerCart, cartEventName, readCart } from "@/lib/cart";
-import { fetchCustomerCart, fetchCustomerProfile, type CustomerProfile } from "@/lib/api";
+import {
+  fetchCustomerCart,
+  fetchCustomerProfile,
+  type CustomerProfile,
+} from "@/lib/api";
 
 const MANAGER_LINKS = [
   { href: "/manager", label: "Manager Dashboard" },
@@ -42,40 +57,57 @@ export function Navbar() {
     let active = true;
     setProfile(null);
     if (session?.role === "user" && session.token) {
-      void fetchCustomerProfile(session.token).then((value) => { if (active) setProfile(value); }).catch(() => {});
+      void fetchCustomerProfile(session.token)
+        .then((value) => {
+          if (active) setProfile(value);
+        })
+        .catch(() => {});
     }
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [session?.role, session?.token]);
 
   useEffect(() => {
-    const sync = () => setCartCount(readCart(session?.email).reduce((sum, line) => sum + line.quantity, 0));
+    const sync = () =>
+      setCartCount(
+        readCart(session?.email).reduce((sum, line) => sum + line.quantity, 0),
+      );
     sync();
-    if (session?.role === "user" && session.token) void fetchCustomerCart(session.token).then((cart) => { cacheServerCart(cart, session.email); }).catch(() => {});
+    if (session?.role === "user" && session.token)
+      void fetchCustomerCart(session.token)
+        .then((cart) => {
+          cacheServerCart(cart, session.email);
+        })
+        .catch(() => {});
     window.addEventListener(cartEventName, sync);
     window.addEventListener("storage", sync);
-    return () => { window.removeEventListener(cartEventName, sync); window.removeEventListener("storage", sync); };
+    return () => {
+      window.removeEventListener(cartEventName, sync);
+      window.removeEventListener("storage", sync);
+    };
   }, [session?.email, session?.role, session?.token]);
 
   const isLandingAccess = pathname === "/" && !session;
-  const isAuthPage = pathname.startsWith("/login/") || pathname.startsWith("/signup/");
-  const navLinks =
-    isAuthPage
-      ? []
-      : isLandingAccess
+  const isAuthPage =
+    pathname.startsWith("/login/") || pathname.startsWith("/signup/");
+  const navLinks = isAuthPage
+    ? []
+    : isLandingAccess
       ? [
           { href: "/signup/user", label: "Shopper" },
           { href: "/login/manager", label: "Manager" },
         ]
       : session?.role === "user"
-      ? USER_LINKS
-      : session?.role === "warehouse_manager"
-        ? MANAGER_LINKS
-      : [
-          { href: "/login/user", label: "Shopper sign in" },
-          { href: "/signup/user", label: "Shopper sign up" },
-          { href: "/login/manager", label: "Manager sign in" },
-          { href: "/signup/manager", label: "Manager access" },
-        ];
+        ? USER_LINKS
+        : session?.role === "warehouse_manager"
+          ? MANAGER_LINKS
+          : [
+              { href: "/login/user", label: "Shopper sign in" },
+              { href: "/signup/user", label: "Shopper sign up" },
+              { href: "/login/manager", label: "Manager sign in" },
+              { href: "/signup/manager", label: "Manager access" },
+            ];
 
   const logout = () => {
     window.localStorage.removeItem("warehouse_manager_session");
@@ -85,7 +117,9 @@ export function Navbar() {
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    router.push(`/user${search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ""}#products`);
+    router.push(
+      `/user${search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ""}#products`,
+    );
   };
 
   if (!hydrated) {
@@ -97,7 +131,13 @@ export function Navbar() {
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-5">
           <Link
-            href={session?.role === "user" ? "/user" : session?.role === "warehouse_manager" ? "/manager" : "/"}
+            href={
+              session?.role === "user"
+                ? "/user"
+                : session?.role === "warehouse_manager"
+                  ? "/manager"
+                  : "/"
+            }
             className="group flex items-center gap-2"
             aria-label="SupplySync home"
           >
@@ -108,64 +148,161 @@ export function Navbar() {
               SupplySync
             </span>
           </Link>
-          {navLinks.length > 0 && <nav aria-label="Primary navigation" className={`${isLandingAccess ? "flex" : "hidden md:flex"} items-center gap-1 sm:gap-2 ${isLandingAccess ? "rounded-full border border-border bg-card/85 p-1 shadow-sm" : ""}`}>
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    isLandingAccess
-                      ? "rounded-full px-2.5 py-2 text-xs font-semibold transition-all hover:-translate-y-0.5 hover:shadow-sm sm:px-4 sm:text-sm"
-                      : "rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-px",
-                    isLandingAccess && link.href === "/signup/user"
-                      ? "bg-secondary text-secondary-foreground hover:brightness-105"
-                      : isLandingAccess
-                        ? "forest-gradient"
-                        : isActive
-                          ? "bg-primary/15 text-primary"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  {"icon" in link && <link.icon className="mr-1.5 inline size-4 align-[-3px]" aria-hidden="true" />}
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>}
+          {navLinks.length > 0 && (
+            <nav
+              aria-label="Primary navigation"
+              className={`${isLandingAccess ? "flex" : "hidden md:flex"} items-center gap-1 sm:gap-2 ${isLandingAccess ? "rounded-full border border-border bg-card/85 p-1 shadow-sm" : ""}`}
+            >
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={cn(
+                      isLandingAccess
+                        ? "rounded-full px-2.5 py-2 text-xs font-semibold transition-all hover:-translate-y-0.5 hover:shadow-sm sm:px-4 sm:text-sm"
+                        : "rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-px",
+                      isLandingAccess && link.href === "/signup/user"
+                        ? "bg-secondary text-secondary-foreground hover:brightness-105"
+                        : isLandingAccess
+                          ? "forest-gradient"
+                          : isActive
+                            ? "bg-primary/15 text-primary"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    {"icon" in link &&
+                      (() => {
+                        const Icon = link.icon as LucideIcon;
+                        return (
+                          <Icon
+                            className="mr-1.5 inline size-4 align-[-3px]"
+                            aria-hidden="true"
+                          />
+                        );
+                      })()}
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
         </div>
 
-        {session?.role === "user" && <form onSubmit={submitSearch} role="search" className="mx-4 hidden max-w-xl flex-1 md:flex">
-          <label className="relative w-full"><span className="sr-only">Search products</span><Search className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2" aria-hidden="true"/><input value={search} onChange={(event)=>setSearch(event.target.value)} placeholder="Search products, SKU, categories…" className="border-input bg-background h-10 w-full rounded-l-md border py-2 pl-9 pr-3 text-sm focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-ring"/></label>
-          <Button type="submit" variant="outline" className="h-10 rounded-l-none border-l-0"><Search className="size-4"/><span className="sr-only">Submit product search</span></Button>
-        </form>}
+        {session?.role === "user" && (
+          <form
+            onSubmit={submitSearch}
+            role="search"
+            className="mx-4 hidden max-w-xl flex-1 md:flex"
+          >
+            <label className="relative w-full">
+              <span className="sr-only">Search products</span>
+              <Search
+                className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2"
+                aria-hidden="true"
+              />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search products, SKU, categories…"
+                className="border-input bg-background h-10 w-full rounded-l-md border py-2 pl-9 pr-3 text-sm focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </label>
+            <Button
+              type="submit"
+              variant="outline"
+              className="h-10 rounded-l-none border-l-0"
+            >
+              <Search className="size-4" />
+              <span className="sr-only">Submit product search</span>
+            </Button>
+          </form>
+        )}
 
         <div className="flex items-center gap-2">
-          {session?.role === "user" && <>
-            <Link href="/orders" className="inline-flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"><ClipboardList className="size-4" aria-hidden="true" /><span>Orders</span></Link>
-            <Link href="/cart" aria-label={`Shopping cart, ${cartCount} items`} className="relative inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"><ShoppingCart className="size-4" aria-hidden="true" /><span>Cart</span>{cartCount > 0 && <span className="bg-primary text-primary-foreground absolute -right-2 -top-2 grid size-5 place-items-center rounded-full text-[11px] font-semibold">{cartCount > 99 ? "99+" : cartCount}</span>}</Link>
-          </>}
-          {session && <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" aria-label="Open user profile" className="gap-2 rounded-full px-3">
-                <UserRound className="size-4" /><span className="hidden sm:inline">Account</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72 p-2">
-              <div className="flex items-center gap-3 rounded-lg bg-muted/60 p-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><UserRound className="size-5" /></span>
-                <div className="min-w-0"><p className="truncate text-sm font-semibold">{profile?.name || session.name || (session.role === "warehouse_manager" ? "Warehouse manager" : "SupplySync shopper")}</p><p className="truncate text-xs text-muted-foreground">{profile?.email || session.email}</p></div>
-              </div>
-              <div className="space-y-2 px-3 py-3 text-xs text-muted-foreground">
-                <p className="flex items-center gap-2"><Mail className="size-3.5" />{profile?.email || session.email}</p>
-                <p className="flex items-center gap-2"><BadgeCheck className="size-3.5" />{session.role === "warehouse_manager" ? "Warehouse manager" : "Shopper account"}</p>
-              </div>
-              <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive"><LogOut />Sign out</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>}
+          {session?.role === "user" && (
+            <>
+              <Link
+                href="/orders"
+                className="inline-flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"
+              >
+                <ClipboardList className="size-4" aria-hidden="true" />
+                <span>Orders</span>
+              </Link>
+              <Link
+                href="/cart"
+                aria-label={`Shopping cart, ${cartCount} items`}
+                className="relative inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+              >
+                <ShoppingCart className="size-4" aria-hidden="true" />
+                <span>Cart</span>
+                {cartCount > 0 && (
+                  <span className="bg-primary text-primary-foreground absolute -right-2 -top-2 grid size-5 place-items-center rounded-full text-[11px] font-semibold">
+                    {cartCount > 99 ? "99+" : cartCount}
+                  </span>
+                )}
+              </Link>
+            </>
+          )}
+          {session && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label="Open user profile"
+                  className="gap-2 rounded-full px-3"
+                >
+                  <UserRound className="size-4" />
+                  <span className="hidden sm:inline">Account</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72 p-2">
+                <div className="flex items-center gap-3 rounded-lg bg-muted/60 p-3">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                    <UserRound className="size-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">
+                      {profile?.name ||
+                        session.name ||
+                        (session.role === "warehouse_manager"
+                          ? "Warehouse manager"
+                          : "SupplySync shopper")}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {profile?.email || session.email}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-2 px-3 py-3 text-xs text-muted-foreground">
+                  <p className="flex items-center gap-2">
+                    <Mail className="size-3.5" />
+                    {profile?.email || session.email}
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <BadgeCheck className="size-3.5" />
+                    {session.role === "warehouse_manager"
+                      ? "Warehouse manager"
+                      : "Shopper account"}
+                  </p>
+                </div>
+                <DropdownMenuItem
+                  onClick={logout}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <LogOut />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <DropdownMenu>
-            <DropdownMenuTrigger asChild className={`md:hidden ${isLandingAccess || isAuthPage ? "hidden" : ""}`}>
+            <DropdownMenuTrigger
+              asChild
+              className={`md:hidden ${isLandingAccess || isAuthPage ? "hidden" : ""}`}
+            >
               <Button
                 variant="outline"
                 size="icon"
@@ -178,7 +315,14 @@ export function Navbar() {
             <DropdownMenuContent align="end" className="w-44">
               {navLinks.map((link) => (
                 <DropdownMenuItem key={link.href} asChild>
-                  <Link href={link.href}>{"icon" in link && <link.icon className="size-4" aria-hidden="true" />}{link.label}</Link>
+                  <Link href={link.href}>
+                    {"icon" in link &&
+                      (() => {
+                        const Icon = link.icon as LucideIcon;
+                        return <Icon className="size-4" aria-hidden="true" />;
+                      })()}
+                    {link.label}
+                  </Link>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
@@ -190,4 +334,3 @@ export function Navbar() {
     </header>
   );
 }
-

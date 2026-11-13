@@ -15,7 +15,13 @@ export const updateProduct = asyncHandler(
       where: { id: productId },
       data,
     });
-    await invalidateCache("products", "inventory", "catalog", "dashboard", "warehouses");
+    await invalidateCache(
+      "products",
+      "inventory",
+      "catalog",
+      "dashboard",
+      "warehouses",
+    );
     return res.status(200).json({
       status: "success",
       message: "Product updated successfully",
@@ -35,7 +41,13 @@ export const updateProductStatus = asyncHandler(
         isActive,
       },
     });
-    await invalidateCache("products", "inventory", "catalog", "dashboard", "warehouses");
+    await invalidateCache(
+      "products",
+      "inventory",
+      "catalog",
+      "dashboard",
+      "warehouses",
+    );
     return res.status(200).json({
       status: "success",
       message: "Product status updated successfully",

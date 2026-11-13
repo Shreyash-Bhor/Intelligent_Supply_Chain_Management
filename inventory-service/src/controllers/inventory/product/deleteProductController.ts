@@ -40,7 +40,13 @@ export const deleteProduct = asyncHandler(
         .status(404)
         .json({ status: "error", message: "Product not found" });
     }
-    await invalidateCache("products", "inventory", "catalog", "dashboard", "warehouses");
+    await invalidateCache(
+      "products",
+      "inventory",
+      "catalog",
+      "dashboard",
+      "warehouses",
+    );
 
     return res.status(200).json({
       status: "success",

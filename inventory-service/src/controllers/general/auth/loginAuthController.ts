@@ -42,7 +42,10 @@ export const getCustomerProfile = [
       where: { id: res.locals.customer.sub },
       select: { id: true, name: true, email: true },
     });
-    if (!user) return res.status(401).json({ status: "error", message: "Customer session is invalid." });
+    if (!user)
+      return res
+        .status(401)
+        .json({ status: "error", message: "Customer session is invalid." });
     return res.status(200).json({ status: "success", data: user });
   }),
 ];

@@ -37,12 +37,10 @@ export const updateWarehouseStatus = asyncHandler(
       data: { isActive },
     });
     await invalidateCache("warehouses", "inventory", "catalog", "dashboard");
-    return res
-      .status(200)
-      .json({
-        status: "success",
-        message: "Warehouse status updated successfully",
-        data: warehouse,
-      });
+    return res.status(200).json({
+      status: "success",
+      message: "Warehouse status updated successfully",
+      data: warehouse,
+    });
   },
 );

@@ -3,16 +3,174 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Eye, EyeOff, LoaderCircle, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Eye,
+  EyeOff,
+  LoaderCircle,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import { verifyManagerAccess, type ManagerSession } from "@/lib/api";
 import { setAuthSession } from "@/lib/auth";
 
 export function ManagerAuthForm() {
-  const router=useRouter(); const [email,setEmail]=useState(""); const [accessKey,setAccessKey]=useState(""); const [showKey,setShowKey]=useState(false); const [loading,setLoading]=useState(false); const [error,setError]=useState<string|null>(null);
-  async function submit(event:FormEvent<HTMLFormElement>){event.preventDefault();setLoading(true);setError(null);const credentials:ManagerSession={email:email.trim(),accessKey:accessKey.trim()};try{await verifyManagerAccess(credentials);window.localStorage.setItem("warehouse_manager_session",JSON.stringify(credentials));setAuthSession({role:"warehouse_manager",email:credentials.email});router.replace("/manager");}catch(reason){setError(reason instanceof Error?reason.message:"Unable to verify manager access.");}finally{setLoading(false);}}
-  return <div className="auth-card rounded-2xl border-2 border-foreground/80 bg-card p-6 shadow-xl shadow-primary/5 sm:p-8"><span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary"><ShieldCheck className="size-5"/></span><p className="mt-5 text-xs font-semibold uppercase tracking-[.16em] text-primary">Manager workspace</p><h2 className="mt-2 text-2xl font-semibold tracking-tight">Sign in to operations</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Use your organization-issued manager email and access key to open the control tower.</p>
-    <div className="mt-5 rounded-xl border border-secondary/50 bg-secondary/10 p-4"><p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"><Sparkles className="size-3.5"/>Demo account</p><p className="mt-2 text-xs leading-5 text-muted-foreground">These credentials are only for demo purposes.</p><dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs"><dt className="text-muted-foreground">Email</dt><dd className="break-all font-medium">warehousetestemail@gmail.com</dd><dt className="text-muted-foreground">Access key</dt><dd className="break-all font-mono font-medium">warehouseManager@accessKey</dd></dl></div>
-    <form onSubmit={submit} className="mt-7 space-y-4"><div className="space-y-1.5"><label htmlFor="manager-email" className="text-sm font-medium">Manager email</label><input id="manager-email" type="email" autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} required className="auth-input" placeholder="manager@company.com"/></div><div className="space-y-1.5"><label htmlFor="manager-key" className="text-sm font-medium">Access key</label><div className="relative"><input id="manager-key" type={showKey?"text":"password"} autoComplete="current-password" value={accessKey} onChange={e=>setAccessKey(e.target.value)} required className="auth-input pr-12" placeholder="Enter your access key"/><button type="button" onClick={()=>setShowKey(s=>!s)} className="absolute inset-y-0 right-0 grid w-11 place-items-center text-muted-foreground hover:text-foreground" aria-label={showKey?"Hide access key":"Show access key"}>{showKey?<EyeOff className="size-4"/>:<Eye className="size-4"/>}</button></div></div>{error&&<p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}<button disabled={loading} type="submit" className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:pointer-events-none disabled:opacity-60">{loading?<><LoaderCircle className="size-4 animate-spin"/>Verifying access…</>:<>Open manager workspace<ArrowRight className="size-4"/></>}</button></form>
-    <p className="mt-6 text-center text-sm text-muted-foreground">Need manager access? <Link href="/signup/manager" className="font-semibold text-primary hover:underline">Request access</Link></p><div className="my-6 border-t border-border"/><p className="text-center text-xs text-muted-foreground">Shopping with SupplySync? <Link href="/login/user" className="font-semibold text-foreground underline decoration-secondary decoration-2 underline-offset-4">Shopper sign in</Link></p>
-  </div>;
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [accessKey, setAccessKey] = useState("");
+  const [showKey, setShowKey] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+    const credentials: ManagerSession = {
+      email: email.trim(),
+      accessKey: accessKey.trim(),
+    };
+    try {
+      await verifyManagerAccess(credentials);
+      window.localStorage.setItem(
+        "warehouse_manager_session",
+        JSON.stringify(credentials),
+      );
+      setAuthSession({ role: "warehouse_manager", email: credentials.email });
+      router.replace("/manager");
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Unable to verify manager access.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <div className="auth-card rounded-2xl border-2 border-foreground/80 bg-card p-6 shadow-xl shadow-primary/5 sm:p-8">
+      <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
+        <ShieldCheck className="size-5" />
+      </span>
+      <p className="mt-5 text-xs font-semibold uppercase tracking-[.16em] text-primary">
+        Manager workspace
+      </p>
+      <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+        Sign in to operations
+      </h2>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        Use your organization-issued manager email and access key to open the
+        control tower.
+      </p>
+      <div className="mt-5 rounded-xl border border-secondary/50 bg-secondary/10 p-4">
+        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary">
+          <Sparkles className="size-3.5" />
+          Demo account
+        </p>
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">
+          These credentials are only for demo purposes.
+        </p>
+        <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs">
+          <dt className="text-muted-foreground">Email</dt>
+          <dd className="break-all font-medium">
+            warehousetestemail@gmail.com
+          </dd>
+          <dt className="text-muted-foreground">Access key</dt>
+          <dd className="break-all font-mono font-medium">
+            warehouseManager@accessKey
+          </dd>
+        </dl>
+      </div>
+      <form onSubmit={submit} className="mt-7 space-y-4">
+        <div className="space-y-1.5">
+          <label htmlFor="manager-email" className="text-sm font-medium">
+            Manager email
+          </label>
+          <input
+            id="manager-email"
+            type="email"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="auth-input"
+            placeholder="manager@company.com"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="manager-key" className="text-sm font-medium">
+            Access key
+          </label>
+          <div className="relative">
+            <input
+              id="manager-key"
+              type={showKey ? "text" : "password"}
+              autoComplete="current-password"
+              value={accessKey}
+              onChange={(e) => setAccessKey(e.target.value)}
+              required
+              className="auth-input pr-12"
+              placeholder="Enter your access key"
+            />
+            <button
+              type="button"
+              onClick={() => setShowKey((s) => !s)}
+              className="absolute inset-y-0 right-0 grid w-11 place-items-center text-muted-foreground hover:text-foreground"
+              aria-label={showKey ? "Hide access key" : "Show access key"}
+            >
+              {showKey ? (
+                <EyeOff className="size-4" />
+              ) : (
+                <Eye className="size-4" />
+              )}
+            </button>
+          </div>
+        </div>
+        {error && (
+          <p
+            role="alert"
+            className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            {error}
+          </p>
+        )}
+        <button
+          disabled={loading}
+          type="submit"
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:pointer-events-none disabled:opacity-60"
+        >
+          {loading ? (
+            <>
+              <LoaderCircle className="size-4 animate-spin" />
+              Verifying access…
+            </>
+          ) : (
+            <>
+              Open manager workspace
+              <ArrowRight className="size-4" />
+            </>
+          )}
+        </button>
+      </form>
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Need manager access?{" "}
+        <Link
+          href="/signup/manager"
+          className="font-semibold text-primary hover:underline"
+        >
+          Request access
+        </Link>
+      </p>
+      <div className="my-6 border-t border-border" />
+      <p className="text-center text-xs text-muted-foreground">
+        Shopping with SupplySync?{" "}
+        <Link
+          href="/login/user"
+          className="font-semibold text-foreground underline decoration-secondary decoration-2 underline-offset-4"
+        >
+          Shopper sign in
+        </Link>
+      </p>
+    </div>
+  );
 }

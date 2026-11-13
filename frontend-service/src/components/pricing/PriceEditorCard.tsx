@@ -46,7 +46,9 @@ export function PriceEditorCard({
               <p className="mt-2 flex items-center gap-1.5 font-medium">
                 <IndianRupee className="size-4" aria-hidden="true" />
                 Current Price:{" "}
-                {currentPrice ? formatPriceWithCommas(currentPrice.price) : "Not set"}
+                {currentPrice
+                  ? formatPriceWithCommas(currentPrice.price)
+                  : "Not set"}
               </p>
             </div>
             <form

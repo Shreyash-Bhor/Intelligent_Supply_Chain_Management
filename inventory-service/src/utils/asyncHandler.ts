@@ -14,16 +14,36 @@ export const asyncHandler =
           issues: error.issues,
         });
       }
-      if (typeof error === "object" && error !== null && "statusCode" in error && Number((error as { statusCode: unknown }).statusCode) === 409) {
-        return res.status(409).json({ status: "error", message: error instanceof Error ? error.message : "Request conflict" });
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "statusCode" in error &&
+        Number((error as { statusCode: unknown }).statusCode) === 409
+      ) {
+        return res
+          .status(409)
+          .json({
+            status: "error",
+            message:
+              error instanceof Error ? error.message : "Request conflict",
+          });
       }
-      const statusCode = typeof error === "object" && error !== null && "statusCode" in error
-        ? Number((error as { statusCode: unknown }).statusCode)
-        : 500;
-      const safeStatus = Number.isInteger(statusCode) && statusCode >= 400 && statusCode <= 599 ? statusCode : 500;
+      const statusCode =
+        typeof error === "object" && error !== null && "statusCode" in error
+          ? Number((error as { statusCode: unknown }).statusCode)
+          : 500;
+      const safeStatus =
+        Number.isInteger(statusCode) && statusCode >= 400 && statusCode <= 599
+          ? statusCode
+          : 500;
       return res.status(safeStatus).json({
         status: "error",
-        message: safeStatus === 500 ? "Internal Server Error" : error instanceof Error ? error.message : "Request failed",
+        message:
+          safeStatus === 500
+            ? "Internal Server Error"
+            : error instanceof Error
+              ? error.message
+              : "Request failed",
       });
     }
   };

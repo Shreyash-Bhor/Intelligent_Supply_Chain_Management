@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { getDashboardSummary } from "../../controllers/general/dashboard/getDashboardSummary";
-import { getManagerOrderAnalytics, getManagerOrders } from "../../controllers/general/order/managerOrdersController";
+import {
+  getManagerOrderAnalytics,
+  getManagerOrders,
+} from "../../controllers/general/order/managerOrdersController";
 
 const router = Router();
 

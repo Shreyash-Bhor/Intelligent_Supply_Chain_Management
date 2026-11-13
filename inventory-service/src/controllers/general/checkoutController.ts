@@ -73,29 +73,22 @@ export const confirmCheckout = asyncHandler(
     const { addressId, quoteToken } = checkoutSchema.parse(req.body);
     const userId = res.locals.customer.sub as string;
     if (req.body.confirmation !== "I confirm this order")
-      return res
-        .status(400)
-        .json({
-          status: "error",
-          message: "Explicit confirmation is required.",
-        });
+      return res.status(400).json({
+        status: "error",
+        message: "Explicit confirmation is required.",
+      });
     const quote = await createQuote(userId, addressId);
     if (!verifyQuoteToken(quoteToken, quote.snapshot.digest))
-      return res
-        .status(409)
-        .json({
-          status: "error",
-          message:
-            "Checkout quote expired or changed. Review the updated quote.",
-        });
-    return res
-      .status(200)
-      .json({
-        status: "success",
-        data: {
-          confirmationProof: issueCheckoutConfirmation(userId, quoteToken),
-        },
+      return res.status(409).json({
+        status: "error",
+        message: "Checkout quote expired or changed. Review the updated quote.",
       });
+    return res.status(200).json({
+      status: "success",
+      data: {
+        confirmationProof: issueCheckoutConfirmation(userId, quoteToken),
+      },
+    });
   },
 );
 
@@ -108,26 +101,24 @@ export const getCheckoutQuote = asyncHandler(
         addressId,
       );
       const { digest: _digest, ...snapshot } = quote.snapshot;
-      return res
-        .status(200)
-        .json({
-          status: "success",
-          data: {
-            lines: quote.lines.map(({ lineTotalMinor, ...line }) => ({
-              ...line,
-              lineTotal: (lineTotalMinor / 100).toFixed(2),
-            })),
-            currency: quote.currency,
-            subtotal: quote.subtotal,
-            shippingTotal: quote.shippingTotal,
-            taxTotal: quote.taxTotal,
-            total: quote.total,
-            expiresAt: quote.expiresAt,
-            quoteToken: quote.quoteToken,
-            address: quote.address,
-            calculation: { shippingAndTax: "not_configured" },
-          },
-        });
+      return res.status(200).json({
+        status: "success",
+        data: {
+          lines: quote.lines.map(({ lineTotalMinor, ...line }) => ({
+            ...line,
+            lineTotal: (lineTotalMinor / 100).toFixed(2),
+          })),
+          currency: quote.currency,
+          subtotal: quote.subtotal,
+          shippingTotal: quote.shippingTotal,
+          taxTotal: quote.taxTotal,
+          total: quote.total,
+          expiresAt: quote.expiresAt,
+          quoteToken: quote.quoteToken,
+          address: quote.address,
+          calculation: { shippingAndTax: "not_configured" },
+        },
+      });
     } catch (error) {
       const statusCode =
         typeof error === "object" && error !== null && "statusCode" in error
@@ -159,12 +150,10 @@ export const createCartOrder = asyncHandler(
       idempotencyKey.length < 16 ||
       idempotencyKey.length > 128
     ) {
-      return res
-        .status(400)
-        .json({
-          status: "error",
-          message: "A valid Idempotency-Key header is required",
-        });
+      return res.status(400).json({
+        status: "error",
+        message: "A valid Idempotency-Key header is required",
+      });
     }
     const orderInclude = {
       product: { select: { id: true, name: true, sku: true, imageUrl: true } },
@@ -179,25 +168,20 @@ export const createCartOrder = asyncHandler(
     };
     const signedDigest = getSignedQuoteDigest(quoteToken);
     if (!signedDigest)
-      return res
-        .status(409)
-        .json({
-          status: "error",
-          message: "Checkout quote is invalid. Prepare a new quote.",
-        });
+      return res.status(409).json({
+        status: "error",
+        message: "Checkout quote is invalid. Prepare a new quote.",
+      });
     const prior = await prisma.order.findFirst({
       where: { userId, idempotencyKey },
       include: orderInclude,
     });
     if (prior) {
       if (prior.checkoutDigest !== signedDigest)
-        return res
-          .status(409)
-          .json({
-            status: "error",
-            message:
-              "Idempotency key was already used for a different checkout.",
-          });
+        return res.status(409).json({
+          status: "error",
+          message: "Idempotency key was already used for a different checkout.",
+        });
       return res
         .status(200)
         .json({ status: "success", data: prior, idempotentReplay: true });
@@ -210,23 +194,19 @@ export const createCartOrder = asyncHandler(
         quoteToken,
       )
     ) {
-      return res
-        .status(403)
-        .json({
-          status: "error",
-          message: "Explicit confirmation for this checkout is required.",
-        });
+      return res.status(403).json({
+        status: "error",
+        message: "Explicit confirmation for this checkout is required.",
+      });
     }
 
     const quote = await createQuote(userId, addressId);
     if (!verifyQuoteToken(quoteToken, quote.snapshot.digest)) {
-      return res
-        .status(409)
-        .json({
-          status: "error",
-          message:
-            "Checkout quote expired or changed. Review the updated quote before submitting.",
-        });
+      return res.status(409).json({
+        status: "error",
+        message:
+          "Checkout quote expired or changed. Review the updated quote before submitting.",
+      });
     }
     const [first, ...other] = quote.lines;
     if (!first)
@@ -335,23 +315,19 @@ export const createCartOrder = asyncHandler(
         { isolationLevel: "Serializable" },
       );
       await invalidateCache("inventory", "catalog", "dashboard", "warehouses");
-      return res
-        .status(201)
-        .json({
-          status: "success",
-          message:
-            "Order placed. Inventory has been reserved; no payment was collected.",
-          data: order,
-        });
+      return res.status(201).json({
+        status: "success",
+        message:
+          "Order placed. Inventory has been reserved; no payment was collected.",
+        data: order,
+      });
     } catch (error) {
       if ((error as { code?: string }).code === "P2034") {
-        return res
-          .status(409)
-          .json({
-            status: "error",
-            message:
-              "Inventory changed during checkout. Review your cart and retry.",
-          });
+        return res.status(409).json({
+          status: "error",
+          message:
+            "Inventory changed during checkout. Review your cart and retry.",
+        });
       }
       if ((error as { code?: string }).code === "P2002") {
         const duplicate = await prisma.order.findFirst({
@@ -359,13 +335,11 @@ export const createCartOrder = asyncHandler(
           include: orderInclude,
         });
         if (duplicate?.checkoutDigest === signedDigest)
-          return res
-            .status(200)
-            .json({
-              status: "success",
-              data: duplicate,
-              idempotentReplay: true,
-            });
+          return res.status(200).json({
+            status: "success",
+            data: duplicate,
+            idempotentReplay: true,
+          });
       }
       throw error;
     }

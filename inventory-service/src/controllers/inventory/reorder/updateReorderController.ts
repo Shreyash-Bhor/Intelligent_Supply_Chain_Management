@@ -54,7 +54,13 @@ export const updateReorderStatus = asyncHandler(
         });
       }
     });
-    await invalidateCache("inventory", "catalog", "dashboard", "warehouses", "reorders");
+    await invalidateCache(
+      "inventory",
+      "catalog",
+      "dashboard",
+      "warehouses",
+      "reorders",
+    );
 
     return res.status(200).json({
       status: "success",

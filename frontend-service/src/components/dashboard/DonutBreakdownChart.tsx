@@ -15,8 +15,15 @@ type Props = {
 
 const fallbackColors = ["#6366f1", "#14b8a6", "#f59e0b", "#ef4444"];
 
-function getColor(item: BreakdownItem, index: number, colorByName: Record<string, string>) {
-  return colorByName[item.name.toLowerCase()] ?? fallbackColors[index % fallbackColors.length];
+function getColor(
+  item: BreakdownItem,
+  index: number,
+  colorByName: Record<string, string>,
+) {
+  return (
+    colorByName[item.name.toLowerCase()] ??
+    fallbackColors[index % fallbackColors.length]
+  );
 }
 
 export function DonutBreakdownChart({
@@ -80,7 +87,10 @@ export function DonutBreakdownChart({
               total
             </text>
             <Tooltip
-              formatter={(value) => [formatCompactNumber(Number(value)), "Items"]}
+              formatter={(value) => [
+                formatCompactNumber(Number(value)),
+                "Items",
+              ]}
               contentStyle={{
                 borderRadius: 12,
                 border: "1px solid var(--border)",
@@ -93,14 +103,24 @@ export function DonutBreakdownChart({
       </div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 pt-2">
         {data.map((item, index) => (
-          <div key={item.name} className="flex min-w-0 items-center gap-1.5 text-xs">
+          <div
+            key={item.name}
+            className="flex min-w-0 items-center gap-1.5 text-xs"
+          >
             <span
               className="size-2 shrink-0 rounded-full"
               style={{ backgroundColor: getColor(item, index, colorByName) }}
               aria-hidden="true"
             />
-            <span className="text-muted-foreground truncate capitalize">{item.name}</span>
-            <span className={cn("ml-auto font-medium tabular-nums", item.value === 0 && "text-muted-foreground")}>
+            <span className="text-muted-foreground truncate capitalize">
+              {item.name}
+            </span>
+            <span
+              className={cn(
+                "ml-auto font-medium tabular-nums",
+                item.value === 0 && "text-muted-foreground",
+              )}
+            >
               {formatCompactNumber(item.value)}
             </span>
           </div>

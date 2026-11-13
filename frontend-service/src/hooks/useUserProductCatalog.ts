@@ -46,9 +46,13 @@ export function useUserProductCatalog(
     const loadPricing = async () => {
       setLoadingPrices(true);
 
-      let priceResults: Array<readonly [string, Pick<ProductPrice, "price" | "currency"> | null]> = [];
+      let priceResults: Array<
+        readonly [string, Pick<ProductPrice, "price" | "currency"> | null]
+      > = [];
       try {
-        const prices = await fetchProductPrices(products.map((product) => product.id));
+        const prices = await fetchProductPrices(
+          products.map((product) => product.id),
+        );
         priceResults = prices.map((price) => [price.productId, price] as const);
       } catch {
         priceResults = products.map((product) => [product.id, null] as const);
@@ -58,7 +62,11 @@ export function useUserProductCatalog(
         return;
       }
 
-      setPriceByProduct(new Map<string, Pick<ProductPrice, "price" | "currency"> | null>(priceResults));
+      setPriceByProduct(
+        new Map<string, Pick<ProductPrice, "price" | "currency"> | null>(
+          priceResults,
+        ),
+      );
       setLoadingPrices(false);
     };
 

@@ -32,28 +32,33 @@ export const setProductPrice = asyncHandler(
       });
     }
 
-    const createdPrice = await commitThenInvalidate(() => prisma.$transaction(async (tx: any) => {
-      const productPrice = await tx.productPrice.create({
-        data: {
-          productId,
-          price,
-          currency,
-        },
-      });
+    const createdPrice = await commitThenInvalidate(
+      () =>
+        prisma.$transaction(async (tx: any) => {
+          const productPrice = await tx.productPrice.create({
+            data: {
+              productId,
+              price,
+              currency,
+            },
+          });
 
-      await tx.historicalPrice.create({
-        data: {
-          productPriceId: productPrice.id,
-          productId,
-          oldPrice: null,
-          newPrice: price,
-          currency,
-          changeType: "CREATED",
-        },
-      });
+          await tx.historicalPrice.create({
+            data: {
+              productPriceId: productPrice.id,
+              productId,
+              oldPrice: null,
+              newPrice: price,
+              currency,
+              changeType: "CREATED",
+            },
+          });
 
-      return productPrice;
-    }), "prices", "catalog");
+          return productPrice;
+        }),
+      "prices",
+      "catalog",
+    );
 
     return res.status(201).json({
       status: "success",
@@ -71,38 +76,43 @@ export const updateProductPrice = asyncHandler(
     const { productId } = productParamsSchema.parse(req.params);
     const { price, currency } = updateProductPriceSchema.parse(req.body);
 
-    const updatedPrice = await commitThenInvalidate(() => prisma.$transaction(async (tx: any) => {
-      const existingPrice = await tx.productPrice.findUnique({
-        where: { productId },
-      });
+    const updatedPrice = await commitThenInvalidate(
+      () =>
+        prisma.$transaction(async (tx: any) => {
+          const existingPrice = await tx.productPrice.findUnique({
+            where: { productId },
+          });
 
-      if (!existingPrice) {
-        return null;
-      }
+          if (!existingPrice) {
+            return null;
+          }
 
-      const nextCurrency = currency ?? existingPrice.currency;
+          const nextCurrency = currency ?? existingPrice.currency;
 
-      const productPrice = await tx.productPrice.update({
-        where: { productId },
-        data: {
-          price,
-          currency: nextCurrency,
-        },
-      });
+          const productPrice = await tx.productPrice.update({
+            where: { productId },
+            data: {
+              price,
+              currency: nextCurrency,
+            },
+          });
 
-      await tx.historicalPrice.create({
-        data: {
-          productPriceId: productPrice.id,
-          productId,
-          oldPrice: existingPrice.price,
-          newPrice: price,
-          currency: nextCurrency,
-          changeType: "UPDATED",
-        },
-      });
+          await tx.historicalPrice.create({
+            data: {
+              productPriceId: productPrice.id,
+              productId,
+              oldPrice: existingPrice.price,
+              newPrice: price,
+              currency: nextCurrency,
+              changeType: "UPDATED",
+            },
+          });
 
-      return productPrice;
-    }), "prices", "catalog");
+          return productPrice;
+        }),
+      "prices",
+      "catalog",
+    );
 
     if (!updatedPrice) {
       return res.status(404).json({
@@ -126,7 +136,9 @@ export const getProductPrice = asyncHandler(
   async (req: Request, res: Response) => {
     const { productId } = productParamsSchema.parse(req.params);
 
-    const productPrice = await getOrLoad(productId, "prices", 20, () => prisma.productPrice.findUnique({ where: { productId } }));
+    const productPrice = await getOrLoad(productId, "prices", 20, () =>
+      prisma.productPrice.findUnique({ where: { productId } }),
+    );
 
     if (!productPrice) {
       return res.status(404).json({
@@ -150,13 +162,28 @@ export const getProductPriceHistory = asyncHandler(
     const { productId } = productParamsSchema.parse(req.params);
     const { skip, take } = historyQuerySchema.parse(req.query);
 
-    const history = await getOrLoad(`${productId}:skip${skip}:take${take}`, "prices", 30, () => prisma.historicalPrice.findMany({
-      where: { productId },
-      orderBy: { changedAt: "desc" },
-      skip,
-      take,
-      select: { id: true, productPriceId: true, productId: true, oldPrice: true, newPrice: true, currency: true, changeType: true, changedAt: true },
-    }));
+    const history = await getOrLoad(
+      `${productId}:skip${skip}:take${take}`,
+      "prices",
+      30,
+      () =>
+        prisma.historicalPrice.findMany({
+          where: { productId },
+          orderBy: { changedAt: "desc" },
+          skip,
+          take,
+          select: {
+            id: true,
+            productPriceId: true,
+            productId: true,
+            oldPrice: true,
+            newPrice: true,
+            currency: true,
+            changeType: true,
+            changedAt: true,
+          },
+        }),
+    );
 
     return res.status(200).json({
       status: "success",

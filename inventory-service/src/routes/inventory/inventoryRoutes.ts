@@ -5,9 +5,7 @@ import {
   getAllInventory,
   getInventoryDetails,
 } from "../../controllers/inventory/stock/getInventoryController";
-import {
-  updateInventory,
-} from "../../controllers/inventory/stock/updateInventoryController";
+import { updateInventory } from "../../controllers/inventory/stock/updateInventoryController";
 import { getProductAvailability } from "../../controllers/inventory/stock/getInventoryController";
 import { requireWarehouseManagerAccess } from "../../middleware/warehouseManagerAccess";
 

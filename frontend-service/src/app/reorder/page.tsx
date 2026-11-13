@@ -103,7 +103,10 @@ export default function ReorderPage() {
     const warehouseMap = new Map<string, string>();
 
     reorders.forEach((reorder) => {
-      warehouseMap.set(reorder.inventory.warehouse.id, reorder.inventory.warehouse.name);
+      warehouseMap.set(
+        reorder.inventory.warehouse.id,
+        reorder.inventory.warehouse.name,
+      );
     });
 
     return Array.from(warehouseMap.entries()).sort((a, b) =>
@@ -126,12 +129,7 @@ export default function ReorderPage() {
 
         return true;
       }),
-    [
-      reorders,
-      warehouseFilter,
-      reorderView,
-      historyStatusFilter,
-    ],
+    [reorders, warehouseFilter, reorderView, historyStatusFilter],
   );
 
   const activePage = Math.min(
@@ -178,13 +176,17 @@ export default function ReorderPage() {
                 ? "Open Reorder Tickets"
                 : "History Rows"}
             </p>
-            <p className="text-2xl font-semibold">{formatCompactNumber(totals.totalOrders)}</p>
+            <p className="text-2xl font-semibold">
+              {formatCompactNumber(totals.totalOrders)}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground text-sm">Requested Units</p>
-            <p className="text-2xl font-semibold">{formatCompactNumber(totals.totalQty)}</p>
+            <p className="text-2xl font-semibold">
+              {formatCompactNumber(totals.totalQty)}
+            </p>
           </CardContent>
         </Card>
       </section>
@@ -268,14 +270,23 @@ export default function ReorderPage() {
                     return (
                       <TableRow key={reorder.id}>
                         <TableCell>
-                          <><p className="font-medium">{inventory.product.name}</p><p className="text-muted-foreground text-xs">{inventory.product.sku}</p></>
+                          <>
+                            <p className="font-medium">
+                              {inventory.product.name}
+                            </p>
+                            <p className="text-muted-foreground text-xs">
+                              {inventory.product.sku}
+                            </p>
+                          </>
                         </TableCell>
 
                         <TableCell>
                           {inventory?.warehouse.name ?? "-"}
                         </TableCell>
 
-                        <TableCell>{formatCompactNumber(reorder.requestedQty)}</TableCell>
+                        <TableCell>
+                          {formatCompactNumber(reorder.requestedQty)}
+                        </TableCell>
 
                         <TableCell>
                           <Badge variant="secondary">{reorder.status}</Badge>

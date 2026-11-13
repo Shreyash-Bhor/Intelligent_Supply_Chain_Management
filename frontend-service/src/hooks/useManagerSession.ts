@@ -23,7 +23,10 @@ export function useManagerSession() {
       return;
     }
     const stored = window.localStorage.getItem(SESSION_KEY);
-    if (!stored) { setHydrated(true); return; }
+    if (!stored) {
+      setHydrated(true);
+      return;
+    }
 
     try {
       const parsed = JSON.parse(stored) as ManagerSession;

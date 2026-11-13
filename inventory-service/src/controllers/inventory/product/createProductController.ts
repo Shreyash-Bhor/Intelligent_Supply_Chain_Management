@@ -29,7 +29,13 @@ export const createProduct = asyncHandler(
         .status(409)
         .json({ status: "conflict", message: "Product already exists" });
     }
-    await invalidateCache("products", "inventory", "catalog", "dashboard", "warehouses");
+    await invalidateCache(
+      "products",
+      "inventory",
+      "catalog",
+      "dashboard",
+      "warehouses",
+    );
 
     return res.status(201).json({
       status: "success",

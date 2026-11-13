@@ -9,7 +9,9 @@ const pool = new Pool({
   max: Number(process.env.DB_POOL_MAX ?? 5),
   min: Number(process.env.DB_POOL_MIN ?? 0),
   idleTimeoutMillis: Number(process.env.DB_POOL_IDLE_TIMEOUT_MS ?? 30_000),
-  connectionTimeoutMillis: Number(process.env.DB_POOL_CONNECTION_TIMEOUT_MS ?? 5_000),
+  connectionTimeoutMillis: Number(
+    process.env.DB_POOL_CONNECTION_TIMEOUT_MS ?? 5_000,
+  ),
   maxLifetimeSeconds: Number(process.env.DB_POOL_MAX_LIFETIME_SECONDS ?? 1_800),
 });
 

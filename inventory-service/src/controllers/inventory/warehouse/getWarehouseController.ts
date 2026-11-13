@@ -8,11 +8,21 @@ export const getWarehouseData = asyncHandler(
     const warehouseId = req.params.warehouseId ?? "";
     const page = Number(req.query.page ?? 1);
     const pageSize = Number(req.query.pageSize ?? 100);
-    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) {
-      return res.status(400).json({ status: "error", message: "Invalid pagination parameters" });
+    if (
+      !Number.isInteger(page) ||
+      page < 1 ||
+      !Number.isInteger(pageSize) ||
+      pageSize < 1 ||
+      pageSize > 100
+    ) {
+      return res
+        .status(400)
+        .json({ status: "error", message: "Invalid pagination parameters" });
     }
 
-    const warehouse = await prisma.warehouse.findUnique({ where: { id: warehouseId } });
+    const warehouse = await prisma.warehouse.findUnique({
+      where: { id: warehouseId },
+    });
 
     if (!warehouse) {
       return res
@@ -37,7 +47,12 @@ export const getWarehouseData = asyncHandler(
       data: {
         ...warehouse,
         inventories,
-        inventoryPagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+        inventoryPagination: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
       },
     });
   },
@@ -48,8 +63,16 @@ export const getWarehouses = asyncHandler(
     const statusFilter = req.query.status;
     const page = Number(req.query.page ?? 1);
     const pageSize = Number(req.query.pageSize ?? 100);
-    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) {
-      return res.status(400).json({ status: "error", message: "Invalid pagination parameters" });
+    if (
+      !Number.isInteger(page) ||
+      page < 1 ||
+      !Number.isInteger(pageSize) ||
+      pageSize < 1 ||
+      pageSize > 100
+    ) {
+      return res
+        .status(400)
+        .json({ status: "error", message: "Invalid pagination parameters" });
     }
 
     const whereClause =
@@ -59,13 +82,31 @@ export const getWarehouses = asyncHandler(
           ? {}
           : { isActive: true };
 
-    const result = await getOrLoad(`${String(statusFilter ?? "active")}:p${page}:s${pageSize}`, "warehouses", 30, async () => {
-      const [total, warehouses] = await Promise.all([
-        prisma.warehouse.count({ where: whereClause }),
-        prisma.warehouse.findMany({ where: whereClause, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (page - 1) * pageSize, take: pageSize }),
-      ]);
-      return { warehouses, pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) } };
-    });
+    const result = await getOrLoad(
+      `${String(statusFilter ?? "active")}:p${page}:s${pageSize}`,
+      "warehouses",
+      30,
+      async () => {
+        const [total, warehouses] = await Promise.all([
+          prisma.warehouse.count({ where: whereClause }),
+          prisma.warehouse.findMany({
+            where: whereClause,
+            orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+          }),
+        ]);
+        return {
+          warehouses,
+          pagination: {
+            page,
+            pageSize,
+            total,
+            totalPages: Math.ceil(total / pageSize),
+          },
+        };
+      },
+    );
 
     return res.status(200).json({
       status: "success",

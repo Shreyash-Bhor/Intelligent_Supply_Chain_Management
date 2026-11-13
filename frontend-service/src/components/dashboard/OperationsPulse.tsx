@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, CircleCheck, PackageSearch, ShieldAlert } from "lucide-react";
+import {
+  ArrowUpRight,
+  CircleCheck,
+  PackageSearch,
+  ShieldAlert,
+} from "lucide-react";
 import type { DashboardSummary } from "@/lib/api";
 import { formatCompactNumber } from "@/lib/numberFormat";
 
@@ -39,7 +44,10 @@ export function OperationsPulse({ summary, loading = false }: Props) {
   ];
 
   return (
-    <section aria-label="Operations pulse" className="grid gap-3 md:grid-cols-3">
+    <section
+      aria-label="Operations pulse"
+      className="grid gap-3 md:grid-cols-3"
+    >
       {cards.map((card) => {
         const Icon = card.icon;
         return (
@@ -48,17 +56,30 @@ export function OperationsPulse({ summary, loading = false }: Props) {
             href={card.href}
             className="group bg-card hover:border-primary/35 flex items-center gap-3 rounded-2xl border p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
           >
-            <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${card.tone}`}>
+            <span
+              className={`grid size-10 shrink-0 place-items-center rounded-xl ${card.tone}`}
+            >
               <Icon className="size-5" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-muted-foreground text-xs font-medium">{card.label}</p>
-              <p className="mt-0.5 text-xl font-semibold tabular-nums">
-                {loading ? "—" : typeof card.value === "number" ? formatCompactNumber(card.value) : card.value}
+              <p className="text-muted-foreground text-xs font-medium">
+                {card.label}
               </p>
-              <p className="text-muted-foreground truncate text-xs">{card.detail}</p>
+              <p className="mt-0.5 text-xl font-semibold tabular-nums">
+                {loading
+                  ? "—"
+                  : typeof card.value === "number"
+                    ? formatCompactNumber(card.value)
+                    : card.value}
+              </p>
+              <p className="text-muted-foreground truncate text-xs">
+                {card.detail}
+              </p>
             </div>
-            <ArrowUpRight className="text-muted-foreground size-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
+            <ArrowUpRight
+              className="text-muted-foreground size-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+              aria-hidden="true"
+            />
           </Link>
         );
       })}

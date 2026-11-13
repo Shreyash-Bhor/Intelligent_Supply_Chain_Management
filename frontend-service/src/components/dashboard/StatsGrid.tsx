@@ -24,7 +24,9 @@ export function StatsGrid({ stats, loading }: Props) {
       {stats.map((item) => (
         <Card
           key={item.title}
-          style={{ animationDelay: `${Math.min(stats.indexOf(item), 6) * 55}ms` }}
+          style={{
+            animationDelay: `${Math.min(stats.indexOf(item), 6) * 55}ms`,
+          }}
           className={`dashboard-card-enter transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${item.danger ? "border-destructive/40 bg-destructive/[0.02]" : ""}`}
         >
           <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
@@ -35,11 +37,13 @@ export function StatsGrid({ stats, loading }: Props) {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold tabular-nums">
-              {loading
-                ? "..."
-                : typeof item.value === "number"
-                  ? <CountUp value={item.value} />
-                  : item.value}
+              {loading ? (
+                "..."
+              ) : typeof item.value === "number" ? (
+                <CountUp value={item.value} />
+              ) : (
+                item.value
+              )}
             </p>
             <p className="text-muted-foreground mt-1 text-xs">
               {item.description}
@@ -55,8 +59,14 @@ function CountUp({ value }: { value: number }) {
   const [display, setDisplay] = useState(0);
   const current = useRef(0);
   useEffect(() => {
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduceMotion) { current.current = value; setDisplay(value); return; }
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (reduceMotion) {
+      current.current = value;
+      setDisplay(value);
+      return;
+    }
     let frame = 0;
     const started = performance.now();
     const initial = current.current;

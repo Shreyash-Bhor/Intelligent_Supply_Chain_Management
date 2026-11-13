@@ -112,7 +112,14 @@ function Metric({
   active?: boolean;
   onSelect: () => void;
 }) {
-  const accents = ["#3b8b67", "#d39a35", "#4f8fc8", "#8b70c6", "#36a37a", "#d26767"];
+  const accents = [
+    "#3b8b67",
+    "#d39a35",
+    "#4f8fc8",
+    "#8b70c6",
+    "#36a37a",
+    "#d26767",
+  ];
   const accent = accents[index % accents.length];
   return (
     <Card
@@ -129,11 +136,18 @@ function Metric({
       }}
       className={`orders-metric orders-enter group relative cursor-pointer overflow-hidden border shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? "orders-metric-active" : ""}`}
     >
-      <span aria-hidden="true" className="orders-metric-glow" style={{ "--metric-accent": accent } as CSSProperties} />
+      <span
+        aria-hidden="true"
+        className="orders-metric-glow"
+        style={{ "--metric-accent": accent } as CSSProperties}
+      />
       <CardContent className="relative flex min-h-[152px] items-start justify-between gap-3 p-4 sm:p-5">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="grid size-10 shrink-0 place-items-center rounded-2xl transition-transform duration-300 group-hover:rotate-[-8deg] group-hover:scale-110" style={{ backgroundColor: `${accent}18`, color: accent }}>
+            <span
+              className="grid size-10 shrink-0 place-items-center rounded-2xl transition-transform duration-300 group-hover:rotate-[-8deg] group-hover:scale-110"
+              style={{ backgroundColor: `${accent}18`, color: accent }}
+            >
               <Icon className="size-[19px]" aria-hidden="true" />
             </span>
             <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.12em] sm:text-[11px]">
@@ -149,9 +163,24 @@ function Metric({
           </p>
           <p className="text-muted-foreground mt-1.5 text-xs">{detail}</p>
         </div>
-        <svg className="orders-sparkline mt-auto h-12 w-[72px] shrink-0 overflow-visible" viewBox="0 0 72 36" aria-hidden="true" style={{ color: accent }}>
-          <path d="M2 29 C10 27 10 15 19 19 S30 27 37 18 S48 8 54 14 S64 18 70 5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-          <path d="M2 29 C10 27 10 15 19 19 S30 27 37 18 S48 8 54 14 S64 18 70 5 L70 36 L2 36Z" fill="currentColor" opacity=".08" />
+        <svg
+          className="orders-sparkline mt-auto h-12 w-[72px] shrink-0 overflow-visible"
+          viewBox="0 0 72 36"
+          aria-hidden="true"
+          style={{ color: accent }}
+        >
+          <path
+            d="M2 29 C10 27 10 15 19 19 S30 27 37 18 S48 8 54 14 S64 18 70 5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          />
+          <path
+            d="M2 29 C10 27 10 15 19 19 S30 27 37 18 S48 8 54 14 S64 18 70 5 L70 36 L2 36Z"
+            fill="currentColor"
+            opacity=".08"
+          />
         </svg>
       </CardContent>
     </Card>
@@ -189,9 +218,7 @@ function CountUp({
   }, [value]);
   return (
     <>
-      {currency
-        ? formatINR(display)
-        : formatCompactNumber(Math.round(display))}
+      {currency ? formatINR(display) : formatCompactNumber(Math.round(display))}
     </>
   );
 }
@@ -416,7 +443,10 @@ export default function ManagerOrdersPage() {
           icon={ShoppingBag}
           index={0}
           active={status === "all"}
-          onSelect={() => { setStatus("all"); setPage(1); }}
+          onSelect={() => {
+            setStatus("all");
+            setPage(1);
+          }}
         />
         <Metric
           label="Order value"
@@ -427,7 +457,10 @@ export default function ManagerOrdersPage() {
           index={1}
           currency
           active={false}
-          onSelect={() => { setStatus("all"); setPage(1); }}
+          onSelect={() => {
+            setStatus("all");
+            setPage(1);
+          }}
         />
         <Metric
           label="Pending"
@@ -437,7 +470,10 @@ export default function ManagerOrdersPage() {
           icon={Clock3}
           index={2}
           active={status === "PENDING_PAYMENT"}
-          onSelect={() => { setStatus(status === "PENDING_PAYMENT" ? "all" : "PENDING_PAYMENT"); setPage(1); }}
+          onSelect={() => {
+            setStatus(status === "PENDING_PAYMENT" ? "all" : "PENDING_PAYMENT");
+            setPage(1);
+          }}
         />
         <Metric
           label="Processing"
@@ -447,7 +483,10 @@ export default function ManagerOrdersPage() {
           icon={RotateCcw}
           index={3}
           active={status === "CONFIRMED"}
-          onSelect={() => { setStatus(status === "CONFIRMED" ? "all" : "CONFIRMED"); setPage(1); }}
+          onSelect={() => {
+            setStatus(status === "CONFIRMED" ? "all" : "CONFIRMED");
+            setPage(1);
+          }}
         />
         <Metric
           label="Delivered"
@@ -457,7 +496,10 @@ export default function ManagerOrdersPage() {
           icon={PackageCheck}
           index={4}
           active={status === "FULFILLED"}
-          onSelect={() => { setStatus(status === "FULFILLED" ? "all" : "FULFILLED"); setPage(1); }}
+          onSelect={() => {
+            setStatus(status === "FULFILLED" ? "all" : "FULFILLED");
+            setPage(1);
+          }}
         />
         <Metric
           label="Cancelled"
@@ -467,7 +509,10 @@ export default function ManagerOrdersPage() {
           icon={XCircle}
           index={5}
           active={status === "CANCELLED"}
-          onSelect={() => { setStatus(status === "CANCELLED" ? "all" : "CANCELLED"); setPage(1); }}
+          onSelect={() => {
+            setStatus(status === "CANCELLED" ? "all" : "CANCELLED");
+            setPage(1);
+          }}
         />
       </section>
 
@@ -1171,7 +1216,8 @@ export default function ManagerOrdersPage() {
                           {item.product.name}
                         </p>
                         <p className="text-muted-foreground mt-1 text-xs">
-                          SKU {item.product.sku} · Qty {formatCompactNumber(item.quantity)} ·{" "}
+                          SKU {item.product.sku} · Qty{" "}
+                          {formatCompactNumber(item.quantity)} ·{" "}
                           {formatINR(item.unitPrice)} each
                         </p>
                       </div>
@@ -1205,7 +1251,8 @@ export default function ManagerOrdersPage() {
                           {allocation.inventory.warehouse.pincode}
                         </p>
                         <p className="text-primary mt-2 text-xs font-medium">
-                          {formatCompactNumber(allocation.quantity)} units allocated
+                          {formatCompactNumber(allocation.quantity)} units
+                          allocated
                         </p>
                       </div>
                     ))

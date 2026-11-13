@@ -5,7 +5,8 @@ import { AppShell } from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "SupplySync — A smarter supply chain starts here",
-  description: "One connected workspace for warehouse managers and shoppers. Track inventory, manage fulfillment, and shop with confidence.",
+  description:
+    "One connected workspace for warehouse managers and shoppers. Track inventory, manage fulfillment, and shop with confidence.",
 };
 
 export default function RootLayout({

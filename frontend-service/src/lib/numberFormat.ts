@@ -1,4 +1,3 @@
-/** Compact large counts with the familiar K and Indian lakh suffixes. */
 export function formatCompactNumber(value: number): string {
   if (!Number.isFinite(value)) return "0";
   const absolute = Math.abs(value);
@@ -12,7 +11,6 @@ export function formatCompactNumber(value: number): string {
   return value.toLocaleString("en-IN");
 }
 
-/** Add Indian digit grouping to a price while preserving its numeric value. */
 export function formatPriceWithCommas(value: number): string {
   return new Intl.NumberFormat("en-IN", {
     minimumFractionDigits: 2,

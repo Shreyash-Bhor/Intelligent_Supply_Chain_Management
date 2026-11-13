@@ -20,9 +20,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hydrated || !role) return;
 
-    const routes = role === "warehouse_manager"
-      ? ["/manager", "/manager/orders", "/inventory", "/reorder", "/warehouse", "/product", "/pricing"]
-      : ["/assistant", "/user", "/cart", "/orders"];
+    const routes =
+      role === "warehouse_manager"
+        ? [
+            "/manager",
+            "/manager/orders",
+            "/inventory",
+            "/reorder",
+            "/warehouse",
+            "/product",
+            "/pricing",
+          ]
+        : ["/assistant", "/user", "/cart", "/orders"];
     const [priority, ...deferred] = routes;
     let cancelled = false;
     let idleHandle: number | undefined;
@@ -30,7 +39,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     // Warm the role's landing page first, then schedule only that role's routes.
     const safePrefetch = (route: string) => {
-      try { router.prefetch(route); } catch { /* A later navigation can still load the route normally. */ }
+      try {
+        router.prefetch(route);
+      } catch {
+        /* A later navigation can still load the route normally. */
+      }
     };
     safePrefetch(priority);
     const preloadDeferred = () => {
@@ -38,11 +51,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       for (const route of deferred) safePrefetch(route);
     };
     const idleWindow = window as Window & {
-      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      requestIdleCallback?: (
+        callback: () => void,
+        options?: { timeout: number },
+      ) => number;
       cancelIdleCallback?: (handle: number) => void;
     };
     if (idleWindow.requestIdleCallback) {
-      idleHandle = idleWindow.requestIdleCallback(preloadDeferred, { timeout: 2500 });
+      idleHandle = idleWindow.requestIdleCallback(preloadDeferred, {
+        timeout: 2500,
+      });
     } else {
       timeoutHandle = window.setTimeout(preloadDeferred, 1200);
     }
@@ -54,11 +72,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [email, hydrated, role, router]);
 
-  return <>
-    <ServiceWakeup />
-    <div className="motion-ambient" aria-hidden="true"><span /><span /><span /></div>
-    {!assistantPage && <Navbar />}
-    <div key={pathname} className="route-enter">{children}</div>
-    {!assistantPage && canUseAssistant && <RagChatbot />}
-  </>;
+  return (
+    <>
+      <ServiceWakeup />
+      <div className="motion-ambient" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+      {!assistantPage && <Navbar />}
+      <div key={pathname} className="route-enter">
+        {children}
+      </div>
+      {!assistantPage && canUseAssistant && <RagChatbot />}
+    </>
+  );
 }

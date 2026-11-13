@@ -9,7 +9,8 @@ const services = {
   pricing:
     process.env.NEXT_PUBLIC_PRICING_API_BASE_URL?.replace(/\/$/, "") ??
     "http://localhost:5555",
-  rag: process.env.RAG_SERVICE_URL?.replace(/\/$/, "") ?? "http://localhost:8000",
+  rag:
+    process.env.RAG_SERVICE_URL?.replace(/\/$/, "") ?? "http://localhost:8000",
 } as const;
 
 type ServiceName = keyof typeof services;
@@ -19,7 +20,10 @@ export async function POST(request: NextRequest) {
   try {
     ({ services: requestedServices } = await request.json());
   } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid request body" },
+      { status: 400 },
+    );
   }
 
   if (
@@ -28,7 +32,10 @@ export async function POST(request: NextRequest) {
       (service) => typeof service !== "string" || !(service in services),
     )
   ) {
-    return NextResponse.json({ error: "Invalid services list" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid services list" },
+      { status: 400 },
+    );
   }
 
   const results = await Promise.all(

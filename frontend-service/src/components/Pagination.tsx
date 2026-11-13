@@ -46,7 +46,8 @@ export function Pagination({
       )}
     >
       <p className="text-muted-foreground text-sm">
-        Showing {formatCompactNumber(start)}–{formatCompactNumber(end)} of {formatCompactNumber(totalItems)}
+        Showing {formatCompactNumber(start)}–{formatCompactNumber(end)} of{" "}
+        {formatCompactNumber(totalItems)}
       </p>
       <div className="flex items-center gap-1">
         <Button

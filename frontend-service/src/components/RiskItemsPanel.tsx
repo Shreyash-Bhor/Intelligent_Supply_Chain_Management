@@ -66,7 +66,8 @@ export function RiskItemsPanel({
           <div className="text-right text-xs">
             <Badge variant="destructive">Deficit {item.deficit}</Badge>
             <p className="text-muted-foreground mt-1 text-xs">
-              {formatCompactNumber(item.availableQty)} / {formatCompactNumber(item.reorderQty)} target
+              {formatCompactNumber(item.availableQty)} /{" "}
+              {formatCompactNumber(item.reorderQty)} target
             </p>
           </div>
         </div>

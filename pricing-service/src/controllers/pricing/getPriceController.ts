@@ -45,14 +45,16 @@ export const getProductPrices = asyncHandler(
     }
 
     const key = [...new Set(productIds)].sort().join(",");
-    const prices = await getOrLoad(key, "prices", 20, () => prisma.productPrice.findMany({
-      where: {
-        productId: {
-          in: [...new Set(productIds)],
+    const prices = await getOrLoad(key, "prices", 20, () =>
+      prisma.productPrice.findMany({
+        where: {
+          productId: {
+            in: [...new Set(productIds)],
+          },
         },
-      },
-      select: { productId: true, price: true, currency: true },
-    }));
+        select: { productId: true, price: true, currency: true },
+      }),
+    );
 
     return res.status(200).json({
       status: "success",
