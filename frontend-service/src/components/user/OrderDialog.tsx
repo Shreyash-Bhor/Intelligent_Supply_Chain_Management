@@ -45,7 +45,7 @@ export function OrderDialog({ product, onAddToCart, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="order-title"
-        className="bg-background relative flex h-[75vh] w-[75vw] min-w-[min(94vw,320px)] max-w-6xl overflow-hidden rounded-2xl border shadow-2xl max-md:h-[90vh] max-md:w-[94vw] max-md:flex-col"
+        className="bg-background relative flex h-[min(75dvh,48rem)] max-h-[calc(100dvh-2rem)] w-[75vw] min-w-[min(94vw,320px)] max-w-6xl overflow-hidden rounded-2xl border shadow-2xl max-md:h-[calc(100dvh-1.5rem)] max-md:w-[94vw] max-md:flex-col"
       >
         <Button
           variant="outline"
@@ -56,7 +56,7 @@ export function OrderDialog({ product, onAddToCart, onClose }: Props) {
         >
           <X />
         </Button>
-        <div className="bg-muted/30 relative min-h-56 flex-1">
+        <div className="bg-muted/30 relative min-h-0 flex-1 max-md:min-h-40 max-md:flex-none max-md:basis-[34%]">
           {product.imageUrl ? (
             <Image
               src={product.imageUrl}

@@ -378,7 +378,7 @@ export function RagChatbot({ fullPage = false }: { fullPage?: boolean }) {
             if (drag.moved)
               setLauncherPosition(
                 clampLauncherPosition(
-                  { right: drag.right - dx, bottom: drag.bottom + dy },
+                  { right: drag.right - dx, bottom: drag.bottom - dy },
                   event.currentTarget.offsetWidth,
                   event.currentTarget.offsetHeight,
                 ),
